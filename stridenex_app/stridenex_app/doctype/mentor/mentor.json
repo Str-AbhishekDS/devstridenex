@@ -1,0 +1,169 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-17 12:37:13.385592",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_plv1",
+  "first_name",
+  "domain",
+  "approved_status",
+  "column_break_eibm",
+  "last_name",
+  "type",
+  "travelling_possible",
+  "column_break_ecju",
+  "email_id",
+  "mobile_no",
+  "section_break_nfae",
+  "bank_name",
+  "column_break_mmbv",
+  "account_number",
+  "column_break_miqy",
+  "ifsc_code",
+  "section_break_lnjd",
+  "profile_description",
+  "terms_and_conditions",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_plv1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Mentor",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "label": "First Name"
+  },
+  {
+   "fieldname": "email_id",
+   "fieldtype": "Data",
+   "label": "Email ID"
+  },
+  {
+   "fieldname": "column_break_eibm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "label": "Last Name"
+  },
+  {
+   "fieldname": "mobile_no",
+   "fieldtype": "Phone",
+   "label": "Mobile No."
+  },
+  {
+   "fieldname": "approved_status",
+   "fieldtype": "Link",
+   "label": "Approved Status",
+   "options": "Workflow State"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Link",
+   "label": "Type",
+   "options": "Type"
+  },
+  {
+   "fieldname": "domain",
+   "fieldtype": "Link",
+   "label": "Domain",
+   "options": "Domain"
+  },
+  {
+   "fieldname": "section_break_nfae",
+   "fieldtype": "Section Break",
+   "label": "Bank Details"
+  },
+  {
+   "fieldname": "bank_name",
+   "fieldtype": "Data",
+   "label": "Bank Name"
+  },
+  {
+   "fieldname": "column_break_mmbv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "account_number",
+   "fieldtype": "Data",
+   "label": "Account Number"
+  },
+  {
+   "fieldname": "column_break_miqy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ifsc_code",
+   "fieldtype": "Data",
+   "label": "IFSC Code"
+  },
+  {
+   "fieldname": "travelling_possible",
+   "fieldtype": "Select",
+   "label": "Travelling Possible",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "column_break_ecju",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_lnjd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "profile_description",
+   "fieldtype": "Long Text",
+   "label": "Profile Description"
+  },
+  {
+   "fieldname": "terms_and_conditions",
+   "fieldtype": "Long Text",
+   "label": "Terms and Conditions"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-02-17 14:35:33.829014",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

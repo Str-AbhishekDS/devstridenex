@@ -1,0 +1,187 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "autoincrement",
+ "creation": "2026-02-17 11:51:15.307434",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_larc",
+  "company_name",
+  "business_type",
+  "column_break_yfng",
+  "gst_number",
+  "industry_sector",
+  "column_break_wxeg",
+  "job_function",
+  "section_break_nelq",
+  "employee_head_count",
+  "internship_per_year",
+  "column_break_ivgb",
+  "turn_over_in_cr",
+  "company_website",
+  "column_break_ytux",
+  "average_fresher_recruited_per_year",
+  "status",
+  "section_break_ppno",
+  "contact_details",
+  "section_break_rnzo",
+  "approved_status",
+  "terms_and_conditions",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_larc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Industry",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "company_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Company Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_yfng",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gst_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "GST Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "business_type",
+   "fieldtype": "Link",
+   "label": "Business Type",
+   "options": "Business Type"
+  },
+  {
+   "fieldname": "industry_sector",
+   "fieldtype": "Link",
+   "label": "Industry Sector",
+   "options": "Industry Sector"
+  },
+  {
+   "fieldname": "column_break_wxeg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "job_function",
+   "fieldtype": "Table MultiSelect",
+   "label": "Job Function",
+   "options": "Job Function Table"
+  },
+  {
+   "fieldname": "section_break_nelq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "employee_head_count",
+   "fieldtype": "Data",
+   "label": "Employee Head Count"
+  },
+  {
+   "fieldname": "turn_over_in_cr",
+   "fieldtype": "Data",
+   "label": "Turn Over in Cr"
+  },
+  {
+   "fieldname": "column_break_ivgb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ytux",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "average_fresher_recruited_per_year",
+   "fieldtype": "Data",
+   "label": "Average Fresher Recruited Per Year"
+  },
+  {
+   "fieldname": "internship_per_year",
+   "fieldtype": "Data",
+   "label": "Internship Per Year"
+  },
+  {
+   "fieldname": "company_website",
+   "fieldtype": "Data",
+   "label": "Company Website"
+  },
+  {
+   "fieldname": "section_break_ppno",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "contact_details",
+   "fieldtype": "Table",
+   "label": "Contact Details",
+   "options": "Contact Details"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nDisable"
+  },
+  {
+   "fieldname": "section_break_rnzo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "approved_status",
+   "fieldtype": "Link",
+   "label": "Approved Status",
+   "options": "Workflow State"
+  },
+  {
+   "fieldname": "terms_and_conditions",
+   "fieldtype": "Long Text",
+   "label": "Terms and Conditions"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-02-17 14:56:33.059720",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Industry",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
