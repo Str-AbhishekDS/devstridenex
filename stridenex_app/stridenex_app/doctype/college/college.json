@@ -6,21 +6,24 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_pxrq",
   "college_name",
-  "status",
-  "column_break_ypmh",
-  "registration_number",
-  "approved_status",
-  "section_break_xxmn",
-  "contact_details",
+  "college_code",
+  "university",
+  "college_type",
+  "website",
+  "is_active",
+  "column_break_yapy",
+  "country",
+  "state",
+  "district",
+  "tahsil",
+  "city",
+  "approved_status_workflow",
+  "section_break_ffoy",
+  "table_rgfq",
   "amended_from"
  ],
  "fields": [
-  {
-   "fieldname": "section_break_pxrq",
-   "fieldtype": "Section Break"
-  },
   {
    "fieldname": "amended_from",
    "fieldtype": "Link",
@@ -34,46 +37,95 @@
   {
    "fieldname": "college_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "College Name",
+   "reqd": 1,
    "unique": 1
   },
   {
-   "fieldname": "column_break_ypmh",
+   "fieldname": "college_code",
+   "fieldtype": "Data",
+   "label": "College Code (Registration Number)"
+  },
+  {
+   "fieldname": "university",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "University",
+   "options": "University",
+   "reqd": 1
+  },
+  {
+   "fieldname": "college_type",
+   "fieldtype": "Link",
+   "label": "College Type",
+   "options": "College Type"
+  },
+  {
+   "fieldname": "website",
+   "fieldtype": "Data",
+   "label": "Website"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "column_break_yapy",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "registration_number",
-   "fieldtype": "Data",
-   "label": "Registration Number"
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Active\nDisable"
-  },
-  {
-   "fieldname": "approved_status",
+   "fieldname": "country",
    "fieldtype": "Link",
-   "label": "Approved Status",
-   "options": "Workflow State"
+   "label": "Country",
+   "options": "Country"
   },
   {
-   "fieldname": "section_break_xxmn",
+   "fieldname": "state",
+   "fieldtype": "Link",
+   "label": "State",
+   "options": "State"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "District"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Link",
+   "label": "City",
+   "options": "City"
+  },
+  {
+   "fieldname": "approved_status_workflow",
+   "fieldtype": "Data",
+   "label": "Approved Status (Workflow)"
+  },
+  {
+   "fieldname": "section_break_ffoy",
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "contact_details",
+   "fieldname": "table_rgfq",
    "fieldtype": "Table",
-   "label": "Contact Details",
    "options": "Contact Details"
+  },
+  {
+   "fieldname": "tahsil",
+   "fieldtype": "Link",
+   "label": "Taluka",
+   "options": "Tahsil"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-17 18:20:59.977387",
+ "modified": "2026-02-20 16:50:16.706106",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College",
