@@ -7,15 +7,21 @@
  "field_order": [
   "section_break_plv1",
   "first_name",
-  "domain",
-  "approved_status",
-  "column_break_eibm",
   "last_name",
-  "type",
-  "travelling_possible",
-  "column_break_ecju",
-  "email_id",
   "mobile_no",
+  "email_id",
+  "type",
+  "column_break_eibm",
+  "domain",
+  "travelling_possible",
+  "approved_status",
+  "is_active",
+  "column_break_ecju",
+  "country",
+  "state",
+  "district",
+  "tahsil",
+  "city",
   "section_break_nfae",
   "bank_name",
   "column_break_mmbv",
@@ -50,7 +56,9 @@
   {
    "fieldname": "email_id",
    "fieldtype": "Data",
-   "label": "Email ID"
+   "label": "Email ID",
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "column_break_eibm",
@@ -64,7 +72,8 @@
   {
    "fieldname": "mobile_no",
    "fieldtype": "Phone",
-   "label": "Mobile No."
+   "label": "Mobile No.",
+   "reqd": 1
   },
   {
    "fieldname": "approved_status",
@@ -76,13 +85,15 @@
    "fieldname": "type",
    "fieldtype": "Link",
    "label": "Type",
-   "options": "Type"
+   "options": "Type",
+   "reqd": 1
   },
   {
    "fieldname": "domain",
-   "fieldtype": "Link",
+   "fieldtype": "Table MultiSelect",
+   "in_standard_filter": 1,
    "label": "Domain",
-   "options": "Domain"
+   "options": "Str Domain"
   },
   {
    "fieldname": "section_break_nfae",
@@ -135,13 +146,53 @@
    "fieldname": "terms_and_conditions",
    "fieldtype": "Long Text",
    "label": "Terms and Conditions"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Country",
+   "options": "Country",
+   "reqd": 1
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "State",
+   "options": "State",
+   "reqd": 1
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "District"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Link",
+   "label": "City",
+   "options": "City"
+  },
+  {
+   "fieldname": "tahsil",
+   "fieldtype": "Link",
+   "label": "Taluka",
+   "options": "Tahsil"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-17 14:35:33.829014",
+ "modified": "2026-02-20 16:56:06.175311",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor",

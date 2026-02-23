@@ -1,16 +1,16 @@
 // Copyright (c) 2026, QTPL and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Mentor", {
+// frappe.ui.form.on("City", {
 // 	refresh(frm) {
 
 // 	},
 // });
-frappe.ui.form.on('Mentor', {
+frappe.ui.form.on('City', {
 
     refresh: function(frm) {
 
-        // State filter
+        // Filter State based on Country
         frm.set_query('state', function() {
             return {
                 filters: {
@@ -19,7 +19,7 @@ frappe.ui.form.on('Mentor', {
             };
         });
 
-        // District filter
+        // Filter District based on State
         frm.set_query('district', function() {
             return {
                 filters: {
@@ -28,20 +28,11 @@ frappe.ui.form.on('Mentor', {
             };
         });
 
-        // tahsil filter
+        // Filter tahsil based on District
         frm.set_query('tahsil', function() {
             return {
                 filters: {
                     district: frm.doc.district
-                }
-            };
-        });
-
-        // City filter
-        frm.set_query('city', function() {
-            return {
-                filters: {
-                    tahsil: frm.doc.tahsil
                 }
             };
         });
@@ -52,22 +43,15 @@ frappe.ui.form.on('Mentor', {
         frm.set_value('state', '');
         frm.set_value('district', '');
         frm.set_value('tahsil', '');
-        frm.set_value('city', '');
     },
 
     state: function(frm) {
         frm.set_value('district', '');
         frm.set_value('tahsil', '');
-        frm.set_value('city', '');
     },
 
     district: function(frm) {
         frm.set_value('tahsil', '');
-        frm.set_value('city', '');
-    },
-
-    tahsil: function(frm) {
-        frm.set_value('city', '');
     }
 
 });

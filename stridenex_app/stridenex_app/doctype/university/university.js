@@ -1,12 +1,12 @@
 // Copyright (c) 2026, QTPL and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Mentor", {
+// frappe.ui.form.on("University", {
 // 	refresh(frm) {
 
 // 	},
 // });
-frappe.ui.form.on('Mentor', {
+frappe.ui.form.on('University', {
 
     refresh: function(frm) {
 

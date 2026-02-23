@@ -9,11 +9,16 @@
   "section_break_larc",
   "company_name",
   "business_type",
-  "column_break_yfng",
   "gst_number",
   "industry_sector",
-  "column_break_wxeg",
+  "column_break_yfng",
   "job_function",
+  "country",
+  "state",
+  "column_break_wxeg",
+  "district",
+  "tahsil",
+  "city",
   "section_break_nelq",
   "employee_head_count",
   "internship_per_year",
@@ -50,7 +55,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Company Name",
-   "reqd": 1
+   "unique": 1
   },
   {
    "fieldname": "column_break_yfng",
@@ -60,8 +65,7 @@
    "fieldname": "gst_number",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "GST Number",
-   "reqd": 1
+   "label": "GST Number"
   },
   {
    "fieldname": "business_type",
@@ -152,13 +156,43 @@
    "fieldname": "terms_and_conditions",
    "fieldtype": "Long Text",
    "label": "Terms and Conditions"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "label": "Country",
+   "options": "Country"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Link",
+   "label": "State",
+   "options": "State"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "District"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Link",
+   "label": "City",
+   "options": "City"
+  },
+  {
+   "fieldname": "tahsil",
+   "fieldtype": "Link",
+   "label": "Taluka",
+   "options": "Tahsil"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-17 14:56:33.059720",
+ "modified": "2026-02-20 16:57:52.159532",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Industry",
