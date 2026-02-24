@@ -10,6 +10,61 @@ from stridenex_app.api_stridenex_app.app_utils import (
 
 
 @frappe.whitelist(allow_guest=True)
+def signup():
+    if frappe.request.method != "POST":
+        frappe.throw("Only POST allowed", frappe.ValidationError)
+    try:
+        data = frappe.request.get_json()
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        email = data.get("email")
+        password = data.get("password")
+
+        if not all([first_name, last_name, email, password]):
+            return gen_response(400, "All fields are required")
+
+        existing_user = frappe.get_all(
+            "User",
+            filters={"name": email},
+            fields=["name"]
+        )
+
+        if existing_user:
+            return gen_response(400, "User already exists")
+
+        user = frappe.get_doc({
+            "doctype": "User",
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "enabled": 1,
+            "new_password": password,
+            "user_type": "Website User"
+        })
+        user.insert(ignore_permissions=True)
+
+        return gen_response(200, "User created successfully")
+
+    except Exception as e:
+        return gen_response(500, "Something went wrong", str(e))
+
+
+def generate_key(user):
+    user_details = frappe.get_doc("User", user)
+    api_secret = api_key = ""
+    if not user_details.api_key and not user_details.api_secret:
+        api_secret = frappe.generate_hash(length=15)
+        api_key = frappe.generate_hash(length=15)
+        user_details.api_key = api_key
+        user_details.api_secret = api_secret
+        user_details.save(ignore_permissions=True)
+    else:
+        api_secret = user_details.get_password("api_secret")
+        api_key = user_details.get("api_key")
+    return {"api_secret": api_secret, "api_key": api_key}
+
+
+@frappe.whitelist(allow_guest=True)
 def login(usr, pwd):
     try:
         login_manager = LoginManager()
