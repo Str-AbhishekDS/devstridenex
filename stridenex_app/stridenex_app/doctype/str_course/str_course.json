@@ -64,6 +64,7 @@
    "fieldname": "semester",
    "fieldtype": "Select",
    "label": "Semester",
+   "options": "Sem I\nSem II",
    "reqd": 1
   },
   {
