@@ -5,7 +5,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
     exception_handel
     ) 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_student(*args, **kwargs):
     try:
         data = kwargs
@@ -47,52 +47,50 @@ def create_student(*args, **kwargs):
         return gen_response(500, "Not permitted for Student")
     except Exception as e:
         return exception_handel(e)
-    
-    
 
 
-@frappe.whitelist(allow_guest=True)
-def get_student(**kwargs):
+
+@frappe.whitelist()
+def get_student(name=None, first_name=None, last_name=None, email_id=None, college=None):
     try:
-        student_id = kwargs.get("name")
-        email_id = kwargs.get("email_id")
+        conditions = []
+        values = {}
 
-        # -------------------------------
-        # Case 1: Get Single Student by ID
-        # -------------------------------
-        if student_id:
-            if not frappe.db.exists("Student", student_id):
-                return gen_response(404, "Student not found.")
+        if name:
+            conditions.append("name = %(name)s")
+            values["name"] = name
 
-            student = frappe.get_doc("Student", student_id)
+        if first_name:
+            conditions.append("first_name = %(first_name)s")
+            values["first_name"] = first_name
 
-            return gen_response(200, "Student fetched successfully.", student)
+        if last_name:
+            conditions.append("last_name = %(last_name)s")
+            values["last_name"] = last_name
 
-        # -------------------------------
-        # Case 2: Get Student by Email
-        # -------------------------------
         if email_id:
-            student = frappe.db.get_value(
-                "Student",
-                {"email_id": email_id},
-                "*",
-                as_dict=True
-            )
+            conditions.append("email_id = %(email_id)s")
+            values["email_id"] = email_id
 
-            if not student:
-                return gen_response(404, "Student not found.")
+        if college:
+            conditions.append("college = %(college)s")
+            values["college"] = college
 
-            return gen_response(200, "Student fetched successfully.", student)
+        where_clause = " AND ".join(conditions)
 
-        # -------------------------------
-        # Case 3: Get All Students
-        # -------------------------------
-        students = frappe.get_all(
-            "Student",
-            fields=["name", "first_name", "last_name", "email_id", "college"]
-        )
+        sql = f"""
+            SELECT name, first_name, last_name, email_id, college
+            FROM `tabStudent`
+            WHERE docstatus = 1
+            {f'AND {where_clause}' if where_clause else ''}
+        """
 
-        return gen_response(200, "Student list fetched successfully.", students)
+        result = frappe.db.sql(sql, values, as_dict=True)
+
+        if not result:
+            return gen_response(404, "No student found.")
+
+        return gen_response(200, "Student fetched successfully.", result)
 
     except Exception as e:
         return exception_handel(e)

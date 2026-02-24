@@ -1,0 +1,74 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:mobile_no",
+ "creation": "2026-02-24 13:27:25.603589",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "column_break_nglu",
+  "mobile_no",
+  "column_break_dyyb",
+  "otp",
+  "column_break_xrzd",
+  "expiry_time"
+ ],
+ "fields": [
+  {
+   "fieldname": "otp",
+   "fieldtype": "Int",
+   "label": "OTP"
+  },
+  {
+   "fieldname": "column_break_nglu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mobile_no",
+   "fieldtype": "Data",
+   "label": "Mobile No",
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_xrzd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "expiry_time",
+   "fieldtype": "Time",
+   "label": "Expiry Time"
+  },
+  {
+   "fieldname": "column_break_dyyb",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-02-24 13:30:42.674312",
+ "modified_by": "Administrator",
+ "module": "API Stridenex_app",
+ "name": "Validate Mobile OTP",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
