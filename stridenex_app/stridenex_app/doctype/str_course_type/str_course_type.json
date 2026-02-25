@@ -1,31 +1,28 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2026-02-20 11:19:20.072880",
+ "creation": "2026-02-25 15:58:50.164012",
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "domain"
+  "course_type"
  ],
  "fields": [
   {
-   "fieldname": "domain",
+   "fieldname": "course_type",
    "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Domain ",
-   "options": "Domain"
+   "label": "Course Type",
+   "options": "Course Type"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-25 15:18:59.088928",
+ "modified": "2026-02-25 16:02:01.615379",
  "modified_by": "Administrator",
  "module": "Stridenex App",
- "name": "Str Domain",
+ "name": "Str Course Type",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
