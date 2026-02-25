@@ -161,6 +161,14 @@ app_license = "mit"
 # 	],
 # }
 
+scheduler_events = {
+    "cron": {
+        "* * * * *": [   # Every 10 minutes
+            "stridenex_app.api_stridenex_app.app_utils.delete_expired_otps"
+        ]
+    }
+}
+
 # Testing
 # -------
 
