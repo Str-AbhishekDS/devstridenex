@@ -22,7 +22,7 @@ def get_college():
     else:
         gen_response(400,"No data found")
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_department():
     result = frappe.get_all("Department",["*"])
     if result:
@@ -30,7 +30,7 @@ def get_department():
     else:
         gen_response(400,"No data found")
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_courses_type():
     result = frappe.get_all("Course Type",["*"])
     if result:

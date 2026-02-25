@@ -87,9 +87,9 @@
   },
   {
    "fieldname": "courses_type",
-   "fieldtype": "Link",
+   "fieldtype": "Table MultiSelect",
    "label": "Courses Type",
-   "options": "Course Type"
+   "options": "Str Course Type"
   },
   {
    "fieldname": "course",
@@ -127,7 +127,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-20 14:24:54.852840",
+ "modified": "2026-02-25 16:02:48.147894",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Student",
