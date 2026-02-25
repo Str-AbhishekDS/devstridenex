@@ -2,6 +2,7 @@ import frappe
 from bs4 import BeautifulSoup
 from frappe import _
 from frappe.utils import cstr
+from frappe.utils import now_datetime
 
 
 def gen_response(status, message, data=[]):
@@ -42,3 +43,29 @@ def prepare_json_data(key_list, data):
         if key in key_list:
             return_data[key] = data.get(key)
     return return_data
+
+
+@frappe.whitelist()
+def delete_expired_otps():
+    current_time = now_datetime()
+
+    expired_records = frappe.get_all(
+        "Validate Email OTP",
+        filters={"expiry_time": ["<", current_time]},
+        pluck="name"
+    )
+
+    for record in expired_records:
+        frappe.delete_doc("Validate Email OTP", record, ignore_permissions=True)
+
+    # Same for Mobile OTP (if you have separate doctype)
+    expired_mobile = frappe.get_all(
+        "Validate Mobile OTP",
+        filters={"expiry_time": ["<", current_time]},
+        pluck="name"
+    )
+
+    for record in expired_mobile:
+        frappe.delete_doc("Validate Mobile OTP", record, ignore_permissions=True)
+
+    frappe.db.commit()

@@ -96,14 +96,14 @@ def send_mobile_otp(mobile_no=None):
         return gen_response(400, "Mobile number is required")
 
     otp = str(random.randint(100000, 999999))
-    
-    expiry_time = add_to_date(now_datetime(), minutes=5)
+    expiry_time = add_to_date(now_datetime(), minutes=10)
     
     if frappe.db.exists("Validate Mobile OTP", mobile_no):
         doc = frappe.get_doc("Validate Mobile OTP", mobile_no)
         doc.otp = otp
         doc.expiry_time = expiry_time
         doc.save(ignore_permissions=True)
+        frappe.db.commit()
 
     else:
         doc = frappe.get_doc({
@@ -120,39 +120,44 @@ def send_mobile_otp(mobile_no=None):
 
 @frappe.whitelist(allow_guest=True)
 def validate_mobile_otp(mobile_no=None, otp=None):
-
     if not mobile_no:
-        return gen_response(400, "Mobile number is required")
+        return gen_response(400, "Mobile number is required", {"success": False})
 
     if not otp:
-        return gen_response(400, "OTP is required")
+        return gen_response(400, "OTP is required", {"success": False})
 
     if not frappe.db.exists("Validate Mobile OTP", mobile_no):
-        return gen_response(400, "OTP not generated for this mobile number")
+        return gen_response(400, "OTP not generated for this mobile number", {"success": False})
 
     doc = frappe.get_doc("Validate Mobile OTP", mobile_no)
 
-    if int(doc.otp) != int(otp):
-        return gen_response(400, "Invalid OTP")
+    current_time = now_datetime()
 
-    doc.delete(ignore_permissions=True)
+    if current_time > doc.expiry_time:
+        doc.delete(ignore_permissions=True)
+        frappe.db.commit()
+        return gen_response(400, "OTP has expired. Please request a new OTP.", {"success": False})
 
-    return gen_response(200, "Mobile number verified successfully")
+    if str(doc.otp) != str(otp):
+        return gen_response(400, "Invalid OTP", {"success": False})
+
+    return gen_response(200, "Mobile number verified successfully", {"success": True})
 
 
 @frappe.whitelist(allow_guest=True)
 def send_email_otp(email=None):
     try:
         if not email:
-            frappe.throw(_("Email is required"))
+            return gen_response(500,"Email is required")
 
         # Validate email format
         if not frappe.utils.validate_email_address(email, throw=False):
-            frappe.throw(_("Invalid Email Address"))
+            return gen_response(500,"Invalid Email Address")
+            
 
         # Generate 6 digit OTP
         otp = str(random.randint(100000, 999999))
-        expiry_time = add_to_date(now_datetime(), minutes=5)
+        expiry_time = add_to_date(now_datetime(), minutes=10)
 
         # Check if OTP already exists for this email
         existing_doc = frappe.db.get_value(
@@ -175,7 +180,6 @@ def send_email_otp(email=None):
             })
             doc.insert(ignore_permissions=True)
 
-        # Send OTP email
         frappe.sendmail(
             recipients=[email],
             subject="Your Login OTP",
@@ -203,29 +207,35 @@ def send_email_otp(email=None):
             "message": str(e)
         }
 
+
 @frappe.whitelist(allow_guest=True)
 def validate_email_otp(email=None, otp=None):
 
     if not email:
-        return gen_response(400, "Email is required")
+        return gen_response(400, "Email is required" , {"success": False} )
 
     if not otp:
-        return gen_response(400, "OTP is required")
+        return gen_response(400, "OTP is required", {"success": False})
 
-    if not frappe.db.exists("Validate Email OTP", email):
-        return gen_response(400, "OTP not generated for this email")
+    doc_name = frappe.db.get_value(
+        "Validate Email OTP",
+        {"email": email},
+        "name"
+    )
 
-    doc = frappe.get_doc("Validate Email OTP", email)
+    if not doc_name:
+        return gen_response(400, "OTP not generated for this email", {"success": False})
 
-    # Check expiry
-    # if now_datetime() > doc.expiry_time:
-    #     doc.delete(ignore_permissions=True)
-    #     return gen_response(400, "OTP expired")
+    doc = frappe.get_doc("Validate Email OTP", doc_name)
 
+
+    if now_datetime() > doc.expiry_time:
+        doc.delete(ignore_permissions=True)
+        frappe.db.commit()
+        return gen_response(400, "OTP has expired. Please request a new OTP.", {"success": False})
+
+    
     if str(doc.otp) != str(otp):
-        return gen_response(400, "Invalid OTP")
+        return gen_response(400, "Invalid OTP", {"success": False})
 
-    # Success → delete OTP
-    doc.delete(ignore_permissions=True)
-
-    return gen_response(200, "Email verified successfully")
+    return gen_response(200, "Email verified successfully", {"success": True})
