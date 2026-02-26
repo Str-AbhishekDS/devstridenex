@@ -1,5 +1,6 @@
 import frappe 
 from frappe.auth import LoginManager
+from frappe.utils.password import update_password
 import random
 from frappe.utils import now_datetime, add_to_date
 from stridenex_app.api_stridenex_app.app_utils import (
@@ -42,6 +43,10 @@ def signup():
             "user_type": "Website User"
         })
         user.insert(ignore_permissions=True)
+
+        update_password(user.name, password)
+        user.add_roles("Student")
+        frappe.db.commit()
 
         return gen_response(200, "User created successfully")
 
