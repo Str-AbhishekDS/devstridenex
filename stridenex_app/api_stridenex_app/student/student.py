@@ -25,10 +25,11 @@ def create_student(*args, **kwargs):
             student = frappe.get_doc("Student", data.get("name"))
             student.update(data)
             student.save()
+            frappe.db.commit()
             gen_response(200, "Student registration updated successfully.", student.name)
         else:
             duplicate_filters = {
-                "fist_name": data.get("first_name"),
+                "first_name": data.get("first_name"),
                 "last_name": data.get("last_name"),
                 "email_id": data.get("email_id"),
                 "college": data.get("college")
@@ -36,12 +37,13 @@ def create_student(*args, **kwargs):
 
             duplicate = frappe.db.exists("Student", duplicate_filters)
             if duplicate:
-                return gen_response(401, "Student <b>{duplicate}</b> is already present.")
+                return gen_response(401, f"Student <b>{duplicate}</b> is already present.")
 
             else:
                 student = frappe.get_doc(dict(doctype="Student"))
                 student.update(data)
                 student.insert()
+                frappe.db.commit()
                 gen_response(200, "Student registered successfully.", student.name)
     except frappe.PermissionError:
         return gen_response(500, "Not permitted for Student")

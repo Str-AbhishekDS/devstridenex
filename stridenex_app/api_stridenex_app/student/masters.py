@@ -12,7 +12,7 @@ def get_course():
     if result:
         gen_response(200,result)
     else:
-        gen_response(400,"No data found")
+        gen_response(400,"No data found",{"success":False})
     
         
 @frappe.whitelist(allow_guest=True)
@@ -68,7 +68,7 @@ def get_courses_type():
     if result:
         gen_response(200,result)
     else:
-        gen_response(400,"No data found")
+        gen_response(400,"No data found",{"success": False})
 
 @frappe.whitelist()
 def get_semester():
@@ -76,4 +76,4 @@ def get_semester():
     if result:
         gen_response(200,result)
     else:
-        gen_response(400,"No data found")
+        gen_response(400,"No data found", {"success": False})
