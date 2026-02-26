@@ -18,47 +18,45 @@ def get_course():
 @frappe.whitelist(allow_guest=True)
 def get_college():
     try:
-        # 1️⃣ Get all active colleges
-        colleges = frappe.get_all(
-            "College",
-            filters={"is_active": 1},
-            fields=["name", "college_name"]
-        )
+        colleges = frappe.db.sql("""
+            SELECT 
+                name,
+                college_name
+            FROM `tabCollege`
+            WHERE is_active = 1
+        """, as_dict=True)
 
         if not colleges:
-            return gen_response(400, "No colleges found")
+            return gen_response(400, "No colleges found",{"success": False})
 
-        final_data = []
+        return gen_response(200, "Colleges fetched successfully", colleges)
 
-        for college in colleges:
+    except Exception as e:
+        return exception_handel(e)
+    
+@frappe.whitelist(allow_guest=True)
+def get_college_departments(college_name=None):
+    try:
+        if not college_name:
+            return gen_response(400, "College is required",{"success": False})
 
-            # 2️⃣ Get departments of this college
-            departments = frappe.get_all(
-                "College Department",
-                filters={
-                    "college": college["name"],
-                    
-                },
-                fields=[
-                    "department_name as department",
-                    "academic_years"   # This field stores 2, 4 etc.
-                ]
-            )
+        # Validate college exists
+        college_exists = frappe.db.exists("College", college_name)
+        if not college_exists:
+            return gen_response(400, "Invalid college selected",{"success": False})
 
-            dept_list = []
+        departments = frappe.db.sql("""
+            SELECT 
+                department_name AS department,
+                academic_years
+            FROM `tabCollege Department`
+            WHERE college = %s
+        """, (college_name,), as_dict=True)
 
-            for dept in departments:
-                dept_list.append({
-                    "department": dept.get("department"),
-                    "academic_years": dept.get("academic_years")
-                })
+        if not departments:
+            return gen_response(400, "No departments found for this college",{"success":False})
 
-            final_data.append({
-                "college_name": college.get("college_name"),
-                "departments": dept_list
-            })
-
-        return gen_response(200, "College data fetched successfully", final_data)
+        return gen_response(200, "Departments fetched successfully", departments)
 
     except Exception as e:
         return exception_handel(e)
