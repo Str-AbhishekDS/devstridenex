@@ -13,7 +13,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
 @frappe.whitelist(allow_guest=True)
 def signup():
     if frappe.request.method != "POST":
-        frappe.throw("Only POST allowed", frappe.ValidationError)
+        return gen_response(400, "Only POST allowed",{"success": False})
     try:
         data = frappe.request.get_json()
         first_name = data.get("first_name")
@@ -22,7 +22,7 @@ def signup():
         password = data.get("password")
 
         if not all([first_name, last_name, email, password]):
-            return gen_response(400, "All fields are required")
+            return gen_response(400, "All fields are required",{"success": False})
 
         existing_user = frappe.get_all(
             "User",
@@ -31,7 +31,7 @@ def signup():
         )
 
         if existing_user:
-            return gen_response(400, "User already exists")
+            return gen_response(400, "User already exists",{"success": False})
 
         user = frappe.get_doc({
             "doctype": "User",
@@ -42,13 +42,14 @@ def signup():
             "new_password": password,
             "user_type": "Website User"
         })
+        user.flags.no_welcome_mail = True 
         user.insert(ignore_permissions=True)
 
         update_password(user.name, password)
         user.add_roles("Student")
         frappe.db.commit()
 
-        return gen_response(200, "User created successfully")
+        return gen_response(200, "User created successfully",{"success": True})
 
     except Exception as e:
         return gen_response(500, "Something went wrong", str(e))
@@ -126,7 +127,7 @@ def send_mobile_otp(mobile_no=None):
 @frappe.whitelist(allow_guest=True)
 def validate_mobile_otp(mobile_no=None, otp=None):
     if not mobile_no:
-        return gen_response(400, "Mobile number is required", {"success": False})
+        return gen_response(400, "Mobile number is required",{"success": False})
 
     if not otp:
         return gen_response(400, "OTP is required", {"success": False})

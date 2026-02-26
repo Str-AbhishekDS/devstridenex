@@ -6,7 +6,10 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "department_name"
+  "department_name",
+  "academic_years",
+  "column_break_ufsg",
+  "college"
  ],
  "fields": [
   {
@@ -14,12 +17,27 @@
    "fieldtype": "Data",
    "label": "Department Name",
    "unique": 1
+  },
+  {
+   "fieldname": "academic_years",
+   "fieldtype": "Data",
+   "label": "Academic Years"
+  },
+  {
+   "fieldname": "column_break_ufsg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-19 16:51:40.476759",
+ "modified": "2026-02-26 14:27:16.827982",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College Department",
