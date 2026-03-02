@@ -6,7 +6,10 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "course_name"
+  "course_name",
+  "stream",
+  "course_type",
+  "college"
  ],
  "fields": [
   {
@@ -14,12 +17,30 @@
    "fieldtype": "Data",
    "label": "Course Name",
    "unique": 1
+  },
+  {
+   "fieldname": "stream",
+   "fieldtype": "Link",
+   "label": "Stream",
+   "options": "Stream"
+  },
+  {
+   "fieldname": "course_type",
+   "fieldtype": "Link",
+   "label": "Course Type",
+   "options": "Course Type"
+  },
+  {
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-17 17:45:02.604358",
+ "modified": "2026-02-27 15:11:33.915073",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Courses",

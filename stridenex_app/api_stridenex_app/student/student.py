@@ -5,7 +5,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
     exception_handel
     ) 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def create_student(*args, **kwargs):
     try:
         data = kwargs

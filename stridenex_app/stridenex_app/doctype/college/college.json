@@ -21,7 +21,8 @@
   "approved_status_workflow",
   "section_break_ffoy",
   "table_rgfq",
-  "amended_from"
+  "amended_from",
+  "courses"
  ],
  "fields": [
   {
@@ -119,13 +120,19 @@
    "fieldtype": "Link",
    "label": "Taluka",
    "options": "Tahsil"
+  },
+  {
+   "fieldname": "courses",
+   "fieldtype": "Table",
+   "label": "Courses",
+   "options": "College Courses Table"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-20 16:50:16.706106",
+ "modified": "2026-02-27 17:54:39.652330",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College",
