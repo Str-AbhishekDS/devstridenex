@@ -245,3 +245,4 @@ def validate_email_otp(email=None, otp=None):
         return gen_response(400, "Invalid OTP", {"success": False})
 
     return gen_response(200, "Email verified successfully", {"success": True})
+
