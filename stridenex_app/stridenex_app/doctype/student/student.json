@@ -11,16 +11,20 @@
   "last_name",
   "mobile_no",
   "email_id",
+  "linkedin",
+  "github",
   "column_break_cdla",
   "stream",
-  "courses_type",
   "college",
+  "courses_type",
   "course",
-  "column_break_brzj",
   "department",
+  "column_break_brzj",
   "academic_year",
   "semester",
   "date_of_birth",
+  "gender",
+  "resume",
   "section_break_ywsm",
   "terms_and_conditions",
   "amended_from"
@@ -41,6 +45,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "first_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -56,6 +61,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "last_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -69,6 +75,7 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "mobile_no",
    "fieldtype": "Phone",
    "label": "Mobile No."
@@ -128,13 +135,36 @@
    "fieldtype": "Link",
    "label": "Stream",
    "options": "Stream"
+  },
+  {
+   "fieldname": "resume",
+   "fieldtype": "Attach",
+   "label": "Resume"
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Select",
+   "label": "Gender",
+   "options": "Male\nFemale\nOther\nPrefer not to say"
+  },
+  {
+   "fieldname": "linkedin",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "LinkedIn",
+   "options": "URL"
+  },
+  {
+   "fieldname": "github",
+   "fieldtype": "Data",
+   "label": "GitHub"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-27 11:18:11.635793",
+ "modified": "2026-03-04 15:56:45.642045",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Student",
