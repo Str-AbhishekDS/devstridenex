@@ -27,7 +27,9 @@
   "resume",
   "section_break_ywsm",
   "terms_and_conditions",
-  "amended_from"
+  "amended_from",
+  "skill",
+  "career_interest"
  ],
  "fields": [
   {
@@ -158,6 +160,18 @@
    "fieldname": "github",
    "fieldtype": "Data",
    "label": "GitHub"
+  },
+  {
+   "fieldname": "skill",
+   "fieldtype": "Table",
+   "label": "Skill",
+   "options": "Student Skill Table"
+  },
+  {
+   "fieldname": "career_interest",
+   "fieldtype": "Table",
+   "label": "Career Interest",
+   "options": "Career Interest Table"
   }
  ],
  "grid_page_length": 50,
