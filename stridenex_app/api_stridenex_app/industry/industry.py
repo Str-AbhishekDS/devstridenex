@@ -6,22 +6,22 @@ from stridenex_app.api_stridenex_app.app_utils import (
 )
 
 @frappe.whitelist(allow_guest=True)
-def create_mentor():
+def create_industry():
     try:
         data = frappe.request.get_json()
 
-        mentor = frappe.get_doc({
-            "doctype": "Mentor",
+        industry = frappe.get_doc({
+            "doctype": "Industry",
             **data
         })
 
-        mentor.insert(ignore_permissions=True)
+        industry.insert(ignore_permissions=True)
         frappe.db.commit()
 
         return gen_response(
             status=200,
-            message="Mentor registered successfully",
-            data={"name": mentor.first_name}
+            message="Industry registered successfully",
+            data={"name": industry.name}
         )
 
     except Exception as e:
