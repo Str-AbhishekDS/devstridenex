@@ -4,13 +4,18 @@ from frappe import _
 from frappe.utils import cstr
 from frappe.utils import now_datetime
 
+def gen_response(status, message, data=None):
+    if data is None:
+        data = []
 
-def gen_response(status, message, data=[]):
     frappe.response["http_status_code"] = status
+    frappe.response["status"] = status
+
     if status == 500:
         frappe.response["message"] = BeautifulSoup(str(message)).get_text()
     else:
         frappe.response["message"] = message
+
     frappe.response["data"] = data
 
 

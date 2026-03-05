@@ -67,15 +67,14 @@ def create_student():
             file_doc.save(ignore_permissions=True)
 
         frappe.db.commit()
+        return gen_response(
+            status=200,
+            message="Student registered successfully",
+            data={"name": student.name}
+        )
 
-        return {
-            "message": "Student created successfully",
-            "name": student.name
-        }
-
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "Student API Error")
-        return {"error": "Something went wrong"}
+    except Exception as e:
+        return exception_handel(e)
     
 @frappe.whitelist()
 def get_student(name=None, first_name=None, last_name=None, email_id=None, college=None):
