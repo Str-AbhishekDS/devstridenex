@@ -43,7 +43,7 @@ def get_colleges_by_stream(stream=None, state=None, district=None):
         frappe.log_error(frappe.get_traceback(), "Get Colleges By Stream Error")
         return gen_response(500, "Something went wrong", str(e))
         
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_semester(semester=None):
     if semester:
         result = frappe.get_all(
