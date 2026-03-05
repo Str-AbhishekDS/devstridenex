@@ -5,25 +5,78 @@ from stridenex_app.api_stridenex_app.app_utils import (
     exception_handel
     ) 
 
+import frappe
+
+import frappe
+import json
+
 @frappe.whitelist(allow_guest=True)
 def create_student():
     try:
-        data = frappe.request.get_json()
+        data = dict(frappe.form_dict)
+        
+
+        # Remove file field
+        data.pop("resume", None)
+
+        # Remove child table fields (we will process separately)
+        data.pop("skill", None)
+        data.pop("career_interest", None)
+        data.pop("courses_type", None)
 
         student = frappe.get_doc({
-        "doctype": "Student",
-        **data
+            "doctype": "Student",
+            **data
         })
+    
 
+        # Handle Skills
+        skills = frappe.request.form.getlist("skill[0][skill]")
+        for skill in skills:
+            student.append("skill", {
+                "skill": skill
+            })
+
+        # Handle Career Interest
+        career = frappe.request.form.getlist("career_interest[0][career_interest]")
+        for c in career:
+            student.append("career_interest", {
+                "career_interest": c
+            })
+
+        # Handle Course Type
+        courses = frappe.request.form.getlist("courses_type[0][course_type]")
+        for course in courses:
+            student.append("courses_type", {
+                "course_type": course
+            })
+        
         student.insert(ignore_permissions=True)
+
+        # File Upload
+        if "resume" in frappe.request.files:
+            file = frappe.request.files["resume"]
+
+            file_doc = frappe.get_doc({
+                "doctype": "File",
+                "file_name": file.filename,
+                "attached_to_doctype": "Student",
+                "attached_to_name": student.name,
+                "content": file.read()
+            })
+            file_doc.save(ignore_permissions=True)
+
         frappe.db.commit()
 
-        return {"message": "Student registered successfully", "name": student.name}
+        return {
+            "message": "Student created successfully",
+            "name": student.name
+        }
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Student API Error")
         return {"error": "Something went wrong"}
-
+    
 @frappe.whitelist()
 def get_student(name=None, first_name=None, last_name=None, email_id=None, college=None):
     try:
