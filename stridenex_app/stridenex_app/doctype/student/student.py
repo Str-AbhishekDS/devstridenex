@@ -8,6 +8,7 @@ from frappe.model.document import Document
 class Student(Document):
     def validate(self):
         self.validate_resume()
+        self.validate_social_links()
 
     def validate_resume(self):
         if self.resume:
@@ -16,8 +17,6 @@ class Student(Document):
             if not file_doc.file_name.lower().endswith(".pdf"):
                 frappe.throw("Only PDF files are allowed for Resume upload.")
                 
-    def validate(self):
-        self.validate_social_links()
 
     def validate_social_links(self):
         if self.linkedin and "linkedin.com" not in self.linkedin.lower():
