@@ -6,51 +6,23 @@ from stridenex_app.api_stridenex_app.app_utils import (
     ) 
 
 @frappe.whitelist(allow_guest=True)
-def create_student(*args, **kwargs):
+def create_student():
     try:
-        data = kwargs
-        
-        if not data.get("first_name"):
-            return gen_response(500, "first_name is required.")
-        if not data.get("last_name"):
-            return gen_response(500, "last_name is required.")
-        if not data.get("email_id"):
-            return gen_response(500, "email_id is required.")
-        if not data.get("college"):
-            return gen_response(500, "college is required.")
+        data = frappe.request.get_json()
 
-        if data.get("name"):
-            if not frappe.db.exists("Student", data.get("name"), cache=True):
-                return gen_response(500, "Invalid Student Id.")
-            student = frappe.get_doc("Student", data.get("name"))
-            student.update(data)
-            student.save()
-            frappe.db.commit()
-            gen_response(200, "Student registration updated successfully.", student.name)
-        else:
-            duplicate_filters = {
-                "first_name": data.get("first_name"),
-                "last_name": data.get("last_name"),
-                "email_id": data.get("email_id"),
-                "college": data.get("college")
-            }
+        student = frappe.get_doc({
+        "doctype": "Student",
+        **data
+        })
 
-            duplicate = frappe.db.exists("Student", duplicate_filters)
-            if duplicate:
-                return gen_response(401, f"Student <b>{duplicate}</b> is already present.")
+        student.insert(ignore_permissions=True)
+        frappe.db.commit()
 
-            else:
-                student = frappe.get_doc(dict(doctype="Student"))
-                student.update(data)
-                student.insert()
-                frappe.db.commit()
-                gen_response(200, "Student registered successfully.", student.name)
-    except frappe.PermissionError:
-        return gen_response(500, "Not permitted for Student")
-    except Exception as e:
-        return exception_handel(e)
+        return {"message": "Student registered successfully", "name": student.name}
 
-
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Student API Error")
+        return {"error": "Something went wrong"}
 
 @frappe.whitelist()
 def get_student(name=None, first_name=None, last_name=None, email_id=None, college=None):
