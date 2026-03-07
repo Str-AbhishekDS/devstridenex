@@ -1,9 +1,9 @@
 import frappe 
 from stridenex_app.api_stridenex_app.app_utils import (
-    gen_response, 
-    generate_key, 
-    exception_handel
-    ) 
+gen_response, 
+generate_key, 
+exception_handel
+) 
 
 import frappe
 
@@ -13,8 +13,22 @@ import json
 @frappe.whitelist(allow_guest=True)
 def create_student():
     try:
-        data = dict(frappe.form_dict)
-        
+        data = frappe.request.get_json()
+
+        student = frappe.get_doc({
+        "doctype": "Student",
+        **data
+        })
+
+        student.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {"message": "Student registered successfully", "name": student.name}
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Student API Error")
+        return {"error": "Something went wrong"}
+
 
         # Remove file field
         data.pop("resume", None)

@@ -7,19 +7,13 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "name1",
+  "salutation",
+  "first_name",
+  "last_name",
   "designation",
   "contact_no"
  ],
  "fields": [
-  {
-   "fieldname": "name1",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Name",
-   "reqd": 1
-  },
   {
    "fieldname": "designation",
    "fieldtype": "Link",
@@ -35,13 +29,35 @@
    "in_list_view": 1,
    "label": "Contact No.",
    "reqd": 1
+  },
+  {
+   "fieldname": "salutation",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Salutation"
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "First Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Last Name"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-17 12:54:15.361749",
+ "modified": "2026-03-07 11:06:28.179658",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Contact Details",
