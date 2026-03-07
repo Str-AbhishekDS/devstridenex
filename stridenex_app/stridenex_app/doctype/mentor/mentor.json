@@ -14,6 +14,7 @@
   "type",
   "column_break_eibm",
   "domain",
+  "mentor_skills",
   "travelling_possible",
   "approved_status",
   "is_active",
@@ -184,13 +185,19 @@
    "fieldtype": "Link",
    "label": "Taluka",
    "options": "Tahsil"
+  },
+  {
+   "fieldname": "mentor_skills",
+   "fieldtype": "Table",
+   "label": "Mentor Skills",
+   "options": "Student Skill Table"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-25 17:50:38.422670",
+ "modified": "2026-03-07 12:20:00.890954",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor",

@@ -16,11 +16,11 @@ class Student(Document):
             
             if not file_doc.file_name.lower().endswith(".pdf"):
                 frappe.throw("Only PDF files are allowed for Resume upload.")
-                
+
 
     def validate_social_links(self):
-        if self.linkedin and "linkedin.com" not in self.linkedin.lower():
+        if "linkedin.com" not in self.linkedin.lower():
             frappe.throw("Please enter a valid LinkedIn URL.")
 
-        if self.github and "github.com" not in self.github.lower():
+        if "github.com" not in self.github.lower():
             frappe.throw("Please enter a valid GitHub URL.")
