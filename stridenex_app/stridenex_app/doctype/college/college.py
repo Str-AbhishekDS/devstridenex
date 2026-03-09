@@ -9,8 +9,14 @@ class College(Document):
 
     def on_update_after_submit(self):
 
+        old_doc = self.get_doc_before_save()
+
         # Check if status changed to Approved
-        if self.approved == "Approved" and self.get_doc_before_save().approved != "Approved":
+        if (
+            self.approved_status_workflow == "Approved"
+            and old_doc
+            and old_doc.approved_status_workflow != "Approved"
+        ):
 
             frappe.sendmail(
                 recipients=[self.email],
