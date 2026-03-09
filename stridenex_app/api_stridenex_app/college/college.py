@@ -15,7 +15,11 @@ def create_college():
             **data
         })
 
+
         college.insert(ignore_permissions=True)
+        contact_details = data.pop("contact_details", [])
+        create_college_users(contact_details)
+
         frappe.db.commit()
 
         return gen_response(
@@ -26,3 +30,33 @@ def create_college():
 
     except Exception as e:
         return exception_handel(e)
+
+def create_college_users(contact_details):
+    for contact in contact_details:
+        email = contact.get("")
+
+        if not email:
+            continue
+
+        # Check if user already exists
+        if not frappe.db.exists("User",email):
+
+            user = frappe.get_doc({
+                "doctype": "User",
+                "email": email,
+                "first_name": contact.get("first_name"),
+                "last_name": contact.get("last_name"),
+                "mobile_no": contact.get("contact_no"),
+                "send_welcome_email": 0
+            })
+
+            user.insert(ignore_permissions=True)
+
+            # Assign Role
+            role = "College Admin" if contact.get("is_admin") == 1 else "College User"
+
+            user.append("roles", {
+                "role": role
+            })
+
+            user.save(ignore_permissions=True)
