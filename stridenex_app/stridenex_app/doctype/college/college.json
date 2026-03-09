@@ -12,7 +12,8 @@
   "college_type",
   "website",
   "email",
-  "is_active",
+  "intake_capacity",
+  "year_of_establishment",
   "column_break_yapy",
   "country",
   "state",
@@ -20,6 +21,8 @@
   "tahsil",
   "city",
   "approved_status_workflow",
+  "trust__governing_body",
+  "is_active",
   "section_break_ffoy",
   "contact_details",
   "amended_from",
@@ -103,6 +106,7 @@
    "options": "City"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "approved_status_workflow",
    "fieldtype": "Select",
    "label": "Approved Status (Workflow)",
@@ -134,13 +138,28 @@
    "fieldtype": "Table",
    "label": "Contact Details",
    "options": "Contact Details"
+  },
+  {
+   "fieldname": "intake_capacity",
+   "fieldtype": "Int",
+   "label": "Intake Capacity"
+  },
+  {
+   "fieldname": "year_of_establishment",
+   "fieldtype": "Int",
+   "label": "Year of Establishment"
+  },
+  {
+   "fieldname": "trust__governing_body",
+   "fieldtype": "Data",
+   "label": "Trust / Governing Body"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-07 16:07:30.465280",
+ "modified": "2026-03-09 14:30:27.801001",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College",
