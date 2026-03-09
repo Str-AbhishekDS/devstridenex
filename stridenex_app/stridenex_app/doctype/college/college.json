@@ -11,6 +11,7 @@
   "university",
   "college_type",
   "website",
+  "email",
   "is_active",
   "column_break_yapy",
   "country",
@@ -20,7 +21,7 @@
   "city",
   "approved_status_workflow",
   "section_break_ffoy",
-  "table_rgfq",
+  "contact_details",
   "amended_from",
   "courses"
  ],
@@ -103,17 +104,13 @@
   },
   {
    "fieldname": "approved_status_workflow",
-   "fieldtype": "Data",
-   "label": "Approved Status (Workflow)"
+   "fieldtype": "Select",
+   "label": "Approved Status (Workflow)",
+   "options": "Pending\nApproved\nRejected"
   },
   {
    "fieldname": "section_break_ffoy",
    "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "table_rgfq",
-   "fieldtype": "Table",
-   "options": "Contact Details"
   },
   {
    "fieldname": "tahsil",
@@ -126,13 +123,24 @@
    "fieldtype": "Table",
    "label": "Courses",
    "options": "College Courses Table"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email"
+  },
+  {
+   "fieldname": "contact_details",
+   "fieldtype": "Table",
+   "label": "Contact Details",
+   "options": "Contact Details"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-27 17:54:39.652330",
+ "modified": "2026-03-07 16:07:30.465280",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College",
