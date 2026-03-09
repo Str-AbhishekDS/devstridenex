@@ -159,8 +159,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-09 14:30:27.801001",
- "modified_by": "Administrator",
+ "modified": "2026-03-09 16:52:20.291936",
+ "modified_by": "sourabh.yelpale@erpdata.in",
  "module": "Stridenex App",
  "name": "College",
  "naming_rule": "By fieldname",
@@ -176,6 +176,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],
