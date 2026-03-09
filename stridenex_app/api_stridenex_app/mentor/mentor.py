@@ -16,6 +16,7 @@ def create_mentor():
         })
 
         mentor.insert(ignore_permissions=True)
+        create_mentor_user(mentor)
         frappe.db.commit()
 
         return gen_response(
@@ -26,3 +27,25 @@ def create_mentor():
 
     except Exception as e:
         return exception_handel(e)
+
+def create_mentor_user(mentor):
+    
+    # Check if user already exists
+    if not frappe.db.exists("User", mentor.email_id):
+        user = frappe.get_doc({
+            "doctype": "User",
+            "email": mentor.email_id,
+            "first_name": mentor.first_name,
+            "last_name": mentor.last_name,
+            "enabled": 1,
+            "send_welcome_email": 0,
+            "roles": [
+                {
+                    "role": "Mentor"
+                }
+            ]
+        })
+
+        user.insert(ignore_permissions=True)
+
+    mentor.user = mentor.email_id

@@ -7,29 +7,13 @@ exception_handel
 
 import frappe
 
-import frappe
-import json
 
 @frappe.whitelist(allow_guest=True)
 def create_student():
     try:
-        data = frappe.request.get_json()
-
-        student = frappe.get_doc({
-        "doctype": "Student",
-        **data
-        })
-
-        student.insert(ignore_permissions=True)
-        frappe.db.commit()
-
-        return {"message": "Student registered successfully", "name": student.name}
-
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "Student API Error")
-        return {"error": "Something went wrong"}
-
-
+        
+        data = dict(frappe.form_dict)
+        
         # Remove file field
         data.pop("resume", None)
 
@@ -39,17 +23,17 @@ def create_student():
         data.pop("courses_type", None)
 
         student = frappe.get_doc({
-            "doctype": "Student",
-            **data
+        "doctype": "Student",
+        **data
         })
-    
-
+        
         # Handle Skills
         skills = frappe.request.form.getlist("skill[0][skill]")
         for skill in skills:
             student.append("skill", {
                 "skill": skill
             })
+        
 
         # Handle Career Interest
         career = frappe.request.form.getlist("career_interest[0][career_interest]")
@@ -79,17 +63,41 @@ def create_student():
                 "content": file.read()
             })
             file_doc.save(ignore_permissions=True)
-
+        
+        create_student_user(student)
         frappe.db.commit()
+
         return gen_response(
             status=200,
             message="Student registered successfully",
             data={"name": student.name}
         )
-
     except Exception as e:
         return exception_handel(e)
+
+
+def create_student_user(student):
     
+    # Check if user already exists
+    if not frappe.db.exists("User", student.email_id):
+        user = frappe.get_doc({
+            "doctype": "User",
+            "email": student.email_id,
+            "first_name": student.first_name,
+            "last_name": student.last_name,
+            "enabled": 1,
+            "send_welcome_email": 0,
+            "roles": [
+                {
+                    "role": "Student"
+                }
+            ]
+        })
+
+        user.insert(ignore_permissions=True)
+
+    student.user = student.email_id
+
 @frappe.whitelist()
 def get_student(name=None, first_name=None, last_name=None, email_id=None, college=None):
     try:

@@ -19,8 +19,8 @@ class Student(Document):
 
 
     def validate_social_links(self):
-        if "linkedin.com" not in self.linkedin.lower():
+        if self.linkedin and "linkedin.com" not in self.linkedin.lower():
             frappe.throw("Please enter a valid LinkedIn URL.")
 
-        if "github.com" not in self.github.lower():
+        if self.github and "github.com" not in self.github.lower():
             frappe.throw("Please enter a valid GitHub URL.")
