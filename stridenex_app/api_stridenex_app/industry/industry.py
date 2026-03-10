@@ -59,7 +59,7 @@ def create_industry_users(contact_details):
             user.insert(ignore_permissions=True)
 
             # Assign Role
-            role = "Company Admin" if contact.get("is_admin") == 1 else "Company User"
+            role = "Industry Admin" if contact.get("is_admin") == 1 else "Industry User"
 
             user.append("roles", {
                 "role": role
