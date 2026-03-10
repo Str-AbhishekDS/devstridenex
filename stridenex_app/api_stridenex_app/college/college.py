@@ -10,14 +10,15 @@ def create_college():
     try:
         data = frappe.request.get_json()
 
+        contact_details = data.pop("contact_details", [])
+
         college = frappe.get_doc({
             "doctype": "College",
             **data
         })
 
-
         college.insert(ignore_permissions=True)
-        contact_details = data.pop("contact_details", [])
+
         create_college_users(contact_details)
 
         frappe.db.commit()
@@ -27,19 +28,20 @@ def create_college():
             message="College registered successfully",
             data={"name": college.college_name}
         )
-
     except Exception as e:
         return exception_handel(e)
 
+@frappe.whitelist(allow_guest=True)
 def create_college_users(contact_details):
+
     for contact in contact_details:
-        email = contact.get("")
+        email = contact.get("email")
 
         if not email:
             continue
 
         # Check if user already exists
-        if not frappe.db.exists("User",email):
+        if not frappe.db.exists("User", email):
 
             user = frappe.get_doc({
                 "doctype": "User",
@@ -60,3 +62,5 @@ def create_college_users(contact_details):
             })
 
             user.save(ignore_permissions=True)
+
+    return True
