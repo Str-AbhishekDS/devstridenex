@@ -1,29 +1,28 @@
 {
  "actions": [],
- "allow_import": 1,
  "allow_rename": 1,
- "autoname": "field:salutation",
- "creation": "2026-03-07 11:01:08.021671",
+ "autoname": "field:platform",
+ "creation": "2026-03-10 10:21:53.388636",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "salutation"
+  "platform"
  ],
  "fields": [
   {
-   "fieldname": "salutation",
+   "fieldname": "platform",
    "fieldtype": "Data",
-   "label": "Salutation",
+   "label": "Platform",
    "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-09 16:31:40.730341",
+ "modified": "2026-03-10 10:31:00.605036",
  "modified_by": "Administrator",
  "module": "Stridenex App",
- "name": "Salutation List",
+ "name": "Platform List",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [

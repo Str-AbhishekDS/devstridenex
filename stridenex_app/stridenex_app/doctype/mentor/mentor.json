@@ -12,6 +12,7 @@
   "mobile_no",
   "email_id",
   "type",
+  "mentor_platform_urls",
   "column_break_eibm",
   "domain",
   "other_domain",
@@ -198,13 +199,19 @@
    "fieldname": "other_domain",
    "fieldtype": "Data",
    "label": "Other Domain"
+  },
+  {
+   "fieldname": "mentor_platform_urls",
+   "fieldtype": "Table",
+   "label": "Mentor Platform URLs",
+   "options": "Mentor Platform URLs"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-09 13:14:45.391430",
+ "modified": "2026-03-10 10:27:54.382853",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor",
