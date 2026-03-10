@@ -7,8 +7,19 @@ from frappe.model.document import Document
 
 class Student(Document):
     def validate(self):
+    
         self.validate_resume()
         self.validate_social_links()
+        existing_student = frappe.db.exists(
+            "Student",
+            {
+                "email_id": self.email_id,
+                "name": ["!=", self.name]
+            }
+        )
+
+        if existing_student:
+            frappe.throw(f"Student already exists with email {self.email_id}")
 
     def validate_resume(self):
         if self.resume:

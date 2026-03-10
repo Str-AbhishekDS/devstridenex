@@ -11,10 +11,12 @@
   "first_name",
   "last_name",
   "designation",
-  "contact_no"
+  "contact_no",
+  "email_id"
  ],
  "fields": [
   {
+   "columns": 2,
    "fieldname": "designation",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -24,6 +26,7 @@
    "reqd": 1
   },
   {
+   "columns": 1,
    "fieldname": "contact_no",
    "fieldtype": "Phone",
    "in_list_view": 1,
@@ -31,14 +34,16 @@
    "reqd": 1
   },
   {
+   "columns": 1,
    "fieldname": "salutation",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Salutation",
-   "options": "Salutation List"
+   "options": "Salutation"
   },
   {
+   "columns": 2,
    "fieldname": "first_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -47,18 +52,28 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "last_name",
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Last Name"
+  },
+  {
+   "columns": 2,
+   "fieldname": "email_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Email_Id",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-03-07 15:46:57.410239",
+ "modified": "2026-03-10 12:34:02.500568",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Contact Details",
