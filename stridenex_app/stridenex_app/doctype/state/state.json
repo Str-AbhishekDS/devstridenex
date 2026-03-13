@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "field:state_name",
  "creation": "2026-01-30 16:56:27.284118",
  "doctype": "DocType",
@@ -66,6 +67,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,

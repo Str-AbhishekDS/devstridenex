@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "field:tahsil_name",
  "creation": "2026-02-03 16:38:11.157523",
  "doctype": "DocType",
@@ -53,6 +54,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,

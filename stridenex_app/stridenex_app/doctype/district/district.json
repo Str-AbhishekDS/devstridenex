@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "field:district_name",
  "creation": "2026-01-30 17:27:44.557725",
  "doctype": "DocType",
@@ -16,7 +17,8 @@
   {
    "fieldname": "district_information_section",
    "fieldtype": "Section Break",
-   "label": "District Information"
+   "label": "District Information",
+   "print_width": "20"
   },
   {
    "fieldname": "district_name",
@@ -57,7 +59,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-19 16:48:15.029067",
+ "modified": "2026-03-12 13:30:01.005323",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "District",
@@ -69,6 +71,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
