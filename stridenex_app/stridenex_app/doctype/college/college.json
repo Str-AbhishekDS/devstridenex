@@ -133,9 +133,9 @@
   {
    "fieldname": "email",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Email",
-   "reqd": 1,
-   "unique": 1
+   "reqd": 1
   },
   {
    "fieldname": "contact_details",
@@ -163,8 +163,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-10 15:05:31.286927",
- "modified_by": "Administrator",
+ "modified": "2026-03-14 18:19:43.802790",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "College",
  "naming_rule": "By fieldname",
