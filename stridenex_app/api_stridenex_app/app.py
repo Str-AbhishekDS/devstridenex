@@ -12,27 +12,51 @@ from stridenex_app.api_stridenex_app.app_utils import (
 
 @frappe.whitelist(allow_guest=True)
 def signup():
+
     if frappe.request.method != "POST":
-        return gen_response(400, "Only POST allowed",{"success": False})
+        return gen_response(400, "Only POST allowed", {"success": False})
+
     try:
         data = frappe.request.get_json()
+
         first_name = data.get("first_name")
         last_name = data.get("last_name")
         email = data.get("email")
         password = data.get("password")
+        roles = data.get("role")
+
+        if not roles:
+            return gen_response(400, "Role selection required", {"success": False})
 
         if not all([first_name, last_name, email, password]):
-            return gen_response(400, "All fields are required",{"success": False})
+            return gen_response(400, "All fields are required", {"success": False})
 
-        existing_user = frappe.get_all(
-            "User",
-            filters={"name": email},
-            fields=["name"]
-        )
+        if frappe.db.exists("User", email):
+            return gen_response(400, "User already exists", {"success": False})
 
-        if existing_user:
-            return gen_response(400, "User already exists",{"success": False})
+        # Detect selected role
+        selected_role = None
 
+        for role_item in roles:
+            for key, value in role_item.items():
+                if value == 1:
+                    selected_role = key
+                    break
+
+        if not selected_role:
+            return gen_response(400, "Role not selected", {"success": False})
+
+        # Map UI role to system role
+        role_map = {
+            "student": "Student",
+            "college": "College User",
+            "mentor": "Mentor",
+            "industry": "Industry User"
+        }
+
+        frappe_role = role_map.get(selected_role)
+
+        # Create user
         user = frappe.get_doc({
             "doctype": "User",
             "email": email,
@@ -42,18 +66,28 @@ def signup():
             "new_password": password,
             "user_type": "Website User"
         })
-        user.flags.no_welcome_mail = True 
+
+        user.flags.no_welcome_mail = True
         user.insert(ignore_permissions=True)
 
         update_password(user.name, password)
-        user.add_roles("Student")
+
+        # Assign role
+        user.add_roles(frappe_role)
+
         frappe.db.commit()
 
-        return gen_response(200, "User created successfully",{"success": True})
+        return gen_response(
+            200,
+            "User created successfully",
+            {
+                "success": True,
+                "role": frappe_role
+            }
+        )
 
     except Exception as e:
         return gen_response(500, "Something went wrong", str(e))
-
 
 def generate_key(user):
     user_details = frappe.get_doc("User", user)
@@ -76,13 +110,27 @@ def login(usr, pwd):
         login_manager = LoginManager()
         login_manager.authenticate(usr, pwd)
         login_manager.post_login()
-        if frappe.response["message"] == "Logged In":    
-            frappe.response["user"] = login_manager.user
-            frappe.response["key_details"] = generate_key(login_manager.user)
-            
+
+        if frappe.response["message"] == "Logged In":
+
+            user = login_manager.user
+
+            # Get user roles
+            roles = frappe.get_roles(user)
+
+            # Remove default roles if needed
+            ignore_roles = ["All", "Guest"]
+            roles = [r for r in roles if r not in ignore_roles]
+
+            frappe.response["user"] = user
+            frappe.response["roles"] = roles
+            frappe.response["key_details"] = generate_key(user)
+
         gen_response(200, frappe.response["message"])
+
     except frappe.AuthenticationError:
         gen_response(500, frappe.response["message"])
+
     except Exception as e:
         return exception_handel(e)
 

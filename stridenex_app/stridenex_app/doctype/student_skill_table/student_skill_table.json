@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "column_break_bccc",
-  "skill"
+  "skill",
+  "level"
  ],
  "fields": [
   {
@@ -19,7 +20,15 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Skill",
-   "options": "Student Skill"
+   "options": "Skill"
+  },
+  {
+   "fieldname": "level",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Level",
+   "options": "Beginner\nIntermediate\nAdvanced\nExpert"
   }
  ],
  "grid_page_length": 50,

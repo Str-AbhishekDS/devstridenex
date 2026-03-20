@@ -1,16 +1,15 @@
-import frappe 
+import frappe
 from stridenex_app.api_stridenex_app.app_utils import (
-    gen_response, 
-    generate_key, 
+    gen_response,
     exception_handel
 )
+
 
 @frappe.whitelist(allow_guest=True)
 def create_industry():
     try:
         data = frappe.request.get_json()
 
-        # Extract contact details
         contact_details = data.pop("contact_details", [])
 
         industry = frappe.get_doc({
@@ -20,10 +19,7 @@ def create_industry():
 
         industry.insert(ignore_permissions=True)
 
-        # Create users
         create_industry_users(contact_details)
-
-        frappe.db.commit()
 
         return gen_response(
             status=200,
@@ -40,31 +36,41 @@ def create_industry_users(contact_details):
     for contact in contact_details:
 
         email = contact.get("email")
-
         if not email:
             continue
 
-        # Check if user already exists
-        if not frappe.db.exists("User", {"email": email}):
+        # Detect admin checkbox safely
+        is_admin = int(contact.get("is_admin", 0))
 
+        role = "Industry Admin" if is_admin == 1 else "Industry User"
+
+        # If user already exists (signup user)
+        if frappe.db.exists("User", email):
+
+            user = frappe.get_doc("User", email)
+
+            existing_roles = [r.role for r in user.roles]
+
+            if role not in existing_roles:
+                user.append("roles", {"role": role})
+                user.save(ignore_permissions=True)
+
+        else:
+            # Create new user
             user = frappe.get_doc({
                 "doctype": "User",
                 "email": email,
                 "first_name": contact.get("first_name"),
                 "last_name": contact.get("last_name"),
                 "mobile_no": contact.get("contact_no"),
-                "send_welcome_email": 0
+                "send_welcome_email": 0,
+                "roles": [
+                    {
+                        "role": role
+                    }
+                ]
             })
 
             user.insert(ignore_permissions=True)
-
-            # Assign Role
-            role = "Industry Admin" if contact.get("is_admin") == 1 else "Industry User"
-
-            user.append("roles", {
-                "role": role
-            })
-
-            user.save(ignore_permissions=True)
 
     return True
