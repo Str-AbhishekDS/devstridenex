@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "{Industry}-.##",
+ "autoname": "format:{industry}-{##}",
  "creation": "2026-03-31 15:32:41.990338",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -108,11 +108,11 @@
   }
  ],
  "links": [],
- "modified": "2026-04-01 10:14:01.402529",
+ "modified": "2026-04-01 11:38:29.032559",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Internship",
- "naming_rule": "Expression",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
