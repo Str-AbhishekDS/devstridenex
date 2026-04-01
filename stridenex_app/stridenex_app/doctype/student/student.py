@@ -25,3 +25,33 @@ class Student(Document):
 
         if self.github and "github.com" not in self.github.lower():
             frappe.throw("Please enter a valid GitHub URL.")
+            
+    def before_submit(self):
+        self.create_student_skills()
+
+    def create_student_skills(self):
+
+        if not self.skill:
+            return
+
+        for row in self.skill:
+
+            if not row.skill:
+                continue
+
+            if not frappe.db.exists(
+                "Student Skill",
+                {"student": self.name, "skill": row.skill}
+            ):
+
+                student_skill = frappe.new_doc("Student Skill")
+                student_skill.student = self.name
+                student_skill.skill = row.skill
+                student_skill.current_level = row.level
+                student_skill.self_declared = 1
+                student_skill.is_public = 1
+                student_skill.first_acquired = frappe.utils.today()
+
+                student_skill.insert(ignore_permissions=True)
+                student_skill.save(ignore_permissions = True)
+                frappe.db.commit()

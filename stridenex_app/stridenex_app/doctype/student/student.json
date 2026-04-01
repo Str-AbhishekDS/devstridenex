@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "autoincrement",
+ "autoname": "field:email_id",
  "creation": "2026-02-17 12:25:46.207357",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -74,6 +74,7 @@
    "fieldname": "email_id",
    "fieldtype": "Data",
    "label": "Email ID",
+   "options": "Email",
    "reqd": 1,
    "unique": 1
   },
@@ -179,11 +180,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-10 14:50:12.535188",
- "modified_by": "Administrator",
+ "modified": "2026-03-14 18:18:55.171640",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Student",
- "naming_rule": "Autoincrement",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
