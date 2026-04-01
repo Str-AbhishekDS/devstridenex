@@ -1,0 +1,130 @@
+{
+ "actions": [],
+ "autoname": "{Industry}-.##",
+ "creation": "2026-03-31 15:32:41.990338",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "industry",
+  "type",
+  "location",
+  "work_mode",
+  "stipend",
+  "column_break_jbhk",
+  "duration",
+  "openings",
+  "deadline",
+  "status",
+  "posted_by",
+  "section_break_rern",
+  "required_skills",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Technical\nBusiness\nDesign\nResearch\nFinance"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location"
+  },
+  {
+   "fieldname": "work_mode",
+   "fieldtype": "Select",
+   "label": "Work Mode",
+   "options": "Remote\nHybrid\nOnsite"
+  },
+  {
+   "fieldname": "stipend",
+   "fieldtype": "Currency",
+   "label": "Stipend"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Int",
+   "label": "Duration (Months)"
+  },
+  {
+   "fieldname": "openings",
+   "fieldtype": "Int",
+   "label": "Openings"
+  },
+  {
+   "fieldname": "deadline",
+   "fieldtype": "Date",
+   "label": "Deadline"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "required_skills",
+   "fieldtype": "Table",
+   "label": "Required Skills",
+   "options": "Internship Required Skill"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nActive\nClosed"
+  },
+  {
+   "fieldname": "posted_by",
+   "fieldtype": "Link",
+   "label": "Posted By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_jbhk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_rern",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "industry",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Industry",
+   "options": "Industry",
+   "reqd": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-01 10:14:01.402529",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Internship",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
