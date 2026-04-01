@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class StudentSkill(Document):
+class InternshipRequiredSkill(Document):
 	pass

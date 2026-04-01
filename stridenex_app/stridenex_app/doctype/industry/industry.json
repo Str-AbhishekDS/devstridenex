@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "autoincrement",
  "creation": "2026-02-17 11:51:15.307434",
@@ -195,7 +196,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-10 15:10:03.453395",
+ "modified": "2026-03-12 18:39:49.570975",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Industry",
@@ -207,6 +208,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
