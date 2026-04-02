@@ -74,3 +74,27 @@ def create_industry_users(contact_details):
             user.insert(ignore_permissions=True)
 
     return True
+
+@frappe.whitelist(allow_guest=True)
+def update_industry(name):
+    try:
+        data = frappe.request.get_json()
+
+        # Get existing Industry document
+        industry = frappe.get_doc("Industry", name)
+
+        # Update fields dynamically
+        for key, value in data.items():
+            industry.set(key, value)
+
+        # Save updated document
+        industry.save(ignore_permissions=True)
+
+        return gen_response(
+            status=200,
+            message="Industry updated successfully",
+            data={"name": industry.name}
+        )
+
+    except Exception as e:
+        return exception_handel(e)
