@@ -55,3 +55,6 @@ class Student(Document):
                 student_skill.insert(ignore_permissions=True)
                 student_skill.save(ignore_permissions = True)
                 frappe.db.commit()
+
+    def get_total_student_count():
+        return frappe.db.count("Student", {"status": "Active"})
