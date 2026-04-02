@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{mentor}.-.{date}.-.#####",
+ "autoname": "format:{mentor}-{date}-{##}",
  "creation": "2026-04-01 12:45:12.510487",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -18,7 +18,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Mentor",
-   "options": "User",
+   "options": "Mentor",
    "reqd": 1
   },
   {
@@ -51,7 +51,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-01 18:48:43.216640",
+ "modified": "2026-04-02 15:14:21.076098",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Blocked Time",

@@ -14,7 +14,7 @@ frappe.ui.form.on("Mentor Blocked Time", {
     // ----------------------------------------------------------------
     setup(frm) {
         frm.set_query("mentor", () => ({
-            filters: { enabled: 1 },
+                
         }));
     },
 

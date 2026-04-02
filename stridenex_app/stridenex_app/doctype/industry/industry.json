@@ -56,7 +56,6 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Company Name",
-   "reqd": 1,
    "unique": 1
   },
   {
@@ -68,7 +67,6 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "GST Number",
-   "reqd": 1,
    "unique": 1
   },
   {
@@ -196,7 +194,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-12 18:39:49.570975",
+ "modified": "2026-03-17 15:23:57.705685",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Industry",
