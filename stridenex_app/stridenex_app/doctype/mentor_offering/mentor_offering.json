@@ -1,0 +1,146 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{mentor}-{YYYY}-{##}",
+ "creation": "2026-04-03 10:59:15.757215",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "mentor",
+  "title",
+  "offering_type",
+  "category",
+  "duration_minutes",
+  "turnaround_hours",
+  "sessions_per_month",
+  "max_group_size",
+  "price_per_session",
+  "description",
+  "status",
+  "is_featured",
+  "total_bookings",
+  "average_rating",
+  "created_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "mentor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mentor",
+   "options": "Mentor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "offering_type",
+   "fieldtype": "Select",
+   "label": "Offering Type",
+   "options": "1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "Career\nTechnical\nInterview Prep\nResume\nStartup"
+  },
+  {
+   "fieldname": "duration_minutes",
+   "fieldtype": "Int",
+   "label": "Duration (min)"
+  },
+  {
+   "fieldname": "turnaround_hours",
+   "fieldtype": "Int",
+   "label": "Turnaround (hrs)"
+  },
+  {
+   "fieldname": "sessions_per_month",
+   "fieldtype": "Int",
+   "label": "Sessions/Month"
+  },
+  {
+   "fieldname": "max_group_size",
+   "fieldtype": "Int",
+   "label": "Max Group Size"
+  },
+  {
+   "fieldname": "price_per_session",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Price Per Session (\u20b9)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nLive\nPaused\nArchived"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_featured",
+   "fieldtype": "Check",
+   "label": "Featured"
+  },
+  {
+   "fieldname": "total_bookings",
+   "fieldtype": "Int",
+   "label": "Total Bookings",
+   "read_only": 1
+  },
+  {
+   "fieldname": "average_rating",
+   "fieldtype": "Float",
+   "label": "Average Rating",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "created_on",
+   "fieldtype": "Date",
+   "label": "Created On",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-03 11:43:29.750151",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Offering",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

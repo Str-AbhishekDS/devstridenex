@@ -1,0 +1,140 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-03 17:53:45.907806",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "mentor",
+  "offering",
+  "message",
+  "preferred_date",
+  "preferred_time",
+  "duration",
+  "priority",
+  "status",
+  "requested_on",
+  "action_taken_on",
+  "accepted_slot",
+  "meeting_link",
+  "notes",
+  "suggestions"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "label": "Student",
+   "fieldtype": "Link",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mentor",
+   "label": "Mentor",
+   "fieldtype": "Link",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "offering",
+   "label": "Offering",
+   "fieldtype": "Link",
+   "options": "Mentor Offering"
+  },
+  {
+   "fieldname": "message",
+   "label": "Request Message",
+   "fieldtype": "Small Text"
+  },
+  {
+   "fieldname": "preferred_date",
+   "label": "Preferred Date",
+   "fieldtype": "Date"
+  },
+  {
+   "fieldname": "preferred_time",
+   "label": "Preferred Time",
+   "fieldtype": "Time"
+  },
+  {
+   "fieldname": "duration",
+   "label": "Duration (mins)",
+   "fieldtype": "Int"
+  },
+  {
+   "fieldname": "priority",
+   "label": "Priority",
+   "fieldtype": "Select",
+   "options": "High\nMedium\nLow",
+   "default": "Medium"
+  },
+  {
+   "fieldname": "status",
+   "label": "Status",
+   "fieldtype": "Select",
+   "options": "Pending\nAccepted\nScheduled\nDeclined\nCompleted\nCancelled",
+   "default": "Pending"
+  },
+  {
+   "fieldname": "requested_on",
+   "label": "Requested On",
+   "fieldtype": "Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "action_taken_on",
+   "label": "Action Taken On",
+   "fieldtype": "Datetime"
+  },
+  {
+   "fieldname": "accepted_slot",
+   "label": "Accepted Slot",
+   "fieldtype": "Datetime"
+  },
+  {
+   "fieldname": "meeting_link",
+   "label": "Meeting Link",
+   "fieldtype": "Data"
+  },
+  {
+   "fieldname": "notes",
+   "label": "Notes",
+   "fieldtype": "Text"
+  },
+  {
+   "fieldname": "suggestions",
+   "label": "Suggestions",
+   "fieldtype": "Table",
+   "options": "Request Suggestion"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-03 17:58:13.521797",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

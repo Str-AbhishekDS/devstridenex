@@ -1,0 +1,131 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-03 11:10:13.216673",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "offering",
+  "mentor",
+  "student",
+  "session_date",
+  "amount_paid",
+  "column_break_lugc",
+  "status",
+  "payment_reference",
+  "rating",
+  "notes",
+  "amended_from",
+  "section_break_uzsg",
+  "review"
+ ],
+ "fields": [
+  {
+   "fieldname": "offering",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Offering",
+   "options": "Mentor Offering",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "offering.mentor",
+   "fieldname": "mentor",
+   "fieldtype": "Link",
+   "label": "Mentor",
+   "options": "Mentor"
+  },
+  {
+   "fieldname": "session_date",
+   "fieldtype": "Datetime",
+   "label": "Session Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nConfirmed\nCompleted\nCancelled"
+  },
+  {
+   "fieldname": "amount_paid",
+   "fieldtype": "Currency",
+   "label": "Amount Paid (\u20b9)"
+  },
+  {
+   "fieldname": "payment_reference",
+   "fieldtype": "Data",
+   "label": "Payment Reference"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "rating",
+   "fieldtype": "Float",
+   "label": "Rating"
+  },
+  {
+   "fieldname": "review",
+   "fieldtype": "Table",
+   "label": "Review",
+   "options": "Mentor Offering Review"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Mentor Offering Booking",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_lugc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_uzsg",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-03 17:41:31.563167",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Offering Booking",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
