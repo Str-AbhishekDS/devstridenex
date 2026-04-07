@@ -11,15 +11,16 @@
   "offering_type",
   "category",
   "duration_minutes",
-  "turnaround_hours",
-  "sessions_per_month",
+  "description",
+  "column_break_hecp",
   "max_group_size",
   "price_per_session",
-  "description",
+  "turnaround_hours",
+  "sessions_per_month",
   "status",
-  "is_featured",
   "total_bookings",
   "average_rating",
+  "is_featured",
   "created_on"
  ],
  "fields": [
@@ -113,12 +114,16 @@
    "fieldtype": "Date",
    "label": "Created On",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_hecp",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-03 11:43:29.750151",
+ "modified": "2026-04-04 10:12:44.521375",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Offering",

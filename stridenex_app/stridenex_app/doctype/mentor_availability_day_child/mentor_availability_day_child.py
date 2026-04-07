@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class MentorSession(Document):
+class MentorAvailabilityDayChild(Document):
 	pass

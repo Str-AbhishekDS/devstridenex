@@ -6,25 +6,33 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "mentor",
   "student",
+  "offering",
+  "mentor",
   "session_date",
+  "amount_paid",
+  "payment_reference",
+  "rating",
+  "notes",
+  "amended_from",
+  "column_break_lugc",
   "status",
-  "meeting_link",
-  "column_break_ttgd",
+  "session_type",
+  "priority",
+  "topic",
   "from_time",
   "to_time",
-  "topic",
   "duration",
-  "amended_from"
+  "meeting_link",
+  "review"
  ],
  "fields": [
   {
-   "fieldname": "mentor",
+   "fieldname": "offering",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Mentor",
-   "options": "Mentor",
+   "label": "Offering",
+   "options": "Mentor Offering",
    "reqd": 1
   },
   {
@@ -36,17 +44,80 @@
    "reqd": 1
   },
   {
-   "fieldname": "topic",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Topic"
+   "fetch_from": "offering.mentor",
+   "fieldname": "mentor",
+   "fieldtype": "Link",
+   "label": "Mentor",
+   "options": "Mentor"
   },
   {
    "fieldname": "session_date",
    "fieldtype": "Date",
+   "label": "Session Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nScheduled\nCompleted\nCancelled"
+  },
+  {
+   "fieldname": "amount_paid",
+   "fieldtype": "Currency",
+   "label": "Amount Paid (\u20b9)"
+  },
+  {
+   "fieldname": "payment_reference",
+   "fieldtype": "Data",
+   "label": "Payment Reference"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "rating",
+   "fieldtype": "Float",
+   "label": "Rating"
+  },
+  {
+   "fieldname": "review",
+   "fieldtype": "Table",
+   "label": "Review",
+   "options": "Mentor Offering Review"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Mentor Session Booking",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_lugc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "High\nMedium\nLow"
+  },
+  {
+   "fieldname": "session_type",
+   "fieldtype": "Select",
+   "label": "Session Type",
+   "options": "Career\nTechnical\nResume\nInterview Prep\nStartup\nOther"
+  },
+  {
+   "fieldname": "topic",
+   "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Session Date",
-   "reqd": 1
+   "label": "Topic"
   },
   {
    "fieldname": "from_time",
@@ -66,37 +137,16 @@
    "label": "Duration (mins)"
   },
   {
-   "default": "Scheduled",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "\nScheduled\nCompleted\nCancelled"
-  },
-  {
    "fieldname": "meeting_link",
    "fieldtype": "Data",
    "label": "Meeting Link"
-  },
-  {
-   "fieldname": "column_break_ttgd",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Mentor Session Booking",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-02 16:10:33.004916",
+ "modified": "2026-04-07 16:20:13.731458",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Session Booking",

@@ -10,7 +10,28 @@ from frappe.utils import get_time
 class MentorAvailability(Document):
 
     def validate(self):
-        self.validate_time_range()
+
+        if self.schedule_type == "Each Day Same Schedule":
+            if not self.from_time or not self.to_time:
+                frappe.throw("From Time and To Time are required for Same schedule")
+
+            if not self.days_multi:
+                frappe.throw("Please select at least one day")
+
+            self.validate_time_range()
+            self.process_same_schedule()
+
+        else:
+            if not self.daily_schedule:
+                frappe.throw("Please add at least one row in Daily Schedule")
+
+            for row in self.daily_schedule:
+                if not row.day or not row.from_time or not row.to_time:
+                    frappe.throw("Each row must have Day, From Time and To Time")
+
+                if row.from_time >= row.to_time:
+                    frappe.throw(f"Invalid time range in {row.day}")
+
         self.check_duplicate_slot()
 
     def validate_time_range(self):
@@ -19,31 +40,47 @@ class MentorAvailability(Document):
             if self.from_time >= self.to_time:
                 frappe.throw(_("From Time must be earlier than To Time."))
 
+    
+    def process_same_schedule(self):
+        if not self.days_multi:
+            frappe.throw("Please select at least one day")
+
+        # Delete old generated rows
+        frappe.db.delete("Mentor Availability Slot Child", {"parent": self.name})
+
+        for d in self.days_multi:
+            self.append("daily_schedule", {
+                "day": d.day,
+                "from_time": self.from_time,
+                "to_time": self.to_time
+            })
+    
+
     def check_duplicate_slot(self):
-        """
-        Prevent overlapping availability slots for the same mentor on the same day.
-        Only checks against other active (is_available = 1) slots.
-        """
-        existing = frappe.get_all(
-            "Mentor Availability",
-            filters={
-                "mentor": self.mentor,
-                "day": self.day,
-                "is_available": 1,
-                "name": ["!=", self.name],
-            },
-            fields=["name", "from_time", "to_time"],
-        )
 
-        for slot in existing:
-            if _times_overlap(self.from_time, self.to_time, slot.from_time, slot.to_time):
-                frappe.throw(
-                    _(
-                        "An overlapping availability slot already exists for {0} on {1} "
-                        "({2} – {3}). Please adjust your time range."
-                    ).format(self.mentor, self.day, slot.from_time, slot.to_time)
-                )
+        for row in self.daily_schedule:
 
+            existing = frappe.get_all(
+                "Mentor Availability",
+                filters={
+                    "mentor": self.mentor,
+                    "is_available": 1,
+                    "name": ["!=", self.name],
+                },
+                fields=["name"]
+            )
+
+            for doc in existing:
+                other_doc = frappe.get_doc("Mentor Availability", doc.name)
+
+                for other_row in other_doc.daily_schedule:
+                    if row.day == other_row.day and _times_overlap(
+                        row.from_time, row.to_time,
+                        other_row.from_time, other_row.to_time
+                    ):
+                        frappe.throw(
+                            f"Overlapping slot for {row.day} ({row.from_time}-{row.to_time})"
+                        )
 
 # ------------------------------------------------------------------
 # Helpers
@@ -61,45 +98,24 @@ def _times_overlap(start1, end1, start2, end2):
 # Whitelisted API Methods
 # ------------------------------------------------------------------
 
-@frappe.whitelist()
 def get_mentor_weekly_availability(mentor):
-    """
-    Return the full weekly availability grid for a mentor, grouped by day.
 
-    Usage (JS):
-        frappe.call({
-            method: "your_app.doctype.mentor_availability.mentor_availability.get_mentor_weekly_availability",
-            args: { mentor: "user@example.com" },
-            callback(r) { console.log(r.message); }
-        });
-
-    Response shape:
-        {
-            "Monday":    [{ "name": "MA-0001", "from_time": "10:00:00", "to_time": "11:00:00" }, ...],
-            "Tuesday":   [...],
-            ...
-            "Sunday":    []
-        }
-    """
-    if not mentor:
-        frappe.throw(_("Mentor is required."))
-
-    slots = frappe.get_all(
+    docs = frappe.get_all(
         "Mentor Availability",
         filters={"mentor": mentor, "is_available": 1},
-        fields=["name", "day", "from_time", "to_time"],
-        order_by="from_time asc",
+        fields=["name"]
     )
 
-    days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    availability = {day: [] for day in days_order}
+    availability = {day: [] for day in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]}
 
-    for slot in slots:
-        availability[slot.day].append({
-            "name": slot.name,
-            "from_time": str(slot.from_time),
-            "to_time": str(slot.to_time),
-        })
+    for d in docs:
+        doc = frappe.get_doc("Mentor Availability", d.name)
+
+        for row in doc.daily_schedule:
+            availability[row.day].append({
+                "from_time": str(row.from_time),
+                "to_time": str(row.to_time)
+            })
 
     return availability
 
@@ -133,12 +149,21 @@ def get_available_slots_for_date(mentor, date):
     day_name = date_obj.strftime("%A")   # "Monday", "Tuesday", …
 
     # Weekly availability for the resolved weekday
-    weekly_slots = frappe.get_all(
+    weekly_slots = []
+
+    docs = frappe.get_all(
         "Mentor Availability",
-        filters={"mentor": mentor, "day": day_name, "is_available": 1},
-        fields=["from_time", "to_time"],
-        order_by="from_time asc",
+        filters={"mentor": mentor, "is_available": 1},
+        fields=["name"]
     )
+
+    for d in docs:
+        doc = frappe.get_doc("Mentor Availability", d.name)
+
+        for row in doc.daily_schedule:
+            if row.day == day_name:
+                weekly_slots.append(row)
+
 
     # Blocked times on this specific date
     blocked_slots = frappe.get_all(

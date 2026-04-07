@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:MR-{YYYY}-{####}",
  "creation": "2026-04-03 17:53:45.907806",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -8,115 +9,145 @@
   "student",
   "mentor",
   "offering",
-  "message",
-  "preferred_date",
-  "preferred_time",
-  "duration",
+  "topic",
   "priority",
   "status",
-  "requested_on",
-  "action_taken_on",
-  "accepted_slot",
-  "meeting_link",
-  "notes",
-  "suggestions"
+  "student_message",
+  "amended_from",
+  "column_break_dwse",
+  "session_type",
+  "requested_date",
+  "requested_time",
+  "alt_time",
+  "alt_date",
+  "session_booking",
+  "mentor_note"
  ],
  "fields": [
   {
    "fieldname": "student",
-   "label": "Student",
    "fieldtype": "Link",
-   "options": "User",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student",
+   "options": "Student",
    "reqd": 1
   },
   {
    "fieldname": "mentor",
-   "label": "Mentor",
    "fieldtype": "Link",
-   "options": "User",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Mentor",
+   "options": "Mentor",
    "reqd": 1
   },
   {
    "fieldname": "offering",
-   "label": "Offering",
    "fieldtype": "Link",
-   "options": "Mentor Offering"
+   "in_list_view": 1,
+   "label": "Offering Booked",
+   "options": "Mentor Offering",
+   "reqd": 1
   },
   {
-   "fieldname": "message",
-   "label": "Request Message",
-   "fieldtype": "Small Text"
+   "fieldname": "topic",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Topic / Goal",
+   "reqd": 1
   },
   {
-   "fieldname": "preferred_date",
+   "fieldname": "requested_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "Preferred Date",
-   "fieldtype": "Date"
+   "reqd": 1
   },
   {
-   "fieldname": "preferred_time",
-   "label": "Preferred Time",
-   "fieldtype": "Time"
+   "fieldname": "requested_time",
+   "fieldtype": "Time",
+   "label": "Preferred Time"
   },
   {
-   "fieldname": "duration",
-   "label": "Duration (mins)",
-   "fieldtype": "Int"
+   "fieldname": "session_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Session Type",
+   "options": "Career\nTechnical\nResume\nInterview Prep\nStartup\nOther"
   },
   {
+   "default": "Medium",
    "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Priority",
-   "fieldtype": "Select",
    "options": "High\nMedium\nLow",
-   "default": "Medium"
-  },
-  {
-   "fieldname": "status",
-   "label": "Status",
-   "fieldtype": "Select",
-   "options": "Pending\nAccepted\nScheduled\nDeclined\nCompleted\nCancelled",
-   "default": "Pending"
-  },
-  {
-   "fieldname": "requested_on",
-   "label": "Requested On",
-   "fieldtype": "Datetime",
    "read_only": 1
   },
   {
-   "fieldname": "action_taken_on",
-   "label": "Action Taken On",
-   "fieldtype": "Datetime"
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nAccepted\nDeclined\nSuggested Alt Time"
   },
   {
-   "fieldname": "accepted_slot",
-   "label": "Accepted Slot",
-   "fieldtype": "Datetime"
+   "fieldname": "student_message",
+   "fieldtype": "Small Text",
+   "label": "Message from Student"
   },
   {
-   "fieldname": "meeting_link",
-   "label": "Meeting Link",
-   "fieldtype": "Data"
+   "fieldname": "mentor_note",
+   "fieldtype": "Small Text",
+   "label": "Mentor's Internal Note"
   },
   {
-   "fieldname": "notes",
-   "label": "Notes",
-   "fieldtype": "Text"
+   "depends_on": "eval:doc.status=='Suggested Alt Time'",
+   "fieldname": "alt_date",
+   "fieldtype": "Date",
+   "label": "Suggested Alt Date"
   },
   {
-   "fieldname": "suggestions",
-   "label": "Suggestions",
-   "fieldtype": "Table",
-   "options": "Request Suggestion"
+   "depends_on": "eval:doc.status=='Suggested Alt Time'",
+   "fieldname": "alt_time",
+   "fieldtype": "Time",
+   "label": "Suggested Alt Time"
+  },
+  {
+   "fieldname": "session_booking",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Created Session",
+   "options": "Mentor Offering Booking",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Mentor Request",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_dwse",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-03 17:58:13.521797",
+ "modified": "2026-04-06 11:25:23.891063",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Request",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

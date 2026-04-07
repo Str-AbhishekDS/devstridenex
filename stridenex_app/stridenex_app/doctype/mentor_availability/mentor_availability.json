@@ -6,9 +6,11 @@
  "engine": "InnoDB",
  "field_order": [
   "mentor",
-  "day",
+  "schedule_type",
+  "days_multi",
   "from_time",
   "to_time",
+  "daily_schedule",
   "is_available"
  ],
  "fields": [
@@ -21,36 +23,51 @@
    "reqd": 1
   },
   {
-   "fieldname": "day",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Day",
-   "options": "Monday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday",
-   "reqd": 1
-  },
-  {
+   "depends_on": "eval:doc.schedule_type === \"Each Day Same Schedule\";",
    "fieldname": "from_time",
    "fieldtype": "Time",
    "in_list_view": 1,
    "label": "From Time",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.schedule_type === \"Each Day Same Schedule\";"
   },
   {
+   "depends_on": "eval:doc.schedule_type === \"Each Day Same Schedule\";",
    "fieldname": "to_time",
    "fieldtype": "Time",
    "in_list_view": 1,
    "label": "To Time",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.schedule_type === \"Each Day Same Schedule\";"
   },
   {
    "default": "1",
    "fieldname": "is_available",
    "fieldtype": "Check",
    "label": "Available"
+  },
+  {
+   "fieldname": "schedule_type",
+   "fieldtype": "Select",
+   "label": "Schedule Type",
+   "options": "\nEach Day Same Schedule\nEach Day Different Schedule"
+  },
+  {
+   "depends_on": "eval:doc.schedule_type === \"Each Day Different Schedule\";",
+   "fieldname": "daily_schedule",
+   "fieldtype": "Table",
+   "label": "Daily Schedule",
+   "options": "Mentor Availability Slot Child"
+  },
+  {
+   "depends_on": "eval:doc.schedule_type === \"Each Day Same Schedule\";",
+   "fieldname": "days_multi",
+   "fieldtype": "Table MultiSelect",
+   "label": "Days Multi",
+   "mandatory_depends_on": "eval:doc.schedule_type === \"Each Day Same Schedule\";",
+   "options": "Mentor Availability Day Child"
   }
  ],
  "links": [],
- "modified": "2026-04-01 16:44:55.604386",
+ "modified": "2026-04-06 19:05:21.950565",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Availability",
