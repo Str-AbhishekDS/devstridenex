@@ -2,6 +2,7 @@ import frappe
 from frappe.auth import LoginManager
 from frappe.utils.password import update_password
 import random
+import requests
 from frappe.utils import now_datetime, add_to_date
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response, 
@@ -149,16 +150,16 @@ def send_mobile_otp(mobile_no=None):
     if not mobile_no:
         return gen_response(400, "Mobile number is required")
 
+    # Generate OTP
     otp = str(random.randint(100000, 999999))
     expiry_time = add_to_date(now_datetime(), minutes=10)
-    
+
+    # Save / Update OTP in DB
     if frappe.db.exists("Validate Mobile OTP", mobile_no):
         doc = frappe.get_doc("Validate Mobile OTP", mobile_no)
         doc.otp = otp
         doc.expiry_time = expiry_time
         doc.save(ignore_permissions=True)
-        frappe.db.commit()
-
     else:
         doc = frappe.get_doc({
             "doctype": "Validate Mobile OTP",
@@ -167,10 +168,42 @@ def send_mobile_otp(mobile_no=None):
             "expiry_time": expiry_time
         })
         doc.insert(ignore_permissions=True)
-        frappe.db.commit()
 
-    return gen_response(200, "OTP sent successfully", otp)
+    frappe.db.commit()
 
+    # -------------------------------
+    # ✅ CALL SMS API HERE
+    # -------------------------------
+    try:
+        url = "https://erpvppl.erpdata.in/api/method/sugar_mill.sugar_mill.doctype.sanction_sugar.sanction_sugar_api.send_otp_sms_api"
+
+        payload = {
+            "start_date": "2024-04-01",
+            "end_date": "2024-04-30",
+            "mobile_number": mobile_no,
+            "otp": otp,
+            "sugar_allocate": "100",
+            "season": "2025-2026",
+            "sugar_price": "3200",
+            "vendor_name": "Test Vendor"
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": "token 3affe41277aea9d:e1eca2cd6111f66"
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+        response_data = response.json()
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "OTP SMS Failed")
+        return gen_response(500, "OTP generated but SMS failed")
+
+    return gen_response(200, "OTP sent successfully", {
+        "mobile_no": mobile_no,
+        "sms_response": response_data
+    })
 
 @frappe.whitelist(allow_guest=True)
 def validate_mobile_otp(mobile_no=None, otp=None):
