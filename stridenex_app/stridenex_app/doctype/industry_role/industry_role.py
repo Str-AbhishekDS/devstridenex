@@ -66,7 +66,10 @@ def get_industry_role_list(industry=None):
 @frappe.whitelist(allow_guest=True)
 def update_industry_role(name):
     try:
-        if name 
+        
+        data = frappe.request.get_json()
+        if not name:
+            return {"status": 400, "message": "name is required"}
 
         # Fetch existing document
         industry_role = frappe.get_doc("Industry Role", name)
