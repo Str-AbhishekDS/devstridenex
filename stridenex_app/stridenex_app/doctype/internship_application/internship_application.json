@@ -1,11 +1,13 @@
 {
  "actions": [],
+ "autoname": "field:student",
  "creation": "2026-03-31 17:48:12.682875",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "student",
   "internship",
+  "industry",
   "status",
   "applied_on",
   "resume",
@@ -19,7 +21,8 @@
    "in_list_view": 1,
    "label": "Student",
    "options": "Student",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "internship",
@@ -34,7 +37,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Applied\nShortlisted\nInterview Scheduled\nRejected\nSelected"
+   "options": "Applied\nShortlisted\nTech Interview\nFinal\nHR\nRejected\nSelected"
   },
   {
    "fieldname": "applied_on",
@@ -55,13 +58,19 @@
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "industry",
+   "fieldtype": "Data",
+   "label": "Industry"
   }
  ],
  "links": [],
- "modified": "2026-03-31 17:55:02.431907",
+ "modified": "2026-04-10 13:12:30.855096",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Internship Application",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

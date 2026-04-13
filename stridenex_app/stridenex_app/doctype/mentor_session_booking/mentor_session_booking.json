@@ -59,7 +59,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Pending\nScheduled\nCompleted\nCancelled"
+   "options": "Pending\nScheduled\nAccepted\nCompleted\nCancelled"
   },
   {
    "fieldname": "amount_paid",
@@ -146,8 +146,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-07 16:20:13.731458",
- "modified_by": "Administrator",
+ "modified": "2026-04-08 18:06:05.671389",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Mentor Session Booking",
  "naming_rule": "Expression (old style)",

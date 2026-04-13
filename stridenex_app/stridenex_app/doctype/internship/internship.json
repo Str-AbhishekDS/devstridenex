@@ -17,9 +17,11 @@
   "deadline",
   "status",
   "posted_by",
+  "start_date",
   "section_break_rern",
   "required_skills",
-  "description"
+  "description",
+  "amended_from"
  ],
  "fields": [
   {
@@ -31,9 +33,9 @@
   },
   {
    "fieldname": "type",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "label": "Type",
-   "options": "Technical\nBusiness\nDesign\nResearch\nFinance"
+   "options": "Industry Skill Domain"
   },
   {
    "fieldname": "location",
@@ -105,10 +107,26 @@
    "label": "Industry",
    "options": "Industry",
    "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Internship",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
   }
  ],
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-04-01 11:38:29.032559",
+ "modified": "2026-04-11 14:01:26.857642",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Internship",

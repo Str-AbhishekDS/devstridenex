@@ -8,13 +8,15 @@
  "field_order": [
   "section_break_larc",
   "company_name",
-  "about",
   "business_type",
   "gst_number",
   "industry_sector",
+  "about",
   "column_break_yfng",
-  "headquarters",
+  "company_size",
   "job_function",
+  "link_of_company",
+  "headquarters",
   "cin",
   "column_break_wxeg",
   "country",
@@ -33,15 +35,12 @@
   "status",
   "section_break_ppno",
   "contact_details",
-  "required_roles_section",
-  "table_tehd",
   "hiring_process_section",
   "table_nuet",
   "section_break_rnzo",
   "approved_status",
   "terms_and_conditions",
-  "amended_from",
-  "tab_2_tab"
+  "amended_from"
  ],
  "fields": [
   {
@@ -53,6 +52,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Company Name",
+   "reqd": 1,
    "unique": 1
   },
   {
@@ -71,6 +71,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "GST Number",
+   "reqd": 1,
    "unique": 1
   },
   {
@@ -212,21 +213,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "tab_2_tab",
-   "fieldtype": "Tab Break",
-   "label": "Tab 2"
-  },
-  {
-   "fieldname": "table_tehd",
-   "fieldtype": "Table",
-   "options": "Industry Role"
-  },
-  {
-   "fieldname": "required_roles_section",
-   "fieldtype": "Section Break",
-   "label": "Required Roles"
-  },
-  {
    "fieldname": "hiring_process_section",
    "fieldtype": "Section Break",
    "label": "Hiring Process"
@@ -235,13 +221,38 @@
    "fieldname": "table_nuet",
    "fieldtype": "Table",
    "options": "Industry Hiring Process"
+  },
+  {
+   "fieldname": "about",
+   "fieldtype": "Data",
+   "label": "About"
+  },
+  {
+   "fieldname": "company_size",
+   "fieldtype": "Data",
+   "label": "Company Size"
+  },
+  {
+   "fieldname": "headquarters",
+   "fieldtype": "Data",
+   "label": "Headquarters"
+  },
+  {
+   "fieldname": "link_of_company",
+   "fieldtype": "Data",
+   "label": "link of company"
+  },
+  {
+   "fieldname": "cin",
+   "fieldtype": "Data",
+   "label": "CIN"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-02 18:11:29.886365",
+ "modified": "2026-04-11 09:22:33.348830",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Industry",

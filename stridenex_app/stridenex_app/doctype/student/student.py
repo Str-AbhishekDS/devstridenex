@@ -1,7 +1,10 @@
 # Copyright (c) 2026, QTPL and contributors
 # For license information, please see license.txt
 
-
+from stridenex_app.api_stridenex_app.app_utils import (
+    gen_response,
+    exception_handel
+)
 import frappe
 from frappe.model.document import Document
 
@@ -58,3 +61,49 @@ class Student(Document):
 
     def get_total_student_count():
         return frappe.db.count("Student", {"status": "Active"})
+
+
+@frappe.whitelist(allow_guest=True)
+def get_student_count():
+    try:
+        count = frappe.db.count("Student")
+
+        return gen_response(
+            status=200,
+            message="Student count fetched successfully",
+            data={"total_students": count}
+        )
+
+    except Exception as e:
+        return exception_handel(e)
+    
+@frappe.whitelist(allow_guest=True)
+def get_student_list():
+    try:
+        filters = {}
+
+        students = frappe.get_all(
+            "Student",
+            filters=filters,
+            fields=["*"
+            ],
+            order_by="creation desc"
+        )
+        for domain in students:
+            # 👇 Skills child table
+            skills = frappe.get_all(
+                "Student Skill Table",
+                filters={"parent": domain["name"]},
+                fields=["skill"]
+            )
+            domain["skills"] = skills
+
+
+        return gen_response(
+            status=200,
+            message="Student list fetched successfully",
+            data=students
+        )
+
+    except Exception as e:
+        return exception_handel(e)
