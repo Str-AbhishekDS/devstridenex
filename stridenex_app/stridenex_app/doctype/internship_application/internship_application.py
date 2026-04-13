@@ -4,6 +4,10 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import now
+from stridenex_app.api_stridenex_app.app_utils import (
+    gen_response,
+    exception_handel
+)
 
 class InternshipApplication(Document):
 
@@ -74,3 +78,75 @@ def get_match_score(student, internship):
     score = (len(matched) / len(required_skills)) * 100
 
     return round(score)
+
+@frappe.whitelist(allow_guest=True)
+def get_student_application_list(industry=None):
+    try:
+        filters = {}
+
+        # Apply filter only if industry is provided
+        if industry:
+            filters["industry"] = industry
+
+        internship = frappe.get_all(
+            "Internship Application",
+            filters=filters,
+            fields=["*"
+            ],
+            order_by="creation desc"
+        )
+
+        return gen_response(
+            status=200,
+            message="Internship Applications list fetched successfully",
+            data=internship
+        )
+
+    except Exception as e:
+        return exception_handel(e)
+    
+    
+@frappe.whitelist(allow_guest=True)
+def get_application_status_count(industry=None):
+    try:
+
+        conditions = ""
+        values = {}
+
+        if industry:
+            conditions = "WHERE industry = %(industry)s"
+            values["industry"] = industry
+
+        query = f"""
+            SELECT status, COUNT(*) as count
+            FROM `tabInternship Application`
+            {conditions}
+            GROUP BY status
+        """
+
+        result = frappe.db.sql(query, values, as_dict=True)
+
+        all_status = [
+            "Applied",
+            "Shortlisted",
+            "Tech Interview",
+            "Final",
+            "HR",
+            "Rejected",
+            "Selected"
+        ]
+
+        count_map = {}
+        for row in result:
+            count_map[row["status"]] = row["count"]
+
+        final_result = {status: count_map.get(status, 0) for status in all_status}
+
+        return gen_response(
+            status=200,
+            message="Application status count fetched successfully",
+            data=final_result
+        )
+
+    except Exception as e:
+        return exception_handel(e)

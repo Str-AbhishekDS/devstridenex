@@ -9,7 +9,7 @@
   "section_break_ezdw",
   "project_name",
   "project_code",
-  "link_stee",
+  "industry",
   "description",
   "status",
   "column_break_suzf",
@@ -36,12 +36,6 @@
    "fieldname": "project_code",
    "fieldtype": "Data",
    "label": "Project Code"
-  },
-  {
-   "fieldname": "link_stee",
-   "fieldtype": "Link",
-   "label": "Industry",
-   "options": "Industry"
   },
   {
    "fieldname": "description",
@@ -97,13 +91,19 @@
    "fieldtype": "Table",
    "label": "Required Skills",
    "options": "Student Skill Table"
+  },
+  {
+   "fieldname": "industry",
+   "fieldtype": "Link",
+   "label": "Industry",
+   "options": "Industry"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-02 08:40:47.916635",
+ "modified": "2026-04-08 13:23:34.385326",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Industry Project",

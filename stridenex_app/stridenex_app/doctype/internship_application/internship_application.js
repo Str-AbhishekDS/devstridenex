@@ -29,6 +29,7 @@ frappe.ui.form.on('Internship Application', {
 });
 
 
+
 function calculate_match(frm) {
 
     if (!frm.doc.student || !frm.doc.internship) return;
@@ -46,3 +47,24 @@ function calculate_match(frm) {
         }
     });
 }
+
+frappe.ui.form.on('Internship Application', {
+    internship: function (frm) {
+        console.log("Internship changed:", frm.doc.internship);
+
+        if (frm.doc.internship) {
+            frappe.db.get_value('Internship', frm.doc.internship, 'industry')
+                .then(r => {
+                    console.log("Response:", r);
+
+                    if (r.message && r.message.industry) {
+                        frm.set_value('industry', r.message.industry);
+                    } else {
+                        frm.set_value('industry', '');
+                    }
+                });
+        } else {
+            frm.set_value('industry', '');
+        }
+    }
+});

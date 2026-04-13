@@ -115,7 +115,7 @@ def login(usr, pwd):
         if frappe.response["message"] == "Logged In":
 
             user = login_manager.user
-
+          
             # Get user roles
             roles = frappe.get_roles(user)
 
