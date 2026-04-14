@@ -470,77 +470,100 @@ frappe.ui.form.on("Mentor Session Booking", {
         frm.set_query("student", () => ({}));
     },
 
+// ── Inside frappe.ui.form.on("Mentor Session Booking" → refresh(frm) ────────
+// Replace the existing refresh function with this:
+
     refresh(frm) {
+        // ── existing code stays ───────────────────────────────────────
         _inject_styles();
         _set_status_indicator(frm);
-        _render_action_buttons(frm);
+        _render_action_buttons(frm);   // ← updated below
         _toggle_meeting_link(frm);
 
-        // Make mentor read-only when an offering is linked
         frm.set_df_property("mentor", "read_only", !!frm.doc.offering);
+        frm.set_df_property("priority", "read_only", 1);
 
-        // Browse & Book Slots button (session-type or new offering booking)
-        if (frm.is_new() || frm.doc.status === "Scheduled") {
+        // ── Request stage indicator ───────────────────────────────────
+        const reqStatus = frm.doc.mentor_request_status;
+        if (reqStatus) {
+            const colors = {
+                "Pending":           "orange",
+                "Accepted":          "green",
+                "Declined":          "red",
+                "Suggested Alt Time":"blue",
+            };
+            frm.page.set_indicator(
+                __("Request: {0}", [reqStatus]),
+                colors[reqStatus] || "grey"
+            );
+        }
+
+        // ── 1:1 slot calendar ─────────────────────────────────────────
+        const offeringType = frm.doc.offering_type;
+        const is1on1 = !offeringType || offeringType === "1:1 Mentor Session";
+        const isGroup = offeringType === "Group Session";
+
+        if (is1on1 && (frm.is_new() || frm.doc.status === "Scheduled")
+            && frm.doc.mentor_request_status !== "Pending") {
             frm.add_custom_button(__("📅 Browse & Book Slots"), () => {
                 const mentor  = frm.doc.mentor;
                 const student = frm.doc.student || frappe.session.user;
-
-                if (!mentor) {
-                    frappe.msgprint(__("Please select a Mentor first."));
-                    return;
-                }
-
-                const cal = new SlotCalendar({
-                    mentor,
-                    student,
+                if (!mentor) { frappe.msgprint(__("Please select a Mentor first.")); return; }
+                new SlotCalendar({
+                    mentor, student,
                     offering: frm.doc.offering || null,
                     onBooked(sessionName, date, slot) {
                         if (frm.is_new()) {
                             frm.set_value("session_date", date);
-                            frm.set_value("from_time", slot.from_time);
-                            frm.set_value("to_time", slot.to_time);
+                            frm.set_value("from_time",    slot.from_time);
+                            frm.set_value("to_time",      slot.to_time);
                             frappe.set_route("Form", "Mentor Session Booking", sessionName);
                         } else {
                             frm.reload_doc();
                         }
                     },
-                });
-                cal.open();
+                }).open();
             });
         }
 
-        // Review button — only for completed submitted offering bookings without a rating yet
-        if (
-            frm.doc.booking_type === "Offering" &&
-            frm.doc.status       === "Completed" &&
-            frm.doc.docstatus    === 1 &&
-            !frm.doc.rating
-        ) {
+        if (isGroup && frm.doc.offering && frm.is_new()) {
+            frm.add_custom_button(__("🗓 View Group Slots"), () => {
+                _open_group_slot_picker(frm);
+            });
+        }
+
+        // ── Review button ─────────────────────────────────────────────
+        if (frm.doc.offering_type === "Offering" &&
+            frm.doc.status        === "Completed" &&
+            frm.doc.docstatus     === 1 &&
+            !frm.doc.rating) {
             frm.add_custom_button(__("⭐ Submit Review"), () => {
                 _submit_review_dialog(frm);
             });
         }
     },
 
-    // ── Field Events ────────────────────────────────────────────────
-
+    // ── offering field handler — also triggers button re-render ──────
     offering(frm) {
         if (frm.doc.offering) {
-            // Auto-fill mentor + amount from the linked offering
             frappe.db.get_value(
                 "Mentor Offering",
                 frm.doc.offering,
-                ["price_per_session", "mentor"],
+                ["price_per_session", "mentor", "offering_type"],
                 (r) => {
                     if (r) {
-                        frm.set_value("amount_paid", r.price_per_session);
-                        frm.set_value("mentor", r.mentor);
-                        frm.set_df_property("mentor", "read_only", 1);
+                        frm.set_value("amount_paid",    r.price_per_session);
+                        frm.set_value("mentor",         r.mentor);
+                        frm.set_value("offering_type",  r.offering_type);
+                        frm.set_df_property("mentor",   "read_only", 1);
+                        // Re-render so correct buttons appear
+                        frm.refresh();
                     }
                 }
             );
         } else {
             frm.set_df_property("mentor", "read_only", 0);
+            frm.refresh();
         }
     },
 
@@ -595,21 +618,69 @@ function _toggle_meeting_link(frm) {
 }
 
 function _render_action_buttons(frm) {
-    ["Reschedule", "Cancel Session", "Mark as Completed", "Cancel Booking"].forEach((b) =>
-        frm.remove_custom_button(__(b))
-    );
+    // Clear all custom action buttons first
+    [
+        "Reschedule", "Cancel Session", "Mark as Completed",
+        "Cancel Booking", "Accept Request", "Decline Request", "Suggest Alt Time",
+        "Confirm Alt Time"
+    ].forEach((b) => frm.remove_custom_button(__(b)));
 
     if (frm.is_new()) return;
 
-    // ── Scheduled actions ──────────────────────────────────────────
-    if (frm.doc.status === "Scheduled") {
-        frm.add_custom_button(__("Reschedule"), () => open_reschedule_calendar(frm), __("Actions"));
-        frm.add_custom_button(__("Cancel Session"), () => _cancel_session(frm), __("Actions"));
-        frm.add_custom_button(__("Mark as Completed"), () => _mark_completed(frm), __("Actions"));
+    const reqStatus = frm.doc.mentor_request_status;
+    const isMentor  = frappe.session.user === frm.doc.mentor;
+    const isStudent = frappe.session.user === frm.doc.student;
+
+    // ── Request stage actions ─────────────────────────────────────────
+    if (reqStatus === "Pending" && isMentor) {
+        // Mentor sees: Accept (opens slot calendar), Decline, Suggest Alt Time
+        frm.add_custom_button(__("✅ Accept Request"), () => {
+            _open_accept_calendar(frm);
+        }, __("Request"));
+
+        frm.add_custom_button(__("❌ Decline Request"), () => {
+            _decline_request_dialog(frm);
+        }, __("Request"));
+
+        frm.add_custom_button(__("🕐 Suggest Alt Time"), () => {
+            _suggest_alt_time_dialog(frm);
+        }, __("Request"));
     }
 
-    // ── Submitted offering booking — status update via API ─────────
-    if (frm.doc.docstatus === 1 && frm.doc.booking_type === "Offering") {
+    if (reqStatus === "Suggested Alt Time" && isStudent) {
+        // Student sees: Confirm alt time or Cancel
+        frm.add_custom_button(__("✅ Confirm Alt Time"), () => {
+            frappe.confirm(
+                __("Confirm the mentor's suggested time: {0} at {1}?", [
+                    frm.doc.alt_date, frm.doc.alt_time
+                ]),
+                () => {
+                    frappe.call({
+                        method: `${APP}.${APP}.doctype.mentor_session_booking.mentor_session_booking.student_confirm_alt_time`,
+                        args: { booking_name: frm.doc.name },
+                        callback() {
+                            frappe.show_alert({ message: __("Alt time confirmed. Waiting for mentor to schedule."), indicator: "green" });
+                            frm.reload_doc();
+                        }
+                    });
+                }
+            );
+        }, __("Request"));
+
+        frm.add_custom_button(__("❌ Cancel Request"), () => {
+            _decline_request_dialog(frm);
+        }, __("Request"));
+    }
+
+    // ── Confirmed booking actions (request accepted or direct booking) ─
+    if (frm.doc.status === "Scheduled" && !reqStatus || reqStatus === "Accepted") {
+        frm.add_custom_button(__("Reschedule"),        () => open_reschedule_calendar(frm), __("Actions"));
+        frm.add_custom_button(__("Cancel Session"),    () => _cancel_session(frm),           __("Actions"));
+        frm.add_custom_button(__("Mark as Completed"), () => _mark_completed(frm),           __("Actions"));
+    }
+
+    // ── Submitted offering booking ────────────────────────────────────
+    if (frm.doc.docstatus === 1 && frm.doc.offering_type === "Offering") {
         if (frm.doc.status !== "Completed") {
             frm.add_custom_button(__("Mark as Completed"), () => {
                 _update_booking_status(frm, "Completed");
@@ -728,6 +799,8 @@ function _cancel_session(frm) {
     });
 }
 
+// ── Replace _mark_completed function ─────────────────────────────────────────
+
 function _mark_completed(frm) {
     frappe.confirm(__("Mark {0} as Completed?", [frm.doc.name]), () => {
         frappe.call({
@@ -736,7 +809,364 @@ function _mark_completed(frm) {
             callback({ message }) {
                 frappe.show_alert({ message, indicator: "green" });
                 frm.reload_doc();
+
+                // ── Show updated mentor stats as a toast ──────────────
+                // Fetch fresh stats and display them
+                frappe.db.get_value(
+                    "Mentor",   // ← change to your mentor doctype
+                    frm.doc.mentor,
+                    ["total_sessions", "total_hours", "total_earnings", "avg_rating"],
+                    (r) => {
+                        if (r && r.total_sessions !== undefined) {
+                            frappe.show_alert({
+                                message: __(
+                                    "📊 Mentor Stats Updated — Sessions: {0} | Hours: {1} | Earnings: ₹{2} | Rating: {3}⭐",
+                                    [r.total_sessions, r.total_hours, r.total_earnings, r.avg_rating]
+                                ),
+                                indicator: "blue",
+                            });
+                        }
+                    }
+                );
             },
         });
     });
 }
+
+// ── Replace _open_group_slot_picker ──────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group Session — Batch Picker
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _open_group_slot_picker(frm) {
+    if (!frm.doc.offering) {
+        frappe.msgprint(__("Please select an Offering first."));
+        return;
+    }
+
+    frappe.call({
+        method: `${APP}.${APP}.doctype.mentor_offering.mentor_offering.get_open_batches_for_offering`,
+        args:   { offering: frm.doc.offering },
+        freeze: true,
+        freeze_message: __("Loading available batches…"),
+        callback({ message: batches }) {
+            if (!batches || !batches.length) {
+                frappe.msgprint(__("No open batches available. Ask your mentor to publish a batch first."));
+                return;
+            }
+            _show_batch_picker_dialog(frm, batches);
+        },
+        error(err) {
+            // Show the server-side frappe.throw message clearly
+            frappe.msgprint({
+                title:     __("Cannot Load Batches"),
+                message:   err.message || __("Failed to load batch list."),
+                indicator: "orange"
+            });
+        }
+    });
+}
+
+
+function _show_batch_picker_dialog(frm, batches) {
+    const d = new frappe.ui.Dialog({
+        title: __("Join a Group Session Batch"),
+        size:  "large",
+    });
+
+    const cards = batches.map((b, idx) => {
+        const isFull  = b.is_full;
+        const start   = b.start_date ? frappe.datetime.str_to_user(b.start_date) : "TBD";
+        const end     = b.end_date   ? frappe.datetime.str_to_user(b.end_date)   : "TBD";
+        const seatTxt = b.seat_count
+            ? `${b.seats_left} seat(s) left  (${b.current_count}/${b.seat_count})`
+            : `${b.current_count} enrolled  (unlimited seats)`;
+
+        return `
+        <div style="
+            border: 1.5px solid ${isFull ? "#fca5a5" : "#86efac"};
+            border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
+            background: ${isFull ? "#fef2f2" : "#f0fdf4"};
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        ">
+            <div style="flex:1">
+                <strong style="font-size:14px; color:#1e2a4a">${b.title || b.name}</strong><br>
+                <span style="font-size:12px; color:#6b7280">📅 ${start} → ${end}</span><br>
+                <span style="font-size:12px; color:${isFull ? "#ef4444" : "#16a34a"}; font-weight:600">
+                    ${isFull ? "🔴 Full" : "🟢 " + seatTxt}
+                </span>
+                ${b.description
+                    ? `<br><span style="font-size:11px;color:#9ca3af;margin-top:4px;display:block">${b.description}</span>`
+                    : ""}
+            </div>
+            <button
+                data-idx="${idx}"
+                class="msb-join-btn"
+                ${isFull ? "disabled" : ""}
+                style="
+                    background: ${isFull ? "#e5e7eb" : "#1e2a4a"};
+                    color: ${isFull ? "#9ca3af" : "#fff"};
+                    border: none; border-radius: 8px;
+                    padding: 10px 22px; font-size: 13px; font-weight: 700;
+                    cursor: ${isFull ? "not-allowed" : "pointer"};
+                    white-space: nowrap; flex-shrink: 0;
+                "
+            >
+                ${isFull ? "Full" : "Join Batch"}
+            </button>
+        </div>`;
+    }).join("");
+
+    d.$body.html(`<div style="padding: 8px 4px">${cards}</div>`);
+
+    d.$body.find(".msb-join-btn:not([disabled])").on("click", function () {
+        const batch = batches[parseInt($(this).data("idx"))];
+        d.hide();
+        _confirm_join_batch(frm, batch);
+    });
+
+    d.show();
+}
+
+
+function _confirm_join_batch(frm, batch) {
+    const startLabel = batch.start_date
+        ? frappe.datetime.str_to_user(batch.start_date)
+        : batch.name;
+
+    frappe.confirm(
+        __('Join batch "{0}" starting {1}?', [batch.title || batch.name, startLabel]),
+        () => {
+            const student = frm.doc.student || frappe.session.user;
+
+            // ── Step 1: LMS enrollment (add to Batch Student + LMS Enrollment) ──
+            frappe.call({
+                method: `${APP}.${APP}.doctype.mentor_offering.mentor_offering.enroll_student_in_batch`,
+                args: {
+                    offering:   frm.doc.offering,
+                    batch_name: batch.name,
+                    student,
+                },
+                freeze:         true,
+                freeze_message: __("Enrolling in batch…"),
+                callback({ message: lms_result }) {
+
+                    // ── Step 2: Create Mentor Session Booking record ──────────
+                    frappe.call({
+                        method: `${APP}.${APP}.doctype.mentor_session_booking.mentor_session_booking.create_group_session_booking`,
+                        args: {
+                            offering:   frm.doc.offering,
+                            batch_name: batch.name,
+                            student,
+                        },
+                        callback({ message: booking_result }) {
+                            frappe.show_alert({
+                                message: __(
+                                    "✅ Enrolled! Booking: {0}  |  {1} seat(s) left",
+                                    [booking_result.session_name, lms_result.seats_left]
+                                ),
+                                indicator: "green",
+                            });
+                            frappe.set_route(
+                                "Form", "Mentor Session Booking",
+                                booking_result.session_name
+                            );
+                        },
+                        error(err) {
+                            frappe.msgprint({
+                                title:     __("Booking Error"),
+                                message:   err.message || __("Could not create booking record."),
+                                indicator: "red"
+                            });
+                        }
+                    });
+                },
+                error(err) {
+                    frappe.msgprint({
+                        title:     __("Enrollment Error"),
+                        message:   err.message || __("Could not enroll in batch."),
+                        indicator: "red"
+                    });
+                }
+            });
+        }
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Request Flow Dialogs
+// ────────────────────────────────────────────────────────────────────────────────
+
+function _open_accept_calendar(frm) {
+    // Reuse SlotCalendar — mentor picks a confirmed slot to accept with
+    const cal = new SlotCalendar({
+        mentor:      frm.doc.mentor,
+        student:     frm.doc.student,
+        offering:    frm.doc.offering || null,
+        isReschedule: true,   // no topic input needed
+        onBooked(sessionName, date, slot) {
+            // sessionName is null in reschedule mode — call accept_request directly
+            frappe.call({
+                method: `${APP}.${APP}.doctype.mentor_session_booking.mentor_session_booking.accept_request`,
+                args: {
+                    booking_name: frm.doc.name,
+                    session_date: date,
+                    from_time:    slot.from_time,
+                    to_time:      slot.to_time,
+                },
+                callback({ message }) {
+                    frappe.show_alert({
+                        message:   __("✅ Request accepted! Booking: {0}", [message.booking_name]),
+                        indicator: "green",
+                    });
+                    frm.reload_doc();
+                },
+            });
+            cal.close();
+        },
+    });
+    cal.open();
+}
+
+
+function _decline_request_dialog(frm) {
+    const d = new frappe.ui.Dialog({
+        title: __("Decline Request"),
+        fields: [{
+            fieldtype:  "Small Text",
+            fieldname:  "notes",
+            label:      __("Reason (optional)"),
+        }],
+        primary_action_label: __("Decline"),
+        primary_action(values) {
+            frappe.call({
+                method: `${APP}.${APP}.doctype.mentor_session_booking.mentor_session_booking.decline_request`,
+                args: {
+                    booking_name: frm.doc.name,
+                    notes:        values.notes || "",
+                },
+                callback() {
+                    frappe.show_alert({ message: __("Request declined."), indicator: "orange" });
+                    frm.reload_doc();
+                    d.hide();
+                },
+            });
+        },
+    });
+    d.show();
+}
+
+
+function _suggest_alt_time_dialog(frm) {
+    const d = new frappe.ui.Dialog({
+        title: __("Suggest Alternate Time"),
+        fields: [
+            {
+                fieldtype: "Date",
+                fieldname: "alt_date",
+                label:     __("Suggested Date"),
+                reqd:      1,
+                default:   frm.doc.requested_date,
+            },
+            {
+                fieldtype: "Time",
+                fieldname: "alt_time",
+                label:     __("Suggested Time"),
+                reqd:      1,
+                default:   frm.doc.requested_time,
+            },
+            {
+                fieldtype: "Small Text",
+                fieldname: "notes",
+                label:     __("Message to student (optional)"),
+            },
+        ],
+        primary_action_label: __("Send Suggestion"),
+        primary_action(values) {
+            frappe.call({
+                method: `${APP}.${APP}.doctype.mentor_session_booking.mentor_session_booking.suggest_alt_time`,
+                args: {
+                    booking_name: frm.doc.name,
+                    alt_date:     values.alt_date,
+                    alt_time:     values.alt_time,
+                    notes:        values.notes || "",
+                },
+                callback() {
+                    frappe.show_alert({
+                        message:   __("Alternate time suggested to student."),
+                        indicator: "blue",
+                    });
+                    frm.reload_doc();
+                    d.hide();
+                },
+            });
+        },
+    });
+    d.show();
+}
+
+
+// ── Student-facing: create a new request from an offering ─────────────────────
+// Call this from the student portal / offering page JS
+
+function _open_request_dialog(mentor, offering, student) {
+    const d = new frappe.ui.Dialog({
+        title: __("Request a Session"),
+        fields: [
+            {
+                fieldtype: "Date",
+                fieldname: "requested_date",
+                label:     __("Preferred Date"),
+                reqd:      1,
+            },
+            {
+                fieldtype: "Time",
+                fieldname: "requested_time",
+                label:     __("Preferred Time"),
+            },
+            {
+                fieldtype: "Data",
+                fieldname: "topic",
+                label:     __("Topic"),
+                reqd:      1,
+            },
+            {
+                fieldtype: "Small Text",
+                fieldname: "student_message",
+                label:     __("Message to Mentor (optional)"),
+            },
+        ],
+        primary_action_label: __("Send Request"),
+        primary_action(values) {
+            frappe.call({
+                method: `${APP}.${APP}.doctype.mentor_session_booking.mentor_session_booking.create_session_request`,
+                args: {
+                    mentor,
+                    student:          student || frappe.session.user,
+                    offering,
+                    topic:            values.topic,
+                    requested_date:   values.requested_date,
+                    requested_time:   values.requested_time || null,
+                    student_message:  values.student_message || null,
+                },
+                callback({ message }) {
+                    frappe.show_alert({
+                        message:   __("✅ Request sent! ID: {0}", [message.booking_name]),
+                        indicator: "green",
+                    });
+                    d.hide();
+                },
+                error(err) {
+                    frappe.msgprint({
+                        title:     __("Error"),
+                        message:   err.message,
+                        indicator: "red",
+                    });
+                },
+            });
+        },
+    });
+    d.show();
+}
+
