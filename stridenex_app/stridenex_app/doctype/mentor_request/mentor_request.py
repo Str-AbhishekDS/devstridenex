@@ -156,22 +156,22 @@ def accept_request(request_name, from_time, to_time):
 
 
 @frappe.whitelist()
-def decline_request(request_name, mentor_note=None):
+def decline_request(request_name, notes=None):
     """Decline a pending request."""
     req = frappe.get_doc("Mentor Request", request_name)
     if req.status != "Pending":
         frappe.throw(_("Only Pending requests can be declined."))
 
     req.status = "Declined"
-    if mentor_note:
-        req.mentor_note = mentor_note
+    if notes:
+        req.notes = notes
     req.save(ignore_permissions=True)
     frappe.db.commit()
     return {"status": "Declined"}
 
 
 @frappe.whitelist()
-def suggest_alt_time(request_name, alt_date, alt_time, mentor_note=None):
+def suggest_alt_time(request_name, alt_date, alt_time, notes=None):
     """Suggest a different date/time to the student."""
     req = frappe.get_doc("Mentor Request", request_name)
     if req.status != "Pending":
@@ -180,8 +180,8 @@ def suggest_alt_time(request_name, alt_date, alt_time, mentor_note=None):
     req.status = "Suggested Alt Time"
     req.alt_date = alt_date
     req.alt_time = alt_time
-    if mentor_note:
-        req.mentor_note = mentor_note
+    if notes:
+        req.notes = notes
     req.save(ignore_permissions=True)
     frappe.db.commit()
     return {"status": "Suggested Alt Time"}

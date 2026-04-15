@@ -9,9 +9,15 @@
   "mentor",
   "title",
   "offering_type",
+  "lms_course",
+  "lms_batch",
   "category",
   "duration_minutes",
-  "description",
+  "start_date",
+  "end_date",
+  "start_time",
+  "end_time",
+  "batch_details",
   "column_break_hecp",
   "max_group_size",
   "price_per_session",
@@ -21,6 +27,7 @@
   "total_bookings",
   "average_rating",
   "is_featured",
+  "description",
   "created_on"
  ],
  "fields": [
@@ -43,7 +50,7 @@
    "fieldname": "offering_type",
    "fieldtype": "Select",
    "label": "Offering Type",
-   "options": "1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
+   "options": "\n1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
   },
   {
    "fieldname": "category",
@@ -81,7 +88,8 @@
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
-   "label": "Description"
+   "label": "Description",
+   "mandatory_depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\""
   },
   {
    "default": "Draft",
@@ -118,12 +126,62 @@
   {
    "fieldname": "column_break_hecp",
    "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "lms_course",
+   "fieldtype": "Link",
+   "label": "LMS Course",
+   "options": "LMS Course"
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "lms_batch",
+   "fieldtype": "Link",
+   "label": "LMS Batch",
+   "mandatory_depends_on": "// eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "options": "LMS Batch"
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "start_time",
+   "fieldtype": "Time",
+   "label": "Start Time",
+   "mandatory_depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\""
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "mandatory_depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\""
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date",
+   "mandatory_depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\""
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "end_time",
+   "fieldtype": "Time",
+   "label": "End Time",
+   "mandatory_depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\""
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "batch_details",
+   "fieldtype": "Small Text",
+   "label": "Batch Details",
+   "mandatory_depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\""
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-04 10:12:44.521375",
+ "modified": "2026-04-11 15:40:53.757968",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Offering",

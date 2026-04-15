@@ -1,3 +1,5 @@
+import json
+
 import frappe
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
@@ -29,42 +31,67 @@ def create_mentor():
         return exception_handel(e)
 
 
-def create_mentor_user(mentor):
+@frappe.whitelist()
+def create_mentor_user(mentor=None):
+    if not mentor:
+        frappe.throw("Mentor data is required")
 
-    email = mentor.email_id
+    if isinstance(mentor, str):
+        mentor = frappe.parse_json(mentor)
+
+    email = mentor.get("email_id")
+    mobile = mentor.get("mobile_no")
 
     if not email:
-        return
+        frappe.throw("Email is required")
 
-    # If user already exists (signup user)
+    if not mobile:
+        frappe.throw("Mobile number is required")
+
+    if frappe.db.exists("Mentor", email):
+        mentor_doc = frappe.get_doc("Mentor", email)
+    else:
+        mentor_doc = frappe.get_doc({
+            "doctype": "Mentor",
+            "email_id": email,
+            "first_name": mentor.get("first_name"),
+            "last_name": mentor.get("last_name"),
+            "mobile_no": mobile
+        })
+        mentor_doc.insert(ignore_permissions=True)
+
     if frappe.db.exists("User", email):
-
         user = frappe.get_doc("User", email)
+        roles = [r.role for r in user.roles]
 
-        existing_roles = [r.role for r in user.roles]
-
-        if "Mentor" not in existing_roles:
+        if "Mentor" not in roles:
             user.append("roles", {"role": "Mentor"})
-            user.save(ignore_permissions=True)
+
+        if "Instructor" not in roles:
+            user.append("roles", {"role": "Instructor"})
+
+        user.save(ignore_permissions=True)
 
     else:
-        # Create new user
         user = frappe.get_doc({
             "doctype": "User",
             "email": email,
-            "first_name": mentor.first_name,
-            "last_name": mentor.last_name,
+            "first_name": mentor.get("first_name"),
+            "last_name": mentor.get("last_name"),
             "enabled": 1,
             "send_welcome_email": 0,
             "roles": [
-                {
-                    "role": "Mentor"
-                }
+                {"role": "Mentor"},
+                {"role": "Instructor"}
             ]
         })
-
         user.insert(ignore_permissions=True)
 
-    # Link mentor with user
-    mentor.user = email
-    mentor.save(ignore_permissions=True)
+    mentor_doc.user = email
+    mentor_doc.save(ignore_permissions=True)
+
+    return {
+        "status": "success",
+        "mentor": mentor_doc.name,
+        "user": email
+    }

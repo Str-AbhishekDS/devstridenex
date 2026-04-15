@@ -8,14 +8,17 @@
  "field_order": [
   "student",
   "offering",
+  "offering_type",
+  "lms_batch",
+  "lms_enrollment",
   "mentor",
   "session_date",
   "amount_paid",
-  "payment_reference",
-  "rating",
   "notes",
-  "amended_from",
+  "rating",
+  "review",
   "column_break_lugc",
+  "payment_reference",
   "status",
   "session_type",
   "priority",
@@ -24,7 +27,13 @@
   "to_time",
   "duration",
   "meeting_link",
-  "review"
+  "amended_from",
+  "alt_time",
+  "alt_date",
+  "student_message",
+  "requested_date",
+  "requested_time",
+  "mentor_request_status"
  ],
  "fields": [
   {
@@ -40,7 +49,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Student",
-   "options": "Student",
+   "options": "User",
    "reqd": 1
   },
   {
@@ -51,6 +60,7 @@
    "options": "Mentor"
   },
   {
+   "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
    "fieldname": "session_date",
    "fieldtype": "Date",
    "label": "Session Date"
@@ -58,6 +68,8 @@
   {
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "Pending\nScheduled\nAccepted\nCompleted\nCancelled"
   },
@@ -120,18 +132,19 @@
    "label": "Topic"
   },
   {
+   "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
    "fieldname": "from_time",
    "fieldtype": "Time",
-   "label": "From Time",
-   "reqd": 1
+   "label": "From Time"
   },
   {
+   "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
    "fieldname": "to_time",
    "fieldtype": "Time",
-   "label": "To Time",
-   "reqd": 1
+   "label": "To Time"
   },
   {
+   "fetch_from": "offering.duration_minutes",
    "fieldname": "duration",
    "fieldtype": "Int",
    "label": "Duration (mins)"
@@ -140,14 +153,72 @@
    "fieldname": "meeting_link",
    "fieldtype": "Data",
    "label": "Meeting Link"
+  },
+  {
+   "fetch_from": "offering.offering_type",
+   "fieldname": "offering_type",
+   "fieldtype": "Select",
+   "label": "Offering Type",
+   "options": "\n1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "lms_batch",
+   "fieldtype": "Link",
+   "label": "LMS Batch",
+   "options": "LMS Batch"
+  },
+  {
+   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+   "fieldname": "lms_enrollment",
+   "fieldtype": "Link",
+   "label": "LMS Enrollment",
+   "options": "LMS Enrollment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "alt_time",
+   "fieldtype": "Time",
+   "label": "Suggested Alt Time"
+  },
+  {
+   "fieldname": "alt_date",
+   "fieldtype": "Date",
+   "label": "Suggested Alt Date"
+  },
+  {
+   "fieldname": "student_message",
+   "fieldtype": "Small Text",
+   "label": "Message from Student"
+  },
+  {
+   "fieldname": "requested_date",
+   "fieldtype": "Datetime",
+   "label": "Requested Date"
+  },
+  {
+   "fieldname": "requested_time",
+   "fieldtype": "Time",
+   "label": "Requested Time"
+  },
+  {
+   "fieldname": "mentor_request_status",
+   "fieldtype": "Select",
+   "label": "Mentor Request Status",
+   "options": "Pending\nAccepted\nDeclined\nSuggested Alt Time"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
+<<<<<<< HEAD
+ "modified": "2026-04-13 11:05:18.542899",
+ "modified_by": "Administrator",
+=======
  "modified": "2026-04-08 18:06:05.671389",
  "modified_by": "abhisheksadale96@gmail.com",
+>>>>>>> 0c5c30fc4de92173aaedba9e1a85c98a0949b7cd
  "module": "Stridenex App",
  "name": "Mentor Session Booking",
  "naming_rule": "Expression (old style)",
