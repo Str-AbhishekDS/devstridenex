@@ -11,14 +11,10 @@
   "business_type",
   "gst_number",
   "industry_sector",
-  "about",
-  "email",
   "column_break_yfng",
   "company_size",
   "job_function",
   "link_of_company",
-  "headquarters",
-  "cin",
   "column_break_wxeg",
   "country",
   "state",
@@ -41,7 +37,10 @@
   "section_break_rnzo",
   "approved_status",
   "terms_and_conditions",
-  "amended_from"
+  "amended_from",
+  "about",
+  "headquarters",
+  "cin"
  ],
  "fields": [
   {
@@ -53,7 +52,6 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Company Name",
-   "reqd": 1,
    "unique": 1
   },
   {
@@ -72,7 +70,6 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "GST Number",
-   "reqd": 1,
    "unique": 1
   },
   {
@@ -258,7 +255,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-15 16:00:25.815292",
+ "modified": "2026-04-14 15:07:35.661132",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Industry list",

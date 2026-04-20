@@ -49,7 +49,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Student",
-   "options": "User",
+   "options": "Student",
    "reqd": 1
   },
   {
@@ -210,10 +210,9 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
- "modified": "2026-04-17 13:39:29.156741",
- "modified_by": "abhishek.sadale@erpdata.in",
+ "modified": "2026-04-17 14:44:16.908835",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Session Booking",
  "naming_rule": "Expression (old style)",
