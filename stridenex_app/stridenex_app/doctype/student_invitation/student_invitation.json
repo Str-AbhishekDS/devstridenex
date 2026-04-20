@@ -1,54 +1,54 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{industry}-{college}",
- "creation": "2026-04-10 16:02:17.963067",
+ "autoname": "field:industry",
+ "creation": "2026-04-17 12:44:11.444075",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_rgsn",
-  "amended_from",
+  "section_break_vapn",
   "industry",
-  "college"
+  "text_editor_uwlk",
+  "amended_from"
  ],
  "fields": [
   {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Campus Partner",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "section_break_rgsn",
+   "fieldname": "section_break_vapn",
    "fieldtype": "Section Break"
   },
   {
    "fieldname": "industry",
    "fieldtype": "Link",
    "label": "Industry",
-   "options": "Industry list"
+   "options": "Industry list",
+   "unique": 1
   },
   {
-   "fieldname": "college",
+   "fieldname": "text_editor_uwlk",
+   "fieldtype": "Small Text",
+   "label": "Form"
+  },
+  {
+   "fieldname": "amended_from",
    "fieldtype": "Link",
-   "label": "College",
-   "options": "College"
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Student Invitation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-15 15:45:14.741749",
+ "modified": "2026-04-17 16:11:41.818908",
  "modified_by": "Administrator",
  "module": "Stridenex App",
- "name": "Campus Partner",
- "naming_rule": "Expression (old style)",
- "owner": "Administrator",
+ "name": "Student Invitation",
+ "naming_rule": "By fieldname",
+ "owner": "roshni.babar@erpdata.in",
  "permissions": [
   {
    "create": 1,

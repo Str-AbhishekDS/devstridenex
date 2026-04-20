@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "field:student",
+ "autoname": "format:{student}-{internship}",
  "creation": "2026-03-31 17:48:12.682875",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -66,11 +66,11 @@
   }
  ],
  "links": [],
- "modified": "2026-04-10 13:12:30.855096",
- "modified_by": "Administrator",
+ "modified": "2026-04-17 11:20:26.955265",
+ "modified_by": "roshni.babar@erpdata.in",
  "module": "Stridenex App",
  "name": "Internship Application",
- "naming_rule": "By fieldname",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

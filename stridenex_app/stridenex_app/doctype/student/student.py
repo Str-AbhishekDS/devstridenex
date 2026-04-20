@@ -78,10 +78,13 @@ def get_student_count():
         return exception_handel(e)
     
 @frappe.whitelist(allow_guest=True)
-def get_student_list():
+def get_student_list(college=None):
     try:
         filters = {}
-
+        if college:
+            filters["college"] = college
+    
+        
         students = frappe.get_all(
             "Student",
             filters=filters,

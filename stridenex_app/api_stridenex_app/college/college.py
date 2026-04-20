@@ -9,6 +9,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
 def create_college():
     try:
         data = frappe.request.get_json()
+        email = data.get("email")
 
         contact_details = data.pop("contact_details", [])
 
@@ -20,6 +21,9 @@ def create_college():
         college.insert(ignore_permissions=True)
 
         create_college_users(contact_details)
+        if email and frappe.db.exists("User", email):
+            frappe.db.set_value("User", email, "is_onboarded", 1)
+            frappe.db.commit()
 
         return gen_response(
             status=200,

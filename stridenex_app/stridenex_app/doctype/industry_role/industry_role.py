@@ -90,3 +90,31 @@ def update_industry_role(name):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "update_industry_role")
         return exception_handel(e)
+    
+@frappe.whitelist(allow_guest=True)
+def delete_industry_role(name):
+    try:
+        if not name:
+            return {"status": 400, "message": "name is required"}
+
+        # Check if document exists
+        if not frappe.db.exists("Industry Role", name):
+            return gen_response(
+                status=404,
+                message="Industry Role not found",
+                data={"success": False}
+            )
+
+        # Delete document
+        frappe.delete_doc("Industry Role", name, ignore_permissions=True)
+        frappe.db.commit()
+
+        return gen_response(
+            status=200,
+            message="Industry Role deleted successfully",
+            data={"name": name}
+        )
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "delete_industry_role")
+        return exception_handel(e)

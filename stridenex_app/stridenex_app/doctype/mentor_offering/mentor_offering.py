@@ -351,7 +351,7 @@ def get_mentor_listings(skill=None, min_price=None, max_price=None,
 
     return result
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def _get_next_available_slot(mentor):
     """
     Return a human-readable label for the mentor's next open slot.

@@ -11,6 +11,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
 def create_mentor():
     try:
         data = frappe.request.get_json()
+        email = data.get("email")
 
         mentor = frappe.get_doc({
             "doctype": "Mentor",
@@ -20,6 +21,9 @@ def create_mentor():
         mentor.insert(ignore_permissions=True)
 
         create_mentor_user(mentor)
+        if email and frappe.db.exists("User", email):
+            frappe.db.set_value("User", email, "is_onboarded", 1)
+            frappe.db.commit()
 
         return gen_response(
             status=200,
