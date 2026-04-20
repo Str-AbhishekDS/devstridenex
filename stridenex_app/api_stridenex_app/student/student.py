@@ -10,6 +10,7 @@ def create_student():
     try:
 
         data = dict(frappe.form_dict)
+        email = data.get("email")
 
         # Remove file field
         data.pop("resume", None)
@@ -55,6 +56,9 @@ def create_student():
             file_doc.save(ignore_permissions=True)
 
         create_student_user(student)
+        if email and frappe.db.exists("User", email):
+            frappe.db.set_value("User", email, "is_onboarded", 1)
+            frappe.db.commit()
 
         return gen_response(
             status=200,
@@ -149,3 +153,44 @@ def get_student(name=None, first_name=None, last_name=None, email_id=None, colle
 
     except Exception as e:
         return exception_handel(e)
+    
+
+
+@frappe.whitelist(allow_guest=True)
+def get_student_by_email(email_id):
+    try:
+        if not email_id:
+            return {
+                "status": 400,
+                "message": "Email is required",
+                "data": {}
+            }
+
+        # Fetch record using email
+        data = frappe.db.get_value(
+            "Student",  
+            {"email_id": email_id},
+            ["name", "first_name","last_name","college","stream","courses_type","course"],
+            as_dict=True
+        )
+
+        if not data:
+            return {
+                "status": 404,
+                "message": "No record found",
+                "data": {}
+            }
+
+        return {
+            "status": 200,
+            "message": "Data fetched successfully",
+            "data": data
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Details By Email Error")
+        return {
+            "status": 500,
+            "message": str(e),
+            "data": {}
+        }

@@ -12,9 +12,10 @@ def create_industry():
 
         contact_details = data.pop("contact_details", [])
         job_functions = data.pop("job_functions", [])
+        email = data.get("email")
 
         industry = frappe.get_doc({
-            "doctype": "Industry",
+            "doctype": "Industry list",
             **data
         })
         # return contact_details
@@ -35,9 +36,13 @@ def create_industry():
                 "contact_no": contact.get("contact_no"),
                 "email": contact.get("email")
             })
-        
+        # create_industry_users(contact_details)
         industry.insert(ignore_permissions=True)
         frappe.db.commit() 
+        if email and frappe.db.exists("User", email):
+            frappe.db.set_value("User", email, "is_onboarded", 1)
+            frappe.db.commit()
+                
         return gen_response(
             status=200,
             message="Industry registered successfully",
@@ -46,7 +51,7 @@ def create_industry():
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "CREATE INDUSTRY ERROR")
-        return {"status": 500, "message": str(e), "data": []}
+        frappe.throw(str(e))
     
 def create_industry_users(contact_details):
 
@@ -96,7 +101,7 @@ def create_industry_users(contact_details):
 def update_industry(company_name):
     try:
         data = frappe.request.get_json()
-        industry = frappe.get_doc("Industry", company_name)
+        industry = frappe.get_doc("Industry list", company_name)
 
         # ✅ Normal fields
         for key, value in data.items():
@@ -121,23 +126,21 @@ def get_industry_by_name(email):
         if not email:
             return {"status": 400, "message": "User mail is required"}
 
-        # Step 1: Find parent Industry from child table
+        # ✅ Step 1: Get Industry directly using email field
         industries = frappe.get_all(
-            "Contact Details",  # replace with actual child doctype name
+            "Industry list",
             filters={"email": email},
-            fields=["parent"],
-            distinct=True
+            fields=["name"]
         )
 
         if not industries:
-            return {"status": 404, "message": "No industry found for this role"}
+            return {"status": 404, "message": "No industry found"}
 
         result = []
-      
 
-        # Step 2: Fetch full Industry details
+        # ✅ Step 2: Fetch full details
         for item in industries:
-            doc = frappe.get_doc("Industry", item.parent)
+            doc = frappe.get_doc("Industry list", item.name)
 
             data = {
                 "company_name": doc.company_name,
@@ -150,11 +153,11 @@ def get_industry_by_name(email):
                 "turn_over_in_cr": doc.turn_over_in_cr,
                 "company_website": doc.company_website,
                 "status": doc.status,
-                "CIN":doc.cin,
-
+                "cin": doc.cin,
 
                 "hiring_process": [
                     {
+                        "name":row.name,
                         "round": row.round,
                         "based_on": row.based_on,
                         "duration": row.duration
@@ -172,14 +175,13 @@ def get_industry_by_name(email):
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Industry By Role Error")
+        frappe.log_error(frappe.get_traceback(), "Get Industry Error")
         return {"status": 500, "message": str(e)}
-    
 # =====================child table apis=============================
 @frappe.whitelist()
 def add_required_role(industry_name, role, duration=None, semester=None, description=None, available_positions=None):
     try:
-        doc = frappe.get_doc("Industry", industry_name)
+        doc = frappe.get_doc("Industry list", industry_name)
 
         doc.append("table_tehd", {
             "role": role,
@@ -208,7 +210,7 @@ def add_required_role(industry_name, role, duration=None, semester=None, descrip
 @frappe.whitelist()
 def add_hiring_round(industry_name, round, based_on=None, duration=None):
     try:
-        doc = frappe.get_doc("Industry", industry_name)
+        doc = frappe.get_doc("Industry list", industry_name)
 
         doc.append("table_nuet", {
             "round": round,
@@ -227,4 +229,76 @@ def add_hiring_round(industry_name, round, based_on=None, duration=None):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Add Hiring Round Error")
+        return exception_handel(e)
+
+@frappe.whitelist(allow_guest=True)
+def delete_hiring_round(name, row_name):
+    try:
+        doc = frappe.get_doc("Industry list", name)
+        
+
+        row_to_delete = None
+
+        for row in doc.table_nuet:
+            if row.name == row_name:
+                row_to_delete = row
+                break
+            
+        if not row_to_delete:
+            return {
+                "status": 404,
+                "message": "Row not found"
+            }
+
+        doc.remove(row_to_delete)
+
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "status": 200,
+            "message": "Hiring round deleted successfully",
+            "data": doc.table_nuet
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Delete Hiring Round Error")
+        return exception_handel(e)
+
+@frappe.whitelist(allow_guest=True)
+def update_hiring_round(industry_name, row_name, round=None, based_on=None, duration=None):
+    try:
+        doc = frappe.get_doc("Industry list", industry_name)
+
+        updated = False
+
+        for row in doc.table_nuet:
+            if row.name == row_name:
+                if round is not None:
+                    row.round = round
+                if based_on is not None:
+                    row.based_on = based_on
+                if duration is not None:
+                    row.duration = int(duration)
+
+                updated = True
+                break
+
+        if not updated:
+            return {
+                "status": 404,
+                "message": "Row not found"
+            }
+
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "status": 200,
+            "message": "Hiring round updated successfully",
+            "data": doc.table_nuet
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Update Hiring Round Error")
         return exception_handel(e)

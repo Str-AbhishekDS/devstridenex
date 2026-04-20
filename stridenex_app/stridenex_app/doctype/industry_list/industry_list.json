@@ -12,6 +12,7 @@
   "gst_number",
   "industry_sector",
   "about",
+  "email",
   "column_break_yfng",
   "company_size",
   "job_function",
@@ -207,7 +208,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Industry",
+   "options": "Industry list",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
@@ -246,16 +247,21 @@
    "fieldname": "cin",
    "fieldtype": "Data",
    "label": "CIN"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-11 09:22:33.348830",
+ "modified": "2026-04-15 16:00:25.815292",
  "modified_by": "Administrator",
  "module": "Stridenex App",
- "name": "Industry",
+ "name": "Industry list",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [

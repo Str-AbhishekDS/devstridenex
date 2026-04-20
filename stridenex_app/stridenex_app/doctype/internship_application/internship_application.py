@@ -105,7 +105,7 @@ def get_student_application_list(industry=None):
     except Exception as e:
         return exception_handel(e)
     
-    
+
 @frappe.whitelist(allow_guest=True)
 def get_application_status_count(industry=None):
     try:
@@ -149,4 +149,75 @@ def get_application_status_count(industry=None):
         )
 
     except Exception as e:
+        return exception_handel(e)
+    
+@frappe.whitelist(allow_guest=True)
+def create_student_application():
+    try:
+        data = frappe.request.get_json()
+
+        doc = frappe.get_doc({
+            "doctype": "Internship Application",
+
+            # 👇 fields based on your response
+            "student": data.get("student"),
+            "internship": data.get("internship"),
+            "status": data.get("status") or "Applied",
+            "applied_on": data.get("applied_on"),
+            "resume": data.get("resume"),
+            "match_score": data.get("match_score") or 0.0,
+            "notes": data.get("notes"),
+            "industry": data.get("industry"),
+        })
+
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        return gen_response(
+            status=200,
+            message="Internship Application created successfully",
+            data=doc
+        )
+
+    except Exception as e:
+        return exception_handel(e)
+
+
+@frappe.whitelist(allow_guest=True)
+def update_application_status(name, status):
+    try:
+        if not name:
+            return {"status": 400, "message": "Application name is required"}
+
+        if not status:
+            return {"status": 400, "message": "Status is required"}
+
+        # Check if document exists
+        if not frappe.db.exists("Internship Application", name):
+            return gen_response(
+                status=404,
+                message="Internship Application not found",
+                data={"success": False}
+            )
+
+        # Fetch document
+        doc = frappe.get_doc("Internship Application", name)
+
+        # Update only status
+        doc.status = status
+
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        return gen_response(
+            status=200,
+            message="Application status updated successfully",
+            data={
+                "name": doc.name,
+                "status": doc.status
+            }
+        )
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "update_application_status")
         return exception_handel(e)

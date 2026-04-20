@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "format:{industry}-{##}",
+ "autoname": "format:{industry}-{title}",
  "creation": "2026-03-31 15:32:41.990338",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -18,6 +18,7 @@
   "status",
   "posted_by",
   "start_date",
+  "eligibility",
   "section_break_rern",
   "required_skills",
   "description",
@@ -105,7 +106,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Industry",
-   "options": "Industry",
+   "options": "Industry list",
    "reqd": 1
   },
   {
@@ -122,12 +123,17 @@
    "fieldname": "start_date",
    "fieldtype": "Date",
    "label": "Start Date"
+  },
+  {
+   "fieldname": "eligibility",
+   "fieldtype": "Data",
+   "label": "Eligibility"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-11 14:01:26.857642",
- "modified_by": "Administrator",
+ "modified": "2026-04-17 09:24:10.172286",
+ "modified_by": "roshni.babar@erpdata.in",
  "module": "Stridenex App",
  "name": "Internship",
  "naming_rule": "Expression (old style)",

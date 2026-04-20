@@ -11,7 +11,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
 import frappe
 from frappe.model.document import Document
 from frappe import _
-from frappe.utils import getdate, nowdate, get_time
+from frappe.utils import getdate, nowdate, get_time, add_days
 import datetime
 
 
@@ -312,9 +312,13 @@ def _time_to_str(t):
 # Replace get_slot_calendar in mentor_session_booking.py
 # ─────────────────────────────────────────────────────────────────────────────
 
-@frappe.whitelist()
-def get_slot_calendar(mentor, from_date, to_date, offering=None):
-
+@frappe.whitelist(allow_guest=True)
+def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
+    
+    if not from_date and not to_date:
+        from_date = nowdate()
+        to_date = add_days(from_date, 6)
+        
     if not mentor or not from_date or not to_date:
         frappe.throw(_("mentor, from_date, and to_date are required"))
 
@@ -469,7 +473,7 @@ def get_slot_calendar(mentor, from_date, to_date, offering=None):
     return calendar
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def book_slot(mentor, student, session_date, from_time, to_time, topic, offering=None):
     """Create a new Mentor Session Booking."""
 
@@ -798,7 +802,7 @@ def create_session_request(mentor, student, offering, topic,
     return {"booking_name": doc.name}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_pending_requests(mentor):
     """
     Return all Pending session requests for a mentor.
@@ -816,7 +820,7 @@ def get_pending_requests(mentor):
             "session_type", "priority", "student_message",
             "amount_paid",
         ],
-        order_by="FIELD(priority,'High','Medium','Low'), requested_date asc",
+        # order_by="FIELD(priority,'High','Medium','Low'), requested_date asc",
     )
 
     for r in rows:
@@ -1049,8 +1053,7 @@ def accept_request(booking_name, from_time, to_time, session_date=None):
     return {"booking_name": doc.name}
 
 
-
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_student_upcoming_sessions(student, limit=20):
     """All upcoming scheduled sessions for the student."""
     sessions = frappe.get_all(

@@ -69,6 +69,7 @@ def signup():
         })
 
         user.flags.no_welcome_mail = True
+        user.is_onboarded = False
         user.insert(ignore_permissions=True)
 
         update_password(user.name, password)
@@ -122,9 +123,11 @@ def login(usr, pwd):
             # Remove default roles if needed
             ignore_roles = ["All", "Guest"]
             roles = [r for r in roles if r not in ignore_roles]
+            is_onboarded = frappe.db.get_value("User", user, "is_onboarded")
 
             frappe.response["user"] = user
             frappe.response["roles"] = roles
+            frappe.response["is_onboarded"] = is_onboarded
             frappe.response["key_details"] = generate_key(user)
 
         gen_response(200, frappe.response["message"])

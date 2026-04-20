@@ -212,13 +212,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
-<<<<<<< HEAD
- "modified": "2026-04-13 11:05:18.542899",
- "modified_by": "Administrator",
-=======
- "modified": "2026-04-08 18:06:05.671389",
- "modified_by": "abhisheksadale96@gmail.com",
->>>>>>> 0c5c30fc4de92173aaedba9e1a85c98a0949b7cd
+ "modified": "2026-04-17 13:39:29.156741",
+ "modified_by": "abhishek.sadale@erpdata.in",
  "module": "Stridenex App",
  "name": "Mentor Session Booking",
  "naming_rule": "Expression (old style)",
