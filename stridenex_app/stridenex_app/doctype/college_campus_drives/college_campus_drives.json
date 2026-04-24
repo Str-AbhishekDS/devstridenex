@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{college}-{industry}",
+ "creation": "2026-04-20 07:54:22.534520",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_3fek",
+  "college",
+  "industry",
+  "registeration_deadline",
+  "drive_date",
+  "package_offered",
+  "backlog",
+  "criteria",
+  "role",
+  "section_break_ipjv",
+  "designation",
+  "department",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_3fek",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College"
+  },
+  {
+   "fieldname": "industry",
+   "fieldtype": "Link",
+   "label": "Industry",
+   "options": "Industry list"
+  },
+  {
+   "fieldname": "registeration_deadline",
+   "fieldtype": "Datetime",
+   "label": "Registeration Deadline"
+  },
+  {
+   "fieldname": "drive_date",
+   "fieldtype": "Datetime",
+   "label": "Drive Date"
+  },
+  {
+   "fieldname": "package_offered",
+   "fieldtype": "Data",
+   "label": "Package Offered"
+  },
+  {
+   "fieldname": "backlog",
+   "fieldtype": "Int",
+   "label": "Backlog"
+  },
+  {
+   "fieldname": "criteria",
+   "fieldtype": "Data",
+   "label": "Criteria(CGPA)"
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Link",
+   "label": "Role",
+   "options": "Industry Role"
+  },
+  {
+   "fieldname": "section_break_ipjv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Table",
+   "label": "Designation",
+   "options": "Industry Designation Table"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Table",
+   "label": "Department",
+   "options": "Department Table"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "College Campus Drives",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-21 09:31:23.599055",
+ "modified_by": "roshni.babar@erpdata.in",
+ "module": "Stridenex App",
+ "name": "College Campus Drives",
+ "naming_rule": "Expression (old style)",
+ "owner": "roshani.babar@erpdata.in",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

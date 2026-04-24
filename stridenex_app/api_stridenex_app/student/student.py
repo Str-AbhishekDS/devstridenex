@@ -170,7 +170,7 @@ def get_student_by_email(email_id):
         data = frappe.db.get_value(
             "Student",  
             {"email_id": email_id},
-            ["name", "first_name","last_name","college","stream","courses_type","course"],
+            ["*"],
             as_dict=True
         )
 
@@ -194,3 +194,36 @@ def get_student_by_email(email_id):
             "message": str(e),
             "data": {}
         }
+@frappe.whitelist(allow_guest=True)
+def update_student(name=None):
+    try:
+        data = frappe.request.get_json()
+
+        if not name:
+            return {"status": 400, "message": "Student name (ID) is required"}
+
+        doc = frappe.get_doc("Student", name)
+
+        # Update only fields that are provided
+        fields = [
+            "first_name", "middle_name", "last_name",
+            "email_id", "mobile_no", "college",
+            "department", "course", "semester",
+            "academic_year", "date_of_birth",
+            "stream", "linkedin", "github", "gender"
+        ]
+
+        for field in fields:
+            if field in data:
+                doc.set(field, data.get(field))
+
+        doc.save(ignore_permissions=True)
+
+        return {
+            "status": 200,
+            "message": "Student updated successfully",
+            "data": doc.name
+        }
+
+    except Exception as e:
+        return {"status": 500, "message": str(e)}

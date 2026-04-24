@@ -96,11 +96,11 @@ def get_project_by_id(project_name):
         return exception_handel(e)
     
 @frappe.whitelist(allow_guest=True)
-def update_project(project_name):
+def update_project(name):
     try:
         data = frappe.request.get_json()
 
-        project = frappe.get_doc("Industry Project", project_name)
+        project = frappe.get_doc("Industry Project", name)
         for key, value in data.items():
             if key != "required_skills":
                 setattr(project, key, value)

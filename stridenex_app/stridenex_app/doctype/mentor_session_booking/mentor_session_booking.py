@@ -733,7 +733,7 @@ def split_into_hour_slots(from_time, to_time):
 
 # ── New whitelisted API — add at module level (outside class) ────────────────
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest= True)
 def create_group_session_booking(offering, batch_name, student):
     """
     Called from JS after enroll_student_in_batch succeeds.
