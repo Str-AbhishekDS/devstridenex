@@ -353,34 +353,54 @@ def get_mentor_listings(skill=None, min_price=None, max_price=None,
 
 @frappe.whitelist(allow_guest=True)
 def _get_next_available_slot(mentor):
-    """
-    Return a human-readable label for the mentor's next open slot.
-    Used for the small date badge on the mentor card.
-    """
-    from frappe.utils import nowdate, add_days, format_date
+    from frappe.utils import nowdate, add_days
+    import datetime
 
     today = nowdate()
+    current_time = datetime.datetime.now().time()  # ✅ current system time
 
-    # Check next 7 days
     for i in range(7):
         check_date = add_days(today, i)
+
         calendar = get_slot_calendar(
             mentor=mentor,
             from_date=check_date,
             to_date=check_date,
         )
-        day_slots = calendar.get(check_date, [])
+
+        # ✅ FIX: use string key
+        day_slots = calendar.get(str(check_date), [])
+
+        # ✅ only available slots
         available = [s for s in day_slots if s["status"] == "available"]
+
+        # ✅ IMPORTANT: filter past time ONLY for today
+        if str(check_date) == today:
+            future_slots = []
+            for s in available:
+                slot_time = datetime.datetime.strptime(
+                    s["from_time"], "%H:%M:%S"
+                ).time()
+
+                if slot_time > current_time:
+                    future_slots.append(s)
+
+            available = future_slots
+
+        # ✅ if valid slot found
         if available:
-            slot_time = available[0]["from_time"][:5]   # "HH:MM"
-            import datetime
-            dt = datetime.datetime.strptime(check_date, "%Y-%m-%d")
-            day_label = dt.strftime("%b %-d")            # "Feb 27"
-            # Convert 24h to 12h AM/PM
+            slot_time = available[0]["from_time"][:5]
+
+            dt = datetime.datetime.strptime(str(check_date), "%Y-%m-%d")
+            day_label = dt.strftime("%b %d")   # safer format
+
+            # Convert to 12-hour format
             h, m = map(int, slot_time.split(":"))
             ampm = "AM" if h < 12 else "PM"
-            h12  = h % 12 or 12
-            time_label = f"{h12}:{m:02d} {ampm}" if m else f"{h12} {ampm}"
-            return f"{day_label}, {time_label}"          # "Feb 27, 4PM"
+            h12 = h % 12 or 12
 
-    return "Available"   # has availability but nothing in next 7 days
+            time_label = f"{h12}:{m:02d} {ampm}" if m else f"{h12} {ampm}"
+
+            return f"{day_label}, {time_label}"
+
+    return "No Slots Available"

@@ -533,9 +533,9 @@ frappe.ui.form.on("Mentor Session Booking", {
         }
 
         // ── Review button ─────────────────────────────────────────────
-        if (frm.doc.offering_type === "Offering" &&
+        if (frm.doc.mentor_request_status === "Accepted" &&
             frm.doc.status        === "Completed" &&
-            frm.doc.docstatus     === 1 &&
+            frm.doc.docstatus     === 0 &&
             !frm.doc.rating) {
             frm.add_custom_button(__("⭐ Submit Review"), () => {
                 _submit_review_dialog(frm);
@@ -700,8 +700,8 @@ function _submit_review_dialog(frm) {
     const d = new frappe.ui.Dialog({
         title: __("Submit Review"),
         fields: [
-            { fieldtype: "Float",      fieldname: "rating",      label: __("Rating (1–5)"), reqd: 1 },
-            { fieldtype: "Small Text", fieldname: "review_text", label: __("Review"),       reqd: 1 },
+            { fieldtype: "Float", fieldname: "rating", label: __("Rating (1–5)"), reqd: 1 },
+            { fieldtype: "Small Text", fieldname: "review_text", label: __("Review"), reqd: 1 },
         ],
         primary_action_label: __("Submit"),
         primary_action(values) {
@@ -709,8 +709,8 @@ function _submit_review_dialog(frm) {
                 method: `${APP}.${APP}.doctype.mentor_session_booking.mentor_session_booking.submit_review`,
                 args: {
                     booking_name: frm.doc.name,
-                    rating:       values.rating,
-                    review_text:  values.review_text,
+                    rating: values.rating,
+                    review: values.review_text, // ✅ FIXED
                 },
                 callback(r) {
                     if (r.message && r.message.success) {
@@ -724,7 +724,6 @@ function _submit_review_dialog(frm) {
     });
     d.show();
 }
-
 function _update_booking_status(frm, status) {
     frappe.call({
         method: `${APP}.${APP}.doctype.mentor_session_booking.mentor_session_booking.update_status`,
