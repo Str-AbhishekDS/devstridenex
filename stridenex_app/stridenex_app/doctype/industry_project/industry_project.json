@@ -18,6 +18,10 @@
   "end_date",
   "eligibility",
   "amended_from",
+  "section_break_knhf",
+  "course",
+  "department",
+  "academic_year",
   "section_break_kpna",
   "required_skills"
  ],
@@ -29,8 +33,7 @@
   {
    "fieldname": "project_name",
    "fieldtype": "Data",
-   "label": "Project Name",
-   "unique": 1
+   "label": "Project Name"
   },
   {
    "fieldname": "project_code",
@@ -97,14 +100,35 @@
    "fieldtype": "Link",
    "label": "Industry",
    "options": "Industry list"
+  },
+  {
+   "fieldname": "section_break_knhf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Courses"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "College Department"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Data",
+   "label": "Academic Year"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-22 16:50:21.294861",
- "modified_by": "Administrator",
+ "modified": "2026-05-02 15:07:30.711987",
+ "modified_by": "roshani.babar@erpdata.in",
  "module": "Stridenex App",
  "name": "Industry Project",
  "naming_rule": "Expression (old style)",

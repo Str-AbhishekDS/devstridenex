@@ -110,3 +110,29 @@ def get_student_list(college=None):
 
     except Exception as e:
         return exception_handel(e)
+
+@frappe.whitelist(allow_guest=True)
+def create_skill():
+    try:
+        data = frappe.request.get_json()
+
+        doc = frappe.get_doc({
+            "doctype": "Skill",
+            "skill_name": data.get("skill_name"),
+        })
+
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "status": "success",
+            "message": "Skill created successfully",
+            "data": doc.name
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Create Skill Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }

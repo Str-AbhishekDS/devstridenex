@@ -12,14 +12,16 @@
   "work_mode",
   "stipend",
   "payment_mode",
+  "deadline",
   "column_break_jbhk",
   "duration",
   "openings",
-  "deadline",
   "status",
   "posted_by",
   "start_date",
-  "eligibility",
+  "course",
+  "department",
+  "acdemic_year",
   "section_break_rern",
   "required_skills",
   "description",
@@ -126,20 +128,32 @@
    "label": "Start Date"
   },
   {
-   "fieldname": "eligibility",
-   "fieldtype": "Data",
-   "label": "Eligibility"
-  },
-  {
    "fieldname": "payment_mode",
    "fieldtype": "Select",
    "label": "Payment Mode",
    "options": "Paid\nUnpaid"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Courses"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "College Department"
+  },
+  {
+   "fieldname": "acdemic_year",
+   "fieldtype": "Int",
+   "label": "Acdemic Year"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-27 15:54:21.734415",
+ "modified": "2026-05-02 15:45:14.218887",
  "modified_by": "roshani.babar@erpdata.in",
  "module": "Stridenex App",
  "name": "Internship",

@@ -18,10 +18,10 @@ def create_industry():
         
         industry.insert(ignore_permissions=True)
         if email and frappe.db.exists("User", email):
-            if data.get("company_name"):  # Step 1
-                onboarding_status = 1
+            if data.get("company_name"):
+                onboarding_status = 2
             else:
-                onboarding_status = 0  # optional (not started)
+                onboarding_status = 1 
             frappe.db.set_value("User", email, "is_onboarded", onboarding_status)
         
                 
@@ -142,9 +142,9 @@ def update_industry(company_name):
         if email and frappe.db.exists("User", email):
             onboarding_status = 0
             if data.get("country"):
-                onboarding_status = 2
-            if contact_details:
                 onboarding_status = 3
+            if contact_details:
+                onboarding_status = 4
 
             frappe.db.set_value("User", email, "is_onboarded", onboarding_status)
 
@@ -189,7 +189,12 @@ def get_industry_by_name(email):
                 "company_website": doc.company_website,
                 "status": doc.status,
                 "cin": doc.cin,
-
+                "average_fresher_recruited_per_year":doc.average_fresher_recruited_per_year,
+                "internship_per_year":doc.internship_per_year,
+                "state":doc.state,
+                "tahsil":doc.tahsil,
+                "city":doc.city,
+                "district":doc.district,
                 "hiring_process": [
                     {
                         "name":row.name,
