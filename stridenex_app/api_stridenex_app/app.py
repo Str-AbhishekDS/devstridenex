@@ -209,7 +209,7 @@ def send_mobile_otp(mobile_no=None):
     })
 
 @frappe.whitelist(allow_guest=True)
-def validate_mobile_otp(mobile_no=None, otp=None):
+def validate_mobile_otp(mobile_no=None, otp=None,email=None):
     if not mobile_no:
         return gen_response(400, "Mobile number is required",{"success": False})
 
@@ -227,9 +227,13 @@ def validate_mobile_otp(mobile_no=None, otp=None):
         doc.delete(ignore_permissions=True)
         frappe.db.commit()
         return gen_response(400, "OTP has expired. Please request a new OTP.", {"success": False})
-
+     
     if str(doc.otp) != str(otp):
         return gen_response(400, "Invalid OTP", {"success": False})
+    user = frappe.db.get_value("User", {"email": email}, "name")
+    if user:
+        frappe.db.set_value("User", user, "is_onboarded", 1)  
+        frappe.db.commit()
 
     return gen_response(200, "Mobile number verified successfully", {"success": True})
 
@@ -327,6 +331,11 @@ def validate_email_otp(email=None, otp=None):
     
     if str(doc.otp) != str(otp):
         return gen_response(400, "Invalid OTP", {"success": False})
+    
+    user = frappe.db.get_value("User", {"email": email}, "name")
+    if user:
+        frappe.db.set_value("User", user, "is_onboarded", 1) 
+        frappe.db.commit()
 
     return gen_response(200, "Email verified successfully", {"success": True})
 
