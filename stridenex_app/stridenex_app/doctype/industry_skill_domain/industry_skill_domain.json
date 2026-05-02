@@ -7,13 +7,14 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_q3ej",
-  "amended_from",
   "industry",
-  "skill_domain",
+  "domain",
+  "sub_domain",
   "section_break_vhkt",
   "table_cxek",
   "section_break_vjre",
-  "designation"
+  "designation",
+  "amended_from"
  ],
  "fields": [
   {
@@ -37,11 +38,6 @@
    "options": "Industry list"
   },
   {
-   "fieldname": "skill_domain",
-   "fieldtype": "Data",
-   "label": "Skill Domain"
-  },
-  {
    "fieldname": "section_break_vhkt",
    "fieldtype": "Section Break"
   },
@@ -60,14 +56,26 @@
    "fieldtype": "Table",
    "label": "Designation",
    "options": "Industry Designation Table"
+  },
+  {
+   "fieldname": "domain",
+   "fieldtype": "Link",
+   "label": "Domain",
+   "options": "Domain"
+  },
+  {
+   "fieldname": "sub_domain",
+   "fieldtype": "Link",
+   "label": "Sub Domain",
+   "options": "Sub Domain"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-15 15:45:14.896474",
- "modified_by": "Administrator",
+ "modified": "2026-04-25 11:06:00.108166",
+ "modified_by": "roshni.babar@erpdata.in",
  "module": "Stridenex App",
  "name": "Industry Skill Domain",
  "naming_rule": "Expression (old style)",

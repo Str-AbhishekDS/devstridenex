@@ -57,7 +57,7 @@ def create_student():
 
         create_student_user(student)
         if email and frappe.db.exists("User", email):
-            frappe.db.set_value("User", email, "is_onboarded", 1)
+            frappe.db.set_value("User", email, "is_onboarded", 3)
             frappe.db.commit()
 
         return gen_response(

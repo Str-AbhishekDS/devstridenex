@@ -3,10 +3,64 @@
 
 import frappe
 from frappe.model.document import Document
+from stridenex_app.api_stridenex_app.app_utils import (
+    gen_response,
+    exception_handel
+)
 
 
 class CollegeEvent(Document):
 	pass
+
+@frappe.whitelist(allow_guest=True)
+def get_college_event_list(college=None, student=None):
+    try:
+        filters = {}
+
+        # ✅ Optional filter
+        if college:
+            filters["college"] = college
+
+        events = frappe.get_all(
+            "College Event",
+            filters=filters,
+            fields=[
+                "*"
+            ],
+            order_by="creation desc"
+        )
+
+        # ✅ Get registration status (if student provided)
+        registration_map = {}
+        if student:
+            registrations = frappe.get_all(
+                "Student Event Registeration",
+                filters={"student": student},
+                fields=["event", "status"]
+            )
+
+            registration_map = {
+                r["event"]: r["status"] for r in registrations
+            }
+
+        # ✅ Attach status
+        for event in events:
+            if student:
+                event["registration_status"] = registration_map.get(
+                    event["name"], "Not Registered"
+                )
+            else:
+                event["registration_status"] = "Not Registered"
+
+        return gen_response(
+            status=200,
+            message="College event list fetched successfully",
+            data=events
+        )
+
+    except Exception as e:
+        return exception_handel(e)
+    
 
 @frappe.whitelist(allow_guest=True)
 def create_college_event():
