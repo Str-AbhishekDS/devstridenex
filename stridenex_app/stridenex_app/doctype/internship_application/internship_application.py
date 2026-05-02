@@ -155,6 +155,19 @@ def get_application_status_count(industry=None):
 def create_student_application():
     try:
         data = frappe.request.get_json()
+        student = data.get("student")
+        
+        application_count = frappe.db.count(
+            "Internship Application",
+            {"student": student}
+        )
+
+        if application_count >= 5:
+            return gen_response(
+                status=417,
+                message="You have already applied for 5 internships. Cannot apply for more.",
+                data=None
+            )
 
         doc = frappe.get_doc({
             "doctype": "Internship Application",

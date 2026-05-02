@@ -66,41 +66,68 @@ def create_internship():
         return exception_handel(e)
         
 @frappe.whitelist(allow_guest=True)
-def get_internship_list(industry=None):
+def get_internship_list(industry=None, student=None):
     try:
         filters = {}
 
-        # Apply filter only if industry is provided
         if industry:
             filters["industry"] = industry
 
-        internship = frappe.get_all(
+        internships = frappe.get_all(
             "Internship",
             filters=filters,
-            fields=[
-                
-                "*"
-            ],
+            fields=["*"],
             order_by="creation desc"
         )
-        for domain in internship:
-            # 👇 Skills child table
-            skills = frappe.get_all(
-                "Internship Required Skill",
-                filters={"parent": domain["name"]},
-                fields=["skill"]
-            )
-            domain["skills"] = skills
 
+        internship_names = [i["name"] for i in internships]
+
+        # ✅ Skills mapping
+        all_skills = frappe.get_all(
+            "Internship Required Skill",
+            filters={"parent": ["in", internship_names]},
+            fields=["parent", "skill"]
+        )
+
+        skill_map = {}
+        for s in all_skills:
+            skill_map.setdefault(s["parent"], []).append({
+                "skill": s["skill"]
+            })
+
+        # ✅ Application status mapping
+        enrollment_map = {}
+        if student:
+            enrollments = frappe.get_all(
+                "Internship Application",
+                filters={"student": student},
+                fields=["internship", "status"]
+            )
+
+            enrollment_map = {
+                e["internship"]: e["status"] for e in enrollments
+            }
+
+        # ✅ Final response
+        for internship in internships:
+            internship["skills"] = skill_map.get(internship["name"], [])
+
+            if student:
+                internship["applied_status"] = enrollment_map.get(
+                    internship["name"], "Not Applied"
+                )
+            else:
+                internship["applied_status"] = "Not Applied"
 
         return gen_response(
             status=200,
-            message="industry list fetched successfully",
-            data=internship
+            message="Internship list fetched successfully",
+            data=internships
         )
 
     except Exception as e:
         return exception_handel(e)
+    
 
 @frappe.whitelist(allow_guest=True)
 def update_internship():

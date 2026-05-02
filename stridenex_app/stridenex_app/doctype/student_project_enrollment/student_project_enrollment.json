@@ -7,8 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "student",
-  "industry",
   "project",
+  "industry",
   "status",
   "applied_on",
   "resume",
@@ -38,7 +38,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Applied\nShortlisted\nInterview Scheduled\nRejected\nSelected"
+   "options": "Applied\nShortlisted\nInterview Scheduled\nRejected\nSelected\nAwarded"
   },
   {
    "fieldname": "applied_on",
@@ -74,15 +74,14 @@
    "fieldname": "industry",
    "fieldtype": "Link",
    "label": "Industry",
-   "options": "Industry list",
-   "reqd": 1
+   "options": "Industry list"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-15 15:45:15.031156",
- "modified_by": "Administrator",
+ "modified": "2026-04-28 14:33:21.734639",
+ "modified_by": "roshani.babar@erpdata.in",
  "module": "Stridenex App",
  "name": "Student Project Enrollment",
  "naming_rule": "Expression (old style)",

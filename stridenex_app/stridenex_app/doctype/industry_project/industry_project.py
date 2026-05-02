@@ -38,14 +38,16 @@ def create_project():
     
 
 @frappe.whitelist(allow_guest=True)
-def get_project_list(industry=None):
+def get_project_list(industry=None, student=None,status=None):
     try:
         filters = {}
 
-        # Apply filter only if industry is provided
         if industry:
             filters["industry"] = industry
+        if status:
+            filters["status"] = status
 
+        # ✅ Get all projects
         projects = frappe.get_all(
             "Industry Project",
             filters=filters,
@@ -63,14 +65,42 @@ def get_project_list(industry=None):
             ],
             order_by="creation desc"
         )
-        for domain in projects:
-            # 👇 Skills child table
+
+        # ✅ Get enrollments (only once)
+        enrollment_map = {}
+
+        if student:
+            enrollments = frappe.get_all(
+                "Student Project Enrollment",
+                filters={"student": student},
+                fields=["project", "status"]
+            )
+
+            # Map: "project" → status
+            enrollment_map = {
+                e["project"]: e["status"] for e in enrollments
+            }
+
+        # ✅ Attach skills + applied status
+        for project in projects:
+
+            # Skills
             skills = frappe.get_all(
                 "Student Skill Table",
-                filters={"parent": domain["name"]},
+                filters={"parent": project["name"]},
                 fields=["skill"]
             )
-            domain["skills"] = skills
+            project["skills"] = skills
+
+            # ✅ Match project key
+            project_key = f"{project['project_name']}-{project['project_code']}"
+
+            if student:
+                project["applied_status"] = enrollment_map.get(
+                    project_key, "Not Applied"
+                )
+            else:
+                project["applied_status"] = None
 
         return gen_response(
             status=200,
@@ -80,7 +110,8 @@ def get_project_list(industry=None):
 
     except Exception as e:
         return exception_handel(e)
-    
+
+
 @frappe.whitelist(allow_guest=True)
 def get_project_by_id(project_name):
     try:

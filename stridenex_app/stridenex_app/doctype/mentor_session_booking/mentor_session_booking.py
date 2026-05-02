@@ -477,8 +477,8 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
 def book_slot(mentor, student, session_date, from_time, to_time, topic, offering=None):
     """Create a new Mentor Session Booking."""
 
-    if not frappe.has_permission("Mentor Session Booking", "create"):
-        frappe.throw(_("You do not have permission to book a session."), frappe.PermissionError)
+    # if not frappe.has_permission("Mentor Session Booking", "create"):
+    #     frappe.throw(_("You do not have permission to book a session."), frappe.PermissionError)
 
     doc = frappe.get_doc({
         "doctype":      "Mentor Session Booking",
@@ -492,8 +492,11 @@ def book_slot(mentor, student, session_date, from_time, to_time, topic, offering
         "status":       "Scheduled",   # ✅ FIXED (not Scheduled)
     })
 
-    doc.insert(ignore_permissions=False)
-    frappe.db.commit()
+    try:
+        doc.insert(ignore_permissions=False)
+        frappe.db.commit()
+    except Exception as e:
+        return {"session_name": doc.name, "message": str(e)}
 
     return {"session_name": doc.name}
 
