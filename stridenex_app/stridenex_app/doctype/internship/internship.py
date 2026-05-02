@@ -66,12 +66,18 @@ def create_internship():
         return exception_handel(e)
         
 @frappe.whitelist(allow_guest=True)
-def get_internship_list(industry=None, student=None):
+def get_internship_list(industry=None, student=None,course=None,department=None,academic_year=None):
     try:
         filters = {}
 
         if industry:
             filters["industry"] = industry
+        if course:
+            filters["course"]=course
+        if department:
+            filters["department"]=department
+        if academic_year:
+            filters["academic_year"]=academic_year
 
         internships = frappe.get_all(
             "Internship",

@@ -38,7 +38,7 @@ def create_project():
     
 
 @frappe.whitelist(allow_guest=True)
-def get_project_list(industry=None, student=None,status=None):
+def get_project_list(industry=None, student=None,status=None,course=None,department=None,academic_year=None):
     try:
         filters = {}
 
@@ -46,6 +46,12 @@ def get_project_list(industry=None, student=None,status=None):
             filters["industry"] = industry
         if status:
             filters["status"] = status
+        if course:
+            filters["course"]=course
+        if department:
+            filters["department"]=department
+        if academic_year:
+            filters["academic_year"]=academic_year
 
         # ✅ Get all projects
         projects = frappe.get_all(
@@ -61,7 +67,10 @@ def get_project_list(industry=None, student=None,status=None):
                 "end_date",
                 "status",
                 "eligibility",
-                "industry"
+                "industry",
+                "course",
+                "department",
+                "academic_year"
             ],
             order_by="creation desc"
         )
