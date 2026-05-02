@@ -11,6 +11,7 @@
   "location",
   "work_mode",
   "stipend",
+  "payment_mode",
   "column_break_jbhk",
   "duration",
   "openings",
@@ -128,12 +129,18 @@
    "fieldname": "eligibility",
    "fieldtype": "Data",
    "label": "Eligibility"
+  },
+  {
+   "fieldname": "payment_mode",
+   "fieldtype": "Select",
+   "label": "Payment Mode",
+   "options": "Paid\nUnpaid"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-17 09:24:10.172286",
- "modified_by": "roshni.babar@erpdata.in",
+ "modified": "2026-04-27 15:54:21.734415",
+ "modified_by": "roshani.babar@erpdata.in",
  "module": "Stridenex App",
  "name": "Internship",
  "naming_rule": "Expression (old style)",

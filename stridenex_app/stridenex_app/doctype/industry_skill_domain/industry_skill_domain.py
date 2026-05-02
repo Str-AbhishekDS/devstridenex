@@ -134,6 +134,8 @@ def create_skill_domain():
 
         domain.industry = data.get("industry")
         domain.skill_domain = data.get("skill_domain")
+        domain.domain = data.get("domain")              # ✅ ADD THIS
+        domain.sub_domain = data.get("sub_domain") 
 
         # 🔄 TRY THESE ONE BY ONE:
         if "skills" in data:

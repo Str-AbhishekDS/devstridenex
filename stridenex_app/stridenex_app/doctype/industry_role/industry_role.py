@@ -27,7 +27,7 @@ def create_industry_role():
 
         return gen_response(
             status=200,
-            message="Internship registered successfully",
+            message="Idustry role registered successfully",
             data={"name":industry.role }
         )
 

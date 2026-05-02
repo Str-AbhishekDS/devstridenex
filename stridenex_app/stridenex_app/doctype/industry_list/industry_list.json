@@ -9,13 +9,17 @@
   "section_break_larc",
   "company_name",
   "business_type",
+  "other_business_type",
   "gst_number",
   "industry_sector",
+  "other_industry_sector",
   "column_break_yfng",
+  "about",
   "company_size",
   "job_function",
   "link_of_company",
   "column_break_wxeg",
+  "email",
   "country",
   "state",
   "district",
@@ -33,7 +37,7 @@
   "section_break_ppno",
   "contact_details",
   "hiring_process_section",
-  "table_nuet",
+  "hiring_process",
   "section_break_rnzo",
   "approved_status",
   "terms_and_conditions",
@@ -69,8 +73,7 @@
    "fieldname": "gst_number",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "GST Number",
-   "unique": 1
+   "label": "GST Number"
   },
   {
    "fieldname": "industry_sector",
@@ -216,11 +219,6 @@
    "label": "Hiring Process"
   },
   {
-   "fieldname": "table_nuet",
-   "fieldtype": "Table",
-   "options": "Industry Hiring Process"
-  },
-  {
    "fieldname": "about",
    "fieldtype": "Data",
    "label": "About"
@@ -249,6 +247,21 @@
    "fieldname": "email",
    "fieldtype": "Data",
    "label": "Email"
+  },
+  {
+   "fieldname": "other_business_type",
+   "fieldtype": "Data",
+   "label": "Other Business Type"
+  },
+  {
+   "fieldname": "other_industry_sector",
+   "fieldtype": "Data",
+   "label": "Other Industry Sector"
+  },
+  {
+   "fieldname": "hiring_process",
+   "fieldtype": "Table",
+   "options": "Industry Hiring Process"
   }
  ],
  "grid_page_length": 50,

@@ -19,6 +19,7 @@
   "courses_type",
   "course",
   "department",
+  "cgpa",
   "column_break_brzj",
   "academic_year",
   "semester",
@@ -117,8 +118,9 @@
   },
   {
    "fieldname": "academic_year",
-   "fieldtype": "Data",
-   "label": "Academic Year"
+   "fieldtype": "Select",
+   "label": "Academic Year",
+   "options": "First Year\nSecond Year\nThird Year\nForth Year"
   },
   {
    "fieldname": "date_of_birth",
@@ -174,14 +176,19 @@
    "fieldtype": "Table",
    "label": "Career Interest",
    "options": "Career Interest Table"
+  },
+  {
+   "fieldname": "cgpa",
+   "fieldtype": "Int",
+   "label": "CGPA"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-14 18:18:55.171640",
- "modified_by": "abhisheksadale96@gmail.com",
+ "modified": "2026-04-22 13:07:54.570961",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Student",
  "naming_rule": "By fieldname",
