@@ -38,20 +38,19 @@ def create_project():
     
 
 @frappe.whitelist(allow_guest=True)
-def get_project_list(industry=None, student=None,status=None,course=None,department=None,academic_year=None):
+def get_project_list(industry=None, student=None, status=None, course=None, department=None, academic_year=None):
     try:
         filters = {}
-
         if industry:
             filters["industry"] = industry
         if status:
             filters["status"] = status
         if course:
-            filters["course"]=course
+            filters["course"] = course
         if department:
-            filters["department"]=department
+            filters["department"] = department
         if academic_year:
-            filters["academic_year"]=academic_year
+            filters["academic_year"] = academic_year
 
         # ✅ Get all projects
         projects = frappe.get_all(
@@ -78,22 +77,27 @@ def get_project_list(industry=None, student=None,status=None,course=None,departm
 
         # ✅ Get enrollments (only once)
         enrollment_map = {}
-
         if student:
             enrollments = frappe.get_all(
                 "Student Project Enrollment",
                 filters={"student": student},
                 fields=["project", "status"]
             )
-
             # Map: "project" → status
             enrollment_map = {
                 e["project"]: e["status"] for e in enrollments
             }
 
+        # ✅ Get all enrollments for count (only when student is None)
+        all_enrollments = []
+        if not student:
+            all_enrollments = frappe.get_all(
+                "Student Project Enrollment",
+                fields=["project", "status"]
+            )
+
         # ✅ Attach skills + applied status
         for project in projects:
-
             # Skills
             skills = frappe.get_all(
                 "Student Skill Table",
@@ -112,12 +116,20 @@ def get_project_list(industry=None, student=None,status=None,course=None,departm
             else:
                 project["applied_status"] = None
 
+                # ✅ Count applied and shortlisted students for this project
+                project_enrollments = [
+                    e for e in all_enrollments if e["project"] == project_key
+                ]
+                project["applied_count"] = len(project_enrollments)
+                project["shortlisted_count"] = len([
+                    e for e in project_enrollments if e["status"] == "Shortlisted"
+                ])
+
         return gen_response(
             status=200,
             message="Project list fetched successfully",
             data=projects
         )
-
     except Exception as e:
         return exception_handel(e)
 
@@ -166,7 +178,7 @@ def update_project(name):
 
     except Exception as e:
         return exception_handel(e)
-
+  
 @frappe.whitelist(allow_guest=True)
 def inactive_project(project_name):
     try:
