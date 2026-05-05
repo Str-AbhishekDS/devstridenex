@@ -6,11 +6,11 @@ from stridenex_app.api_stridenex_app.app_utils import (
 
 
 @frappe.whitelist(allow_guest=True)
-def create_student(email=None):
+def create_student():
     try:
 
         data = dict(frappe.form_dict)
-        email = data.get("email")
+        email = data.get("email_id")
 
         # Remove file field
         data.pop("resume", None)
