@@ -17,13 +17,14 @@
   "start_date",
   "end_date",
   "eligibility",
-  "amended_from",
+  "application_deadline",
   "section_break_knhf",
   "course",
   "department",
   "academic_year",
   "section_break_kpna",
-  "required_skills"
+  "required_skills",
+  "amended_from"
  ],
  "fields": [
   {
@@ -43,7 +44,8 @@
   {
    "fieldname": "description",
    "fieldtype": "Data",
-   "label": "Description"
+   "label": "Description",
+   "length": 500
   },
   {
    "fieldname": "status",
@@ -121,14 +123,19 @@
    "fieldname": "academic_year",
    "fieldtype": "Data",
    "label": "Academic Year"
+  },
+  {
+   "fieldname": "application_deadline",
+   "fieldtype": "Date",
+   "label": "Application Deadline"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-02 15:07:30.711987",
- "modified_by": "roshani.babar@erpdata.in",
+ "modified": "2026-05-04 19:51:27.099505",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Industry Project",
  "naming_rule": "Expression (old style)",

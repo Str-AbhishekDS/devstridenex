@@ -6,7 +6,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
 
 
 @frappe.whitelist(allow_guest=True)
-def create_student():
+def create_student(email=None):
     try:
 
         data = dict(frappe.form_dict)
@@ -54,11 +54,10 @@ def create_student():
                 "content": file.read()
             })
             file_doc.save(ignore_permissions=True)
-
-        create_student_user(student)
         if email and frappe.db.exists("User", email):
             frappe.db.set_value("User", email, "is_onboarded", 2)
             frappe.db.commit()
+        create_student_user(student)
 
         return gen_response(
             status=200,

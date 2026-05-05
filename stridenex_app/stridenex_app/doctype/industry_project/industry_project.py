@@ -70,7 +70,8 @@ def get_project_list(industry=None, student=None,status=None,course=None,departm
                 "industry",
                 "course",
                 "department",
-                "academic_year"
+                "academic_year",
+                "application_deadline"
             ],
             order_by="creation desc"
         )
