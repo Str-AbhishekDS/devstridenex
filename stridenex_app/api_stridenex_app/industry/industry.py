@@ -84,7 +84,6 @@ def create_industry_users(contact_details):
 def update_industry(company_name):
     try:
         data = frappe.request.get_json()
-
         if not data:
             return gen_response(400, "Invalid request data")
 
@@ -95,10 +94,11 @@ def update_industry(company_name):
         # ✅ Extract fields
         contact_details = data.pop("contact_details", [])
         job_functions = data.pop("job_functions", [])
+        specializations = data.pop("specializations", [])        # NEW
+        operating_hours = data.pop("operating_hours", [])        # NEW
         email = data.get("email")
 
         ignore_fields = ["name", "doctype", "owner", "creation", "modified"]
-
         for key, value in data.items():
             if key not in ignore_fields:
                 industry.set(key, value)
@@ -110,12 +110,58 @@ def update_industry(company_name):
             industry.job_functions = ", ".join(
                 [j.get("job_function") for j in job_functions if isinstance(j, dict)]
             )
-            
+
+        # =========================
+        # ✅ Specializations (replace)   NEW
+        # =========================
+        industry.set("specializations", [])
+        if isinstance(specializations, list):
+            for spec in specializations:
+                if isinstance(spec, dict):
+                    industry.append("specializations", {
+                        "specialization": spec.get("specialization")
+                    })
+                elif isinstance(spec, str):
+                    industry.append("specializations", {
+                        "specialization": spec
+                    })
+
+        # =========================
+        # ✅ Operating Hours (replace)   NEW
+        # =========================
+        industry.set("operating_hours", [])
+        if isinstance(operating_hours, list):
+            for oh in operating_hours:
+                if isinstance(oh, dict):
+                    industry.append("operating_hours", {
+                        "day": oh.get("day"),
+                        "is_closed": oh.get("is_closed", 0),
+                        "opening_time": oh.get("opening_time") if not oh.get("is_closed") else None,
+                        "closing_time": oh.get("closing_time") if not oh.get("is_closed") else None
+                    })
+
+        # =========================
+        # ✅ Location fields (replace)   NEW
+        # =========================
+        location = data.pop("location", {})
+        if isinstance(location, dict):
+            if location.get("address_line_1") is not None:
+                industry.address_line_1 = location.get("address_line_1")
+            if location.get("address_line_2") is not None:
+                industry.address_line_2 = location.get("address_line_2")
+            if location.get("pincode") is not None:
+                industry.pincode = location.get("pincode")
+            if location.get("map_link") is not None:
+                industry.map_link = location.get("map_link")
+            if location.get("latitude") is not None:
+                industry.latitude = location.get("latitude")
+            if location.get("longitude") is not None:
+                industry.longitude = location.get("longitude")
+
         # =========================
         # ✅ Contact Details (replace)
         # =========================
         industry.set("contact_details", [])
-
         if isinstance(contact_details, list):
             for contact in contact_details:
                 if isinstance(contact, dict):
@@ -145,10 +191,8 @@ def update_industry(company_name):
                 onboarding_status = 3
             if contact_details:
                 onboarding_status = 4
-
             frappe.db.set_value("User", email, "is_onboarded", onboarding_status)
-
-        frappe.db.commit()
+            frappe.db.commit()
 
         return gen_response(
             status=200,
@@ -158,8 +202,6 @@ def update_industry(company_name):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "UPDATE INDUSTRY ERROR")
-        return exception_handel(e)
-
         
 @frappe.whitelist(allow_guest=True)
 def get_industry_by_name(email):
@@ -178,34 +220,96 @@ def get_industry_by_name(email):
         doc = frappe.get_doc("Industry list", name)
 
         data = {
-                "company_name": doc.company_name,
-                "about": doc.about,
-                "business_type": doc.business_type,
-                "gst_number": doc.gst_number,
-                "industry_sector": doc.industry_sector,
-                "headquarters": doc.headquarters,
-                "employee_head_count": doc.employee_head_count,
-                "turn_over_in_cr": doc.turn_over_in_cr,
-                "company_website": doc.company_website,
-                "status": doc.status,
-                "cin": doc.cin,
-                "average_fresher_recruited_per_year":doc.average_fresher_recruited_per_year,
-                "internship_per_year":doc.internship_per_year,
-                "state":doc.state,
-                "tahsil":doc.tahsil,
-                "city":doc.city,
-                "district":doc.district,
-                "hiring_process": [
-                    {
-                        "name":row.name,
-                        "round": row.round,
-                        "based_on": row.based_on,
-                        "duration": row.duration,
-                        "sequence":row.sequence
-                    }
-                    for row in doc.hiring_process
-                ]
-            }
+            "company_name": doc.company_name,
+            "about": doc.about,
+            "business_type": doc.business_type,
+            "other_business_type": doc.other_business_type,
+            "gst_number": doc.gst_number,
+            "industry_sector": doc.industry_sector,
+            "other_industry_sector": doc.other_industry_sector,
+            "headquarters": doc.headquarters,
+            "cin": doc.cin,
+            "company_size": doc.company_size,
+            "link_of_company": doc.link_of_company,
+            "email": doc.email,
+            "country": doc.country,
+            "state": doc.state,
+            "district": doc.district,
+            "tahsil": doc.tahsil,
+            "city": doc.city,
+            "employee_head_count": doc.employee_head_count,
+            "internship_per_year": doc.internship_per_year,
+            "turn_over_in_cr": doc.turn_over_in_cr,
+            "company_website": doc.company_website,
+            "average_fresher_recruited_per_year": doc.average_fresher_recruited_per_year,
+            "status": doc.status,
+            "approved_status": doc.approved_status,
+            "terms_and_conditions": doc.terms_and_conditions,
+
+            # ✅ Specializations
+            "specializations": [
+                {
+                    "specialization": row.specialization
+                }
+                for row in doc.specializations
+            ],
+
+            # ✅ Location
+            "location": {
+                "address_line_1": doc.address_line_1,
+                "address_line_2": doc.address_line_2,
+                "pincode": doc.pincode,
+                "map_link": doc.map_link,
+                "latitude": doc.latitude,
+                "longitude": doc.longitude
+            },
+
+            # ✅ Operating Hours
+            "operating_hours": [
+                {
+                    "name": row.name,
+                    "day": row.day,
+                    "is_closed": row.is_closed,
+                    "opening_time": str(row.opening_time) if row.opening_time else None,
+                    "closing_time": str(row.closing_time) if row.closing_time else None
+                }
+                for row in doc.operating_hours
+            ],
+
+            # ✅ Job Functions
+            "job_functions": [
+                {
+                    "job_function": row.job_function
+                }
+                for row in doc.job_function
+            ],
+
+            # ✅ Contact Details
+            "contact_details": [
+                {
+                    "name": row.name,
+                    "salutation": row.salutation,
+                    "first_name": row.first_name,
+                    "last_name": row.last_name,
+                    "designation": row.designation,
+                    "contact_no": row.contact_no,
+                    "email": row.email
+                }
+                for row in doc.contact_details
+            ],
+
+            # ✅ Hiring Process
+            "hiring_process": [
+                {
+                    "name": row.name,
+                    "round": row.round,
+                    "based_on": row.based_on,
+                    "duration": row.duration,
+                    "sequence": row.sequence
+                }
+                for row in doc.hiring_process
+            ]
+        }
         result.append(data)
  
 

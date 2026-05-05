@@ -45,14 +45,17 @@ def create_student_project_enrollment():
         return exception_handel(e)
 
 @frappe.whitelist(allow_guest=True)
-def get_application_count_by_industry(industry=None):
+def get_application_count_by_industry(industry=None,project=None,status=None):
     try:
         filters = {}
 
         # ✅ Optional filter
         if industry:
             filters["industry"] = industry
-        
+        if project:
+            filters["project"] = project
+        if status:
+            filters["status"] = status
         # ✅ Count total applications
         total_count = frappe.db.count("Student Project Enrollment", filters)
 

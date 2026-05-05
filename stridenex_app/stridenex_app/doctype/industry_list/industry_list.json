@@ -1,297 +1,365 @@
 {
- "actions": [],
- "allow_rename": 1,
- "autoname": "field:company_name",
- "creation": "2026-02-17 11:51:15.307434",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "section_break_larc",
-  "company_name",
-  "business_type",
-  "other_business_type",
-  "gst_number",
-  "industry_sector",
-  "other_industry_sector",
-  "column_break_yfng",
-  "about",
-  "company_size",
-  "job_function",
-  "link_of_company",
-  "column_break_wxeg",
-  "email",
-  "country",
-  "state",
-  "district",
-  "tahsil",
-  "city",
-  "section_break_nelq",
-  "employee_head_count",
-  "internship_per_year",
-  "column_break_ivgb",
-  "turn_over_in_cr",
-  "company_website",
-  "column_break_ytux",
-  "average_fresher_recruited_per_year",
-  "status",
-  "section_break_ppno",
-  "contact_details",
-  "hiring_process_section",
-  "hiring_process",
-  "section_break_rnzo",
-  "approved_status",
-  "terms_and_conditions",
-  "amended_from",
-  "about",
-  "headquarters",
-  "cin"
- ],
- "fields": [
-  {
-   "fieldname": "section_break_larc",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "company_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Company Name",
-   "unique": 1
-  },
-  {
-   "fieldname": "about",
-   "fieldtype": "Data",
-   "label": "About"
-  },
-  {
-   "fieldname": "business_type",
-   "fieldtype": "Link",
-   "label": "Business Type",
-   "options": "Business Type"
-  },
-  {
-   "fieldname": "gst_number",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "GST Number"
-  },
-  {
-   "fieldname": "industry_sector",
-   "fieldtype": "Link",
-   "label": "Industry Sector",
-   "options": "Industry Sector"
-  },
-  {
-   "fieldname": "column_break_yfng",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "headquarters",
-   "fieldtype": "Data",
-   "label": "Headquarters"
-  },
-  {
-   "fieldname": "job_function",
-   "fieldtype": "Table MultiSelect",
-   "label": "Job Function",
-   "options": "Job Function Table"
-  },
-  {
-   "fieldname": "cin",
-   "fieldtype": "Data",
-   "label": "CIN"
-  },
-  {
-   "fieldname": "column_break_wxeg",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "country",
-   "fieldtype": "Link",
-   "label": "Country",
-   "options": "Country"
-  },
-  {
-   "fieldname": "state",
-   "fieldtype": "Link",
-   "label": "State",
-   "options": "State"
-  },
-  {
-   "fieldname": "district",
-   "fieldtype": "Link",
-   "label": "District",
-   "options": "District"
-  },
-  {
-   "fieldname": "tahsil",
-   "fieldtype": "Link",
-   "label": "Taluka",
-   "options": "Tahsil"
-  },
-  {
-   "fieldname": "city",
-   "fieldtype": "Link",
-   "label": "City",
-   "options": "City"
-  },
-  {
-   "fieldname": "section_break_nelq",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "employee_head_count",
-   "fieldtype": "Data",
-   "label": "Employee Head Count"
-  },
-  {
-   "fieldname": "internship_per_year",
-   "fieldtype": "Data",
-   "label": "Internship Per Year"
-  },
-  {
-   "fieldname": "column_break_ivgb",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "turn_over_in_cr",
-   "fieldtype": "Data",
-   "label": "Turn Over in Cr"
-  },
-  {
-   "fieldname": "company_website",
-   "fieldtype": "Data",
-   "label": "Company Website"
-  },
-  {
-   "fieldname": "column_break_ytux",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "average_fresher_recruited_per_year",
-   "fieldtype": "Data",
-   "label": "Average Fresher Recruited Per Year"
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Active\nDisable"
-  },
-  {
-   "fieldname": "section_break_ppno",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "contact_details",
-   "fieldtype": "Table",
-   "label": "Contact Details",
-   "options": "Contact Details"
-  },
-  {
-   "fieldname": "section_break_rnzo",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "approved_status",
-   "fieldtype": "Link",
-   "label": "Approved Status",
-   "options": "Workflow State"
-  },
-  {
-   "fieldname": "terms_and_conditions",
-   "fieldtype": "Long Text",
-   "label": "Terms and Conditions"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Industry list",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "hiring_process_section",
-   "fieldtype": "Section Break",
-   "label": "Hiring Process"
-  },
-  {
-   "fieldname": "about",
-   "fieldtype": "Data",
-   "label": "About"
-  },
-  {
-   "fieldname": "company_size",
-   "fieldtype": "Data",
-   "label": "Company Size"
-  },
-  {
-   "fieldname": "headquarters",
-   "fieldtype": "Data",
-   "label": "Headquarters"
-  },
-  {
-   "fieldname": "link_of_company",
-   "fieldtype": "Data",
-   "label": "link of company"
-  },
-  {
-   "fieldname": "cin",
-   "fieldtype": "Data",
-   "label": "CIN"
-  },
-  {
-   "fieldname": "email",
-   "fieldtype": "Data",
-   "label": "Email"
-  },
-  {
-   "fieldname": "other_business_type",
-   "fieldtype": "Data",
-   "label": "Other Business Type"
-  },
-  {
-   "fieldname": "other_industry_sector",
-   "fieldtype": "Data",
-   "label": "Other Industry Sector"
-  },
-  {
-   "fieldname": "hiring_process",
-   "fieldtype": "Table",
-   "options": "Industry Hiring Process"
-  }
- ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "is_submittable": 1,
- "links": [],
- "modified": "2026-04-14 15:07:35.661132",
- "modified_by": "Administrator",
- "module": "Stridenex App",
- "name": "Industry list",
- "naming_rule": "By fieldname",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  }
- ],
- "row_format": "Dynamic",
- "rows_threshold_for_grid_search": 20,
- "sort_field": "creation",
- "sort_order": "DESC",
- "states": []
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "field:company_name",
+    "creation": "2026-02-17 11:51:15.307434",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "section_break_larc",
+        "company_name",
+        "business_type",
+        "other_business_type",
+        "gst_number",
+        "industry_sector",
+        "other_industry_sector",
+        "column_break_yfng",
+        "about",
+        "company_size",
+        "job_function",
+        "link_of_company",
+        "column_break_wxeg",
+        "email",
+        "country",
+        "state",
+        "district",
+        "tahsil",
+        "city",
+        "section_break_specializations",
+        "specializations",
+        "section_break_location",
+        "address_line_1",
+        "address_line_2",
+        "pincode",
+        "map_link",
+        "column_break_location_2",
+        "latitude",
+        "longitude",
+        "section_break_operating_hours",
+        "operating_hours",
+        "section_break_nelq",
+        "employee_head_count",
+        "internship_per_year",
+        "column_break_ivgb",
+        "turn_over_in_cr",
+        "company_website",
+        "column_break_ytux",
+        "average_fresher_recruited_per_year",
+        "status",
+        "section_break_ppno",
+        "contact_details",
+        "hiring_process_section",
+        "hiring_process",
+        "section_break_rnzo",
+        "approved_status",
+        "terms_and_conditions",
+        "amended_from",
+        "headquarters",
+        "cin"
+    ],
+    "fields": [
+        {
+            "fieldname": "section_break_larc",
+            "fieldtype": "Section Break",
+            "label": "Company Information"
+        },
+        {
+            "fieldname": "company_name",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Company Name",
+            "reqd": 1,
+            "unique": 1
+        },
+        {
+            "fieldname": "business_type",
+            "fieldtype": "Link",
+            "label": "Business Type",
+            "options": "Business Type"
+        },
+        {
+            "fieldname": "other_business_type",
+            "fieldtype": "Data",
+            "label": "Other Business Type",
+            "depends_on": "eval:doc.business_type == 'Other'"
+        },
+        {
+            "fieldname": "gst_number",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "GST Number"
+        },
+        {
+            "fieldname": "industry_sector",
+            "fieldtype": "Link",
+            "label": "Industry Sector",
+            "options": "Industry Sector"
+        },
+        {
+            "fieldname": "other_industry_sector",
+            "fieldtype": "Data",
+            "label": "Other Industry Sector",
+            "depends_on": "eval:doc.industry_sector == 'Other'"
+        },
+        {
+            "fieldname": "column_break_yfng",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "about",
+            "fieldtype": "Small Text",
+            "label": "About"
+        },
+        {
+            "fieldname": "company_size",
+            "fieldtype": "Data",
+            "label": "Company Size"
+        },
+        {
+            "fieldname": "job_function",
+            "fieldtype": "Table MultiSelect",
+            "label": "Job Function",
+            "options": "Job Function Table"
+        },
+        {
+            "fieldname": "link_of_company",
+            "fieldtype": "Data",
+            "label": "Link of Company"
+        },
+        {
+            "fieldname": "column_break_wxeg",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "email",
+            "fieldtype": "Data",
+            "label": "Email",
+            "options": "Email"
+        },
+        {
+            "fieldname": "country",
+            "fieldtype": "Link",
+            "label": "Country",
+            "options": "Country"
+        },
+        {
+            "fieldname": "state",
+            "fieldtype": "Link",
+            "label": "State",
+            "options": "State"
+        },
+        {
+            "fieldname": "district",
+            "fieldtype": "Link",
+            "label": "District",
+            "options": "District"
+        },
+        {
+            "fieldname": "tahsil",
+            "fieldtype": "Link",
+            "label": "Taluka",
+            "options": "Tahsil"
+        },
+        {
+            "fieldname": "city",
+            "fieldtype": "Link",
+            "label": "City",
+            "options": "City"
+        },
+        {
+            "fieldname": "section_break_specializations",
+            "fieldtype": "Section Break",
+            "label": "Specializations"
+        },
+        {
+            "fieldname": "specializations",
+            "fieldtype": "Table MultiSelect",
+            "label": "Specializations",
+            "options": "Specialization Table"
+        },
+        {
+            "fieldname": "section_break_location",
+            "fieldtype": "Section Break",
+            "label": "Location"
+        },
+        {
+            "fieldname": "address_line_1",
+            "fieldtype": "Data",
+            "label": "Address Line 1"
+        },
+        {
+            "fieldname": "address_line_2",
+            "fieldtype": "Data",
+            "label": "Address Line 2"
+        },
+        {
+            "fieldname": "pincode",
+            "fieldtype": "Data",
+            "label": "Pincode"
+        },
+        {
+            "fieldname": "map_link",
+            "fieldtype": "Data",
+            "label": "Map Link"
+        },
+        {
+            "fieldname": "column_break_location_2",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "latitude",
+            "fieldtype": "Float",
+            "label": "Latitude"
+        },
+        {
+            "fieldname": "longitude",
+            "fieldtype": "Float",
+            "label": "Longitude"
+        },
+        {
+            "fieldname": "section_break_operating_hours",
+            "fieldtype": "Section Break",
+            "label": "Operating Hours"
+        },
+        {
+            "fieldname": "operating_hours",
+            "fieldtype": "Table",
+            "label": "Operating Hours",
+            "options": "Industry Operating Hours"
+        },
+        {
+            "fieldname": "section_break_nelq",
+            "fieldtype": "Section Break",
+            "label": "Business Metrics"
+        },
+        {
+            "fieldname": "employee_head_count",
+            "fieldtype": "Data",
+            "label": "Employee Head Count"
+        },
+        {
+            "fieldname": "internship_per_year",
+            "fieldtype": "Data",
+            "label": "Internship Per Year"
+        },
+        {
+            "fieldname": "column_break_ivgb",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "turn_over_in_cr",
+            "fieldtype": "Data",
+            "label": "Turn Over in Cr"
+        },
+        {
+            "fieldname": "company_website",
+            "fieldtype": "Data",
+            "label": "Company Website"
+        },
+        {
+            "fieldname": "column_break_ytux",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "average_fresher_recruited_per_year",
+            "fieldtype": "Data",
+            "label": "Average Fresher Recruited Per Year"
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "label": "Status",
+            "options": "Active\nDisable",
+            "default": "Active",
+            "in_list_view": 1
+        },
+        {
+            "fieldname": "section_break_ppno",
+            "fieldtype": "Section Break",
+            "label": "Contact Details"
+        },
+        {
+            "fieldname": "contact_details",
+            "fieldtype": "Table",
+            "label": "Contact Details",
+            "options": "Contact Details"
+        },
+        {
+            "fieldname": "hiring_process_section",
+            "fieldtype": "Section Break",
+            "label": "Hiring Process"
+        },
+        {
+            "fieldname": "hiring_process",
+            "fieldtype": "Table",
+            "label": "Hiring Process",
+            "options": "Industry Hiring Process"
+        },
+        {
+            "fieldname": "section_break_rnzo",
+            "fieldtype": "Section Break",
+            "label": "Approval & Legal"
+        },
+        {
+            "fieldname": "approved_status",
+            "fieldtype": "Link",
+            "label": "Approved Status",
+            "options": "Workflow State"
+        },
+        {
+            "fieldname": "terms_and_conditions",
+            "fieldtype": "Long Text",
+            "label": "Terms and Conditions"
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "Industry list",
+            "print_hide": 1,
+            "read_only": 1,
+            "search_index": 1
+        },
+        {
+            "fieldname": "headquarters",
+            "fieldtype": "Data",
+            "label": "Headquarters"
+        },
+        {
+            "fieldname": "cin",
+            "fieldtype": "Data",
+            "label": "CIN"
+        }
+    ],
+    "grid_page_length": 50,
+    "index_web_pages_for_search": 1,
+    "is_submittable": 1,
+    "links": [],
+    "modified": "2026-05-04 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Stridenex App",
+    "name": "Industry list",
+    "naming_rule": "By fieldname",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        }
+    ],
+    "row_format": "Dynamic",
+    "rows_threshold_for_grid_search": 20,
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "states": []
 }
