@@ -3,7 +3,8 @@ from frappe.model.document import Document
 from frappe.utils import today
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
-    exception_handel
+    exception_handel,
+    append_child_rows
 )
 class Internship(Document):
     def validate(self):
@@ -48,10 +49,20 @@ def create_internship():
     try:
         data = frappe.request.get_json()
 
+        course_list = data.pop("course", [])
+        department_list = data.pop("department", [])
+        academic_year_list = data.pop("acdemic_year", [])
+        # return academic_year_list
+
         internship = frappe.get_doc({
             "doctype": "Internship",
             **data
         })
+
+        # ✅ Adjust keys based on child tables
+        append_child_rows(internship, "course", course_list, "course")         # 🔁 change if needed
+        append_child_rows(internship, "department", department_list, "department")  # 🔁 change if needed
+        append_child_rows(internship, "academic_year", academic_year_list, "acdemic_year")  # ✅ confirmed
 
         internship.insert(ignore_permissions=True)
         frappe.db.commit()
@@ -63,7 +74,11 @@ def create_internship():
         )
 
     except Exception as e:
-        return exception_handel(e)
+        frappe.log_error(frappe.get_traceback(), "Create Internship Error")
+        return {
+            "status": 500,
+            "message": str(e)
+        }
         
 @frappe.whitelist(allow_guest=True)
 def get_internship_list(industry=None, student=None,course=None,department=None,academic_year=None):
@@ -139,8 +154,7 @@ def get_internship_list(industry=None, student=None,course=None,department=None,
 def update_internship():
     try:
         data = frappe.request.get_json()
-
-        name = data.get("name")  # ✅ get from body
+        name = data.pop("name", None)
 
         if not name:
             return gen_response(
@@ -149,30 +163,64 @@ def update_internship():
                 data=[]
             )
 
-        project = frappe.get_doc("Internship", name)
+        # Extract Table MultiSelect and Child Table fields
+        course_list = data.pop("course", None)
+        department_list = data.pop("department", None)
+        academic_year_list = data.pop("acdemic_year", None)
+        required_skills = data.pop("required_skills", None)
 
+        internship = frappe.get_doc("Internship", name)
+
+        # Set simple fields
         for key, value in data.items():
-            if key not in ["required_skills", "name"]:
-                setattr(project, key, value)
+            setattr(internship, key, value)
 
-        if "required_skills" in data:
-            project.set("required_skills", [])
+        # Course (Table MultiSelect)
+        if course_list is not None:
+            internship.set("course", [])
+            for course in course_list:
+                course_value = course if isinstance(course, str) else course.get("course")
+                row = frappe.new_doc("Course Table")
+                row.course = course_value
+                internship.append("course", row)
 
-            for skill in data["required_skills"]:
-                project.append("required_skills", {
-                    "skill": skill.get("skill")
+        # Department (Table MultiSelect)
+        if department_list is not None:
+            internship.set("department", [])
+            for department in department_list:
+                department_value = department if isinstance(department, str) else department.get("department")
+                row = frappe.new_doc("Department Table")
+                row.department = department_value
+                internship.append("department", row)
+
+        # Academic Year (Table MultiSelect)
+        if academic_year_list is not None:
+            internship.set("acdemic_year", [])
+            for year in academic_year_list:
+                year_value = year if isinstance(year, str) else year.get("acdemic_year")
+                row = frappe.new_doc("Academic Year Table")
+                row.academic_year = year_value
+                internship.append("acdemic_year", row)
+
+        # Required Skills (Child Table)
+        if required_skills is not None:
+            internship.set("required_skills", [])
+            for skill in required_skills:
+                internship.append("required_skills", {
+                    "skill": skill if isinstance(skill, str) else skill.get("skill")
                 })
 
-        project.save(ignore_permissions=True)
+        internship.save(ignore_permissions=True)
         frappe.db.commit()
 
         return gen_response(
             status=200,
             message="Internship updated successfully",
-            data={"name": project.name}
+            data={"name": internship.name}
         )
 
     except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Update Internship Error")
         return exception_handel(e)
     
 @frappe.whitelist(allow_guest=True)

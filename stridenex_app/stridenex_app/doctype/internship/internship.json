@@ -135,26 +135,27 @@
   },
   {
    "fieldname": "course",
-   "fieldtype": "Link",
+   "fieldtype": "Table MultiSelect",
    "label": "Course",
-   "options": "Courses"
+   "options": "Course Table"
   },
   {
    "fieldname": "department",
-   "fieldtype": "Link",
+   "fieldtype": "Table MultiSelect",
    "label": "Department",
-   "options": "College Department"
+   "options": "Department Table"
   },
   {
    "fieldname": "acdemic_year",
-   "fieldtype": "Int",
-   "label": "Acdemic Year"
+   "fieldtype": "Table MultiSelect",
+   "label": "Academic Year",
+   "options": "Academic Year Table"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-02 15:45:14.218887",
- "modified_by": "roshani.babar@erpdata.in",
+ "modified": "2026-05-06 16:38:37.673438",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Internship",
  "naming_rule": "Expression (old style)",

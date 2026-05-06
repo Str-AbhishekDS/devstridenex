@@ -33,7 +33,6 @@ class InternshipApplication(Document):
             frappe.throw("You have already applied for this internship")
 
     def calculate_match_score(self):
-
         required_skills = frappe.get_all(
             "Internship Required Skill",
             filters={"parent": self.internship},
