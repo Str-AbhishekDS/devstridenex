@@ -109,20 +109,21 @@
   },
   {
    "fieldname": "course",
-   "fieldtype": "Link",
+   "fieldtype": "Table MultiSelect",
    "label": "Course",
-   "options": "Courses"
+   "options": "Course Table"
   },
   {
    "fieldname": "department",
-   "fieldtype": "Link",
+   "fieldtype": "Table MultiSelect",
    "label": "Department",
-   "options": "College Department"
+   "options": "Department Table"
   },
   {
    "fieldname": "academic_year",
-   "fieldtype": "Data",
-   "label": "Academic Year"
+   "fieldtype": "Table MultiSelect",
+   "label": "Academic Year",
+   "options": "Academic Year Table"
   },
   {
    "fieldname": "application_deadline",
@@ -134,7 +135,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-04 19:51:27.099505",
+ "modified": "2026-05-06 15:44:58.791475",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Industry Project",

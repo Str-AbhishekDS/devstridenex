@@ -276,3 +276,13 @@ def enroll_student_in_batch(offering, batch_name, student):
         "batch_name":      batch_name,
         "seats_left":      get_batch_seat_info(batch_name)["seats_left"],
     }
+
+    
+@frappe.whitelist()
+def append_child_rows(doc, table_field, values, child_key):
+    for val in values:
+        value = val if isinstance(val, str) else val.get(child_key)
+
+        doc.append(table_field, {
+            child_key: value
+        })

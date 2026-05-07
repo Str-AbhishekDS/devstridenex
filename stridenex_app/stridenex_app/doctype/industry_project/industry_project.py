@@ -14,26 +14,50 @@ from stridenex_app.api_stridenex_app.app_utils import (
 class IndustryProject(Document):
 	pass
 
-
 @frappe.whitelist(allow_guest=True)
 def create_project():
     try:
         data = frappe.request.get_json()
+
+        course_list = data.pop("course", [])
+        department_list = data.pop("department", [])
+        academic_year_list = data.pop("academic_year", [])
 
         project = frappe.get_doc({
             "doctype": "Industry Project",
             **data
         })
 
+        # Course
+        for course in course_list:
+            project.append("course", {
+                "course": course if isinstance(course, str) else course.get("course")
+            })
+
+        # Department
+        for department in department_list:
+            project.append("department", {
+                "department": department if isinstance(department, str) else department.get("department")
+            })
+
+        # Academic Year — field inside child DocType is "academic_year" (Link to "Academic Year")
+        for year in academic_year_list:
+            year_value = year if isinstance(year, str) else year.get("academic_year")
+            row = frappe.new_doc("Academic Year Table")
+            row.academic_year = year_value
+            project.append("academic_year", row)
+
         project.insert(ignore_permissions=True)
         frappe.db.commit()
+
         return gen_response(
             status=200,
             message="Project registered successfully",
-            data={"name": project.name}
+            data={"name": project.project_name}
         )
 
     except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Create Project Error")
         return exception_handel(e)
     
 
@@ -95,10 +119,10 @@ def get_project_list(industry=None, student=None, status=None, course=None, depa
                 "Student Project Enrollment",
                 fields=["project", "status"]
             )
+        
 
         # ✅ Attach skills + applied status
         for project in projects:
-            # Skills
             skills = frappe.get_all(
                 "Student Skill Table",
                 filters={"parent": project["name"]},
@@ -106,24 +130,21 @@ def get_project_list(industry=None, student=None, status=None, course=None, depa
             )
             project["skills"] = skills
 
-            # ✅ Match project key
-            project_key = f"{project['project_name']}-{project['project_code']}"
+            # ✅ Fetch Table MultiSelect fields
+            doc = frappe.get_doc("Industry Project", project["name"])
+            project["course"] = [r.course for r in doc.course]
+            project["department"] = [r.department for r in doc.department]
+            project["academic_year"] = [r.academic_year for r in doc.academic_year]
 
+            project_key = f"{project['project_name']}-{project['project_code']}"
             if student:
-                project["applied_status"] = enrollment_map.get(
-                    project_key, "Not Applied"
-                )
+                project["applied_status"] = enrollment_map.get(project_key, "Not Applied")
             else:
                 project["applied_status"] = None
 
-                # ✅ Count applied and shortlisted students for this project
-                project_enrollments = [
-                    e for e in all_enrollments if e["project"] == project_key
-                ]
-                project["applied_count"] = len(project_enrollments)
-                project["shortlisted_count"] = len([
-                    e for e in project_enrollments if e["status"] == "Shortlisted"
-                ])
+            project_enrollments = [e for e in all_enrollments if e["project"] == project_key]
+            project["applied_count"] = len(project_enrollments)
+            project["shortlisted_count"] = len([e for e in project_enrollments if e["status"] == "Shortlisted"])
 
         return gen_response(
             status=200,
@@ -152,20 +173,48 @@ def get_project_by_id(project_name):
 def update_project(name):
     try:
         data = frappe.request.get_json()
-
         project = frappe.get_doc("Industry Project", name)
+
+        course_list = data.pop("course", None)
+        department_list = data.pop("department", None)
+        academic_year_list = data.pop("academic_year", None)
+        required_skills = data.pop("required_skills", None)
+
         for key, value in data.items():
-            if key != "required_skills":
-                setattr(project, key, value)
+            setattr(project, key, value)
 
-        if "required_skills" in data:
-            project.set("required_skills", [])  # clear old rows
-
-            for skill in data["required_skills"]:
-                project.append("required_skills", {
-                    "skill": skill.get("skill")
+        # Course
+        if course_list is not None:
+            project.set("course", [])
+            for course in course_list:
+                project.append("course", {
+                    "course": course if isinstance(course, str) else course.get("course")
                 })
 
+        # Department
+        if department_list is not None:
+            project.set("department", [])
+            for department in department_list:
+                project.append("department", {
+                    "department": department if isinstance(department, str) else department.get("department")
+                })
+
+        # Academic Year
+        if academic_year_list is not None:
+            project.set("academic_year", [])
+            for year in academic_year_list:
+                year_value = year if isinstance(year, str) else year.get("academic_year")
+                row = frappe.new_doc("Academic Year Table")
+                row.academic_year = year_value
+                project.append("academic_year", row)
+
+        # Required Skills
+        if required_skills is not None:
+            project.set("required_skills", [])
+            for skill in required_skills:
+                project.append("required_skills", {
+                    "skill": skill if isinstance(skill, str) else skill.get("skill")
+                })
 
         project.save(ignore_permissions=True)
         frappe.db.commit()
@@ -173,12 +222,14 @@ def update_project(name):
         return gen_response(
             status=200,
             message="Project updated successfully",
-            data={"name": project.name}
+            data={"name": project.project_name}
         )
 
     except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Update Project Error")
         return exception_handel(e)
-  
+    
+    
 @frappe.whitelist(allow_guest=True)
 def inactive_project(project_name):
     try:
