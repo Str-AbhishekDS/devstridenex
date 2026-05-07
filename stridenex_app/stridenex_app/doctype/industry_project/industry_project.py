@@ -119,10 +119,10 @@ def get_project_list(industry=None, student=None, status=None, course=None, depa
                 "Student Project Enrollment",
                 fields=["project", "status"]
             )
+        
 
         # ✅ Attach skills + applied status
         for project in projects:
-            # Skills
             skills = frappe.get_all(
                 "Student Skill Table",
                 filters={"parent": project["name"]},
@@ -130,24 +130,21 @@ def get_project_list(industry=None, student=None, status=None, course=None, depa
             )
             project["skills"] = skills
 
-            # ✅ Match project key
-            project_key = f"{project['project_name']}-{project['project_code']}"
+            # ✅ Fetch Table MultiSelect fields
+            doc = frappe.get_doc("Industry Project", project["name"])
+            project["course"] = [r.course for r in doc.course]
+            project["department"] = [r.department for r in doc.department]
+            project["academic_year"] = [r.academic_year for r in doc.academic_year]
 
+            project_key = f"{project['project_name']}-{project['project_code']}"
             if student:
-                project["applied_status"] = enrollment_map.get(
-                    project_key, "Not Applied"
-                )
+                project["applied_status"] = enrollment_map.get(project_key, "Not Applied")
             else:
                 project["applied_status"] = None
 
-                # ✅ Count applied and shortlisted students for this project
-                project_enrollments = [
-                    e for e in all_enrollments if e["project"] == project_key
-                ]
-                project["applied_count"] = len(project_enrollments)
-                project["shortlisted_count"] = len([
-                    e for e in project_enrollments if e["status"] == "Shortlisted"
-                ])
+            project_enrollments = [e for e in all_enrollments if e["project"] == project_key]
+            project["applied_count"] = len(project_enrollments)
+            project["shortlisted_count"] = len([e for e in project_enrollments if e["status"] == "Shortlisted"])
 
         return gen_response(
             status=200,
