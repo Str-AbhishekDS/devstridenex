@@ -258,3 +258,26 @@ scheduler_events = {
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+
+fixtures = [
+
+    {
+        "doctype": "Insights Workbook",
+        "filters": [
+            ["title", "=", "StrideNex Dashbord"]
+        ]
+    },
+
+    {
+        "doctype": "Insights Query v3"
+    },
+
+    {
+        "doctype": "Insights Chart v3"
+    },
+
+    {
+        "doctype": "Insights Dashboard v3"
+    }
+
+]

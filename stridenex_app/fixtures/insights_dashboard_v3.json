@@ -1,0 +1,49 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Insights Dashboard v3",
+  "has_workbook_access": true,
+  "is_public": 0,
+  "is_shared_with_organization": false,
+  "items": "[\n {\n  \"chart\": \"tgbitp5756\",\n  \"layout\": {\n   \"h\": 3,\n   \"i\": \"j0krn097\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 0,\n   \"y\": 0\n  },\n  \"type\": \"chart\"\n },\n {\n  \"chart\": \"1dn9v967rn\",\n  \"layout\": {\n   \"h\": 3,\n   \"i\": \"5micmxwl\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 3,\n   \"y\": 0\n  },\n  \"type\": \"chart\"\n },\n {\n  \"chart\": \"1nqq9cqvsb\",\n  \"layout\": {\n   \"h\": 3,\n   \"i\": \"j99ad0xd\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 9,\n   \"y\": 0\n  },\n  \"type\": \"chart\"\n },\n {\n  \"chart\": \"1u40lnmg2k\",\n  \"layout\": {\n   \"h\": 3,\n   \"i\": \"gomdfu7h\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 6,\n   \"y\": 0\n  },\n  \"type\": \"chart\"\n },\n {\n  \"chart\": \"71ofslmgab\",\n  \"layout\": {\n   \"h\": 8,\n   \"i\": \"5f4no9u2\",\n   \"moved\": false,\n   \"w\": 10,\n   \"x\": 0,\n   \"y\": 4\n  },\n  \"type\": \"chart\"\n },\n {\n  \"chart\": \"g68tbtveuv\",\n  \"layout\": {\n   \"h\": 8,\n   \"i\": \"8ts4lpuk\",\n   \"moved\": false,\n   \"w\": 10,\n   \"x\": 10,\n   \"y\": 4\n  },\n  \"type\": \"chart\"\n },\n {\n  \"filter_name\": \"Date\",\n  \"filter_type\": \"Date\",\n  \"layout\": {\n   \"h\": 1,\n   \"i\": \"eyt1fwr6\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 0,\n   \"y\": 3\n  },\n  \"links\": {\n   \"71ofslmgab\": \"`das62lj6e8`.`creation`\"\n  },\n  \"type\": \"filter\"\n },\n {\n  \"filter_name\": \"Date\",\n  \"filter_type\": \"Date\",\n  \"layout\": {\n   \"h\": 1,\n   \"i\": \"50sj5t8t\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 10,\n   \"y\": 3\n  },\n  \"links\": {\n   \"g68tbtveuv\": \"`vqg79p6rei`.`creation`\"\n  },\n  \"type\": \"filter\"\n },\n {\n  \"chart\": \"kdpq458es8\",\n  \"layout\": {\n   \"h\": 3,\n   \"i\": \"69j4vh4i\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 12,\n   \"y\": 0\n  },\n  \"type\": \"chart\"\n },\n {\n  \"chart\": \"ku9l0h0mbv\",\n  \"layout\": {\n   \"h\": 8,\n   \"i\": \"m25asvoc\",\n   \"moved\": false,\n   \"w\": 10,\n   \"x\": 0,\n   \"y\": 13\n  },\n  \"type\": \"chart\"\n },\n {\n  \"filter_name\": \"Industry\",\n  \"filter_type\": \"String\",\n  \"layout\": {\n   \"h\": 1,\n   \"i\": \"dwil9shl\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 0,\n   \"y\": 12\n  },\n  \"links\": {\n   \"ku9l0h0mbv\": \"`jveg8dm92f`.`industry`\"\n  },\n  \"type\": \"filter\"\n },\n {\n  \"chart\": \"rb4trjv2j2\",\n  \"layout\": {\n   \"h\": 8,\n   \"i\": \"avifgius\",\n   \"moved\": false,\n   \"w\": 10,\n   \"x\": 10,\n   \"y\": 13\n  },\n  \"type\": \"chart\"\n },\n {\n  \"layout\": {\n   \"h\": 1,\n   \"i\": \"7z8ayucz\",\n   \"moved\": false,\n   \"w\": 10,\n   \"x\": 0,\n   \"y\": 21\n  },\n  \"text\": \"<p> </p>\",\n  \"type\": \"text\"\n },\n {\n  \"filter_name\": \"Select Industry\",\n  \"filter_type\": \"String\",\n  \"layout\": {\n   \"h\": 1,\n   \"i\": \"hisvz3n1\",\n   \"moved\": false,\n   \"w\": 3,\n   \"x\": 10,\n   \"y\": 12\n  },\n  \"links\": {\n   \"rb4trjv2j2\": \"`vqg79p6rei`.`industry`\"\n  },\n  \"type\": \"filter\"\n }\n]",
+  "linked_charts": [
+   {
+    "chart": "tgbitp5756"
+   },
+   {
+    "chart": "1dn9v967rn"
+   },
+   {
+    "chart": "1nqq9cqvsb"
+   },
+   {
+    "chart": "1u40lnmg2k"
+   },
+   {
+    "chart": "71ofslmgab"
+   },
+   {
+    "chart": "g68tbtveuv"
+   },
+   {
+    "chart": "kdpq458es8"
+   },
+   {
+    "chart": "ku9l0h0mbv"
+   },
+   {
+    "chart": "rb4trjv2j2"
+   }
+  ],
+  "modified": "2026-05-07 10:23:42.310645",
+  "name": "tfdjhdq5i1",
+  "old_name": null,
+  "people_with_access": [],
+  "preview_image": null,
+  "read_only": false,
+  "share_link": null,
+  "title": "Onboarding Analysis",
+  "vertical_compact_layout": 0,
+  "workbook": "4"
+ }
+]
