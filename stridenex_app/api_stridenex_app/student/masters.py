@@ -111,3 +111,5 @@ def get_user_by_mail(email=None):
         gen_response(200, "User fetched successfully", user)
     else:
         gen_response(404, "User not found", {"success": False})
+
+
