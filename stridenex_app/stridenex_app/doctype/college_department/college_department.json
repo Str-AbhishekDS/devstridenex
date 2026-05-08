@@ -37,9 +37,9 @@
   },
   {
    "fieldname": "courses",
-   "fieldtype": "Link",
+   "fieldtype": "Table MultiSelect",
    "label": "Courses",
-   "options": "Courses"
+   "options": "Course Table"
   },
   {
    "fieldname": "semester",
@@ -51,8 +51,8 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-04 11:55:08.174993",
- "modified_by": "roshni.babar@erpdata.in",
+ "modified": "2026-05-07 16:25:02.346669",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College Department",
  "naming_rule": "By fieldname",
