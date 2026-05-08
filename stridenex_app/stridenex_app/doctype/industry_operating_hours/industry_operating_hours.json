@@ -1,34 +1,60 @@
 {
- "actions": [],
- "allow_rename": 1,
- "creation": "2026-05-06 15:00:39.517575",
- "doctype": "DocType",
- "editable_grid": 1,
- "engine": "InnoDB",
- "field_order": [
-  "specialization"
- ],
- "fields": [
-  {
-   "fieldname": "specialization",
-   "fieldtype": "Link",
-   "label": "Specialization",
-   "options": "Specialization"
-  }
- ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "istable": 1,
- "links": [],
- "modified": "2026-05-06 15:00:39.517575",
- "modified_by": "Administrator",
- "module": "Stridenex App",
- "name": "Industry Operating Hours",
- "owner": "Administrator",
- "permissions": [],
- "row_format": "Dynamic",
- "rows_threshold_for_grid_search": 20,
- "sort_field": "creation",
- "sort_order": "DESC",
- "states": []
+    "actions": [],
+    "creation": "2026-05-04 00:00:00",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "day",
+        "is_closed",
+        "column_break_oh_1",
+        "opening_time",
+        "closing_time"
+    ],
+    "fields": [
+        {
+            "fieldname": "day",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Day",
+            "options": "Monday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday",
+            "reqd": 1
+        },
+        {
+            "default": "0",
+            "fieldname": "is_closed",
+            "fieldtype": "Check",
+            "in_list_view": 1,
+            "label": "Closed"
+        },
+        {
+            "fieldname": "column_break_oh_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "depends_on": "eval:!doc.is_closed",
+            "fieldname": "opening_time",
+            "fieldtype": "Time",
+            "in_list_view": 1,
+            "label": "Opening Time"
+        },
+        {
+            "depends_on": "eval:!doc.is_closed",
+            "fieldname": "closing_time",
+            "fieldtype": "Time",
+            "in_list_view": 1,
+            "label": "Closing Time"
+        }
+    ],
+    "istable": 1,
+    "links": [],
+    "modified": "2026-05-08 17:14:51.315807",
+    "modified_by": "Administrator",
+    "module": "Stridenex App",
+    "name": "Industry Operating Hours",
+    "owner": "Administrator",
+    "permissions": [],
+    "row_format": "Dynamic",
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "states": []
 }
