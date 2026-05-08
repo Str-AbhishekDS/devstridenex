@@ -266,18 +266,6 @@ fixtures = [
         "filters": [
             ["title", "=", "StrideNex Dashbord"]
         ]
-    },
-
-    {
-        "doctype": "Insights Query v3"
-    },
-
-    {
-        "doctype": "Insights Chart v3"
-    },
-
-    {
-        "doctype": "Insights Dashboard v3"
     }
 
 ]
