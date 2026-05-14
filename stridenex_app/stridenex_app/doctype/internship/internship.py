@@ -9,13 +9,13 @@ from stridenex_app.api_stridenex_app.app_utils import (
 class Internship(Document):
     def validate(self):
         # Deadline validation
-        if self.deadline and self.deadline < today():
+        if self.application_deadline and self.application_deadline < today():
             frappe.throw("Deadline cannot be in the past")
 
     def before_save(self):
         # Auto status handling
-        if self.deadline:
-            if self.deadline < today():
+        if self.application_deadline:
+            if self.application_deadline < today():
                 self.status = "Closed"
             elif not self.status:
                 self.status = "Active"
@@ -59,10 +59,23 @@ def create_internship():
             **data
         })
 
-        # ✅ Adjust keys based on child tables
-        append_child_rows(internship, "course", course_list, "course")         # 🔁 change if needed
-        append_child_rows(internship, "department", department_list, "department")  # 🔁 change if needed
-        append_child_rows(internship, "academic_year", academic_year_list, "academic_year")  # ✅ confirmed
+        for course in course_list:
+            internship.append("course", {
+                "course": course if isinstance(course, str) else course.get("course")
+            })
+
+        # Department
+        for department in department_list:
+            internship.append("department", {
+                "department": department if isinstance(department, str) else department.get("department")
+            })
+
+        # Academic Year — field inside child DocType is "academic_year" (Link to "Academic Year")
+        for year in academic_year_list:
+            year_value = year if isinstance(year, str) else year.get("academic_year")
+            row = frappe.new_doc("Academic Year Table")
+            row.academic_year = year_value
+            internship.append("academic_year", row)
 
         internship.insert(ignore_permissions=True)
         frappe.db.commit()

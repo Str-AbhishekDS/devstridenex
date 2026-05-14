@@ -45,7 +45,7 @@ class MentorOffering(Document):
 
 # ── Whitelisted APIs ───────────────────────────────────────────────────────────
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_mentor_offerings(mentor, status=None):
     filters = {"mentor": mentor}
     if status:
@@ -62,7 +62,7 @@ def get_mentor_offerings(mentor, status=None):
     )
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def toggle_offering_status(offering_name, action):
     doc = frappe.get_doc("Mentor Offering", offering_name)
     status_map = {
@@ -77,7 +77,7 @@ def toggle_offering_status(offering_name, action):
     return {"status": doc.status}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def create_lms_batch_for_offering(offering_name):
     """
     Create an LMS Batch linked to this offering.
@@ -136,7 +136,7 @@ def create_lms_batch_for_offering(offering_name):
     return {"batch_name": batch.name, "already_exists": False}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_open_batches_for_offering(offering):
     """
     Return open LMS Batches linked to this offering.
@@ -198,7 +198,7 @@ def get_open_batches_for_offering(offering):
     # Return as list so JS can use same card-picker pattern
     return [batch]
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def enroll_student_in_batch(offering, batch_name, student):
     """
     Enroll a student into an LMS Batch using the LMS Batch Enrollment doctype.

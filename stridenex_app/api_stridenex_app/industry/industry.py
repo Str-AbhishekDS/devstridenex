@@ -385,7 +385,7 @@ def delete_hiring_round(name, row_name):
 
         row_to_delete = None
 
-        for row in doc.table_nuet:
+        for row in doc.hiring_process:
             if row.name == row_name:
                 row_to_delete = row
                 break
@@ -404,7 +404,7 @@ def delete_hiring_round(name, row_name):
         return {
             "status": 200,
             "message": "Hiring round deleted successfully",
-            "data": doc.table_nuet
+            "data": doc.hiring_process
         }
 
     except Exception as e:
@@ -418,7 +418,7 @@ def update_hiring_round(industry_name, row_name, round=None, based_on=None, dura
 
         updated = False
 
-        for row in doc.table_nuet:
+        for row in doc.hiring_process:
             if row.name == row_name:
                 if round is not None:
                     row.round = round
@@ -442,7 +442,7 @@ def update_hiring_round(industry_name, row_name, round=None, based_on=None, dura
         return {
             "status": 200,
             "message": "Hiring round updated successfully",
-            "data": doc.table_nuet
+            "data": doc.hiring_process   # ✅ FIXED
         }
 
     except Exception as e:
