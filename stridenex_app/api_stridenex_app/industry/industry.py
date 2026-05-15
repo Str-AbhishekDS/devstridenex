@@ -324,7 +324,7 @@ def get_industry_by_name(email):
         return {"status": 500, "message": str(e)}
 
 # =====================child table apis=============================
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def add_required_role(industry_name, role, duration=None, semester=None, description=None, available_positions=None):
     try:
         doc = frappe.get_doc("Industry list", industry_name)
@@ -353,7 +353,7 @@ def add_required_role(industry_name, role, duration=None, semester=None, descrip
             "message": str(e)
         }
     
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def add_hiring_round(industry_name, round, based_on=None, duration=None):
     try:
         doc = frappe.get_doc("Industry list", industry_name)

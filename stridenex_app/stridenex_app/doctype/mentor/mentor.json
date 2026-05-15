@@ -13,6 +13,7 @@
   "email_id",
   "type",
   "mentor_platform_urls",
+  "role",
   "column_break_eibm",
   "domain",
   "other_domain",
@@ -20,6 +21,7 @@
   "travelling_possible",
   "approved_status",
   "is_active",
+  "experience",
   "column_break_ecju",
   "country",
   "state",
@@ -36,6 +38,8 @@
   "account_number",
   "column_break_miqy",
   "ifsc_code",
+  "section_break_hqop",
+  "mentor_verification",
   "section_break_lnjd",
   "profile_description",
   "terms_and_conditions",
@@ -229,13 +233,33 @@
    "fieldname": "avg_rating",
    "fieldtype": "Float",
    "label": "Avg Rating"
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Data",
+   "label": "Role"
+  },
+  {
+   "fieldname": "experience",
+   "fieldtype": "Data",
+   "label": "Experience"
+  },
+  {
+   "fieldname": "section_break_hqop",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "mentor_verification",
+   "fieldtype": "Table",
+   "label": "Mentor Verification",
+   "options": "Mentor Verification Table"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-06 11:41:09.876482",
+ "modified": "2026-05-15 11:34:26.190282",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor",

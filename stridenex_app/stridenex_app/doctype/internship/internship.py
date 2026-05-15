@@ -1,24 +1,31 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import today
+from frappe.utils import today,getdate
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
     exception_handel,
     append_child_rows
 )
-class Internship(Document):
-    def validate(self):
-        # Deadline validation
-        if self.application_deadline and self.application_deadline < today():
-            frappe.throw("Deadline cannot be in the past")
 
-    def before_save(self):
-        # Auto status handling
-        if self.application_deadline:
-            if self.application_deadline < today():
-                self.status = "Closed"
-            elif not self.status:
-                self.status = "Active"
+
+class Internship(Document):
+    pass
+
+    # def validate(self):
+
+    #     if self.application_deadline:
+    #         if getdate(self.application_deadline) < getdate(today()):
+    #             frappe.throw("Deadline cannot be in the past")
+
+    # def before_save(self):
+
+    #     if self.application_deadline:
+
+    #         if getdate(self.application_deadline) < getdate(today()):
+    #             self.status = "Closed"
+
+    #         elif not self.status:
+    #             self.status = "Active"
                 
 @frappe.whitelist()
 def get_match_score(student, internship):
@@ -51,7 +58,7 @@ def create_internship():
 
         course_list = data.pop("course", [])
         department_list = data.pop("department", [])
-        academic_year_list = data.pop("acdemic_year", [])
+        academic_year_list = data.pop("academic_year", [])
         # return academic_year_list
 
         internship = frappe.get_doc({
@@ -76,6 +83,7 @@ def create_internship():
             row = frappe.new_doc("Academic Year Table")
             row.academic_year = year_value
             internship.append("academic_year", row)
+
 
         internship.insert(ignore_permissions=True)
         frappe.db.commit()

@@ -334,6 +334,8 @@ def get_mentor_by_email(email_id):
             "total_hours": doc.total_hours,
             "total_earnings": doc.total_earnings,
             "avg_rating": doc.avg_rating,
+            "role":doc.role,
+            "experience":doc.experience,
 
             # "terms_accepted": doc.terms_accepted,
 
@@ -369,6 +371,16 @@ def get_mentor_by_email(email_id):
                 }
 
                 for row in doc.mentor_platform_urls
+            ],
+            "mentor_verification": [
+
+                {
+                    "verification": row.verification,
+                    "status": row.status,
+                   
+                }
+
+                for row in doc.mentor_verification
             ]
         }
 
