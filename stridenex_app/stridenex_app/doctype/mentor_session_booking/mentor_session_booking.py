@@ -9,11 +9,12 @@ from stridenex_app.api_stridenex_app.app_utils import (
 )
 
 import frappe
+from frappe.utils import now_datetime
 from frappe.model.document import Document
 from frappe import _
 from frappe.utils import getdate, nowdate, get_time, add_days
-from frappe.utils import getdate, nowdate, get_time, add_days
 import datetime
+import calendar
 
 
 class MentorSessionBooking(Document):
@@ -209,7 +210,7 @@ class MentorSessionBooking(Document):
         availability_docs = frappe.get_all(
             "Mentor Availability",
             filters={"mentor": self.mentor, "is_available": 1},
-            fields=["name", "schedule_type", "from_time", "to_time"]
+            fields=["name",  "from_time", "to_time"]
         )
 
         fits = False
@@ -218,22 +219,22 @@ class MentorSessionBooking(Document):
             doc = frappe.get_doc("Mentor Availability", avail.name)
 
             # ✅ CASE 1: Same schedule
-            if avail.schedule_type == "Each Day Same Schedule":
-                for row in (doc.days_multi or []):
-                    if (row.day or "").strip().lower() == day_name:
+            # if avail.schedule_type == "Each Day Same Schedule":
+            #     for row in (doc.days_multi or []):
+            #         if (row.day or "").strip().lower() == day_name:
 
-                        if get_time(doc.from_time) <= self_from and get_time(doc.to_time) >= self_to:
-                            fits = True
-                            break
+            #             if get_time(doc.from_time) <= self_from and get_time(doc.to_time) >= self_to:
+            #                 fits = True
+            #                 break
 
             # ✅ CASE 2: Different schedule
-            else:
-                for row in (doc.daily_schedule or []):
-                    if (row.day or "").strip().lower() == day_name:
+            
+            for row in (doc.daily_schedule or []):
+                if (row.day or "").strip().lower() == day_name:
 
-                        if get_time(row.from_time) <= self_from and get_time(row.to_time) >= self_to:
-                            fits = True
-                            break
+                    if get_time(row.from_time) <= self_from and get_time(row.to_time) >= self_to:
+                        fits = True
+                        break
 
             if fits:
                 break
@@ -339,23 +340,23 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
     for avail in frappe.get_all(
         "Mentor Availability",
         filters={"mentor": mentor, "is_available": 1},
-        fields=["name", "schedule_type"]
+        fields=["name",]
     ):
         doc = frappe.get_doc("Mentor Availability", avail.name)
-        if avail.schedule_type == "Each Day Same Schedule":
-            for row in (doc.days_multi or []):
-                key = (row.day or "").strip().lower()
-                avail_by_day.setdefault(key, []).append({
-                    "from_time": _time_to_str(doc.from_time),
-                    "to_time":   _time_to_str(doc.to_time),
-                })
-        else:
-            for row in (doc.daily_schedule or []):
-                key = (row.day or "").strip().lower()
-                avail_by_day.setdefault(key, []).append({
-                    "from_time": _time_to_str(row.from_time),
-                    "to_time":   _time_to_str(row.to_time),
-                })
+        # if avail.schedule_type == "Each Day Same Schedule":
+        #     for row in (doc.days_multi or []):
+        #         key = (row.day or "").strip().lower()
+        #         avail_by_day.setdefault(key, []).append({
+        #             "from_time": _time_to_str(doc.from_time),
+        #             "to_time":   _time_to_str(doc.to_time),
+        #         })
+        
+        for row in (doc.daily_schedule or []):
+            key = (row.day or "").strip().lower()
+            avail_by_day.setdefault(key, []).append({
+                "from_time": _time_to_str(row.from_time),
+                "to_time":   _time_to_str(row.to_time),
+            })
 
     # ── 2. Blocked slots ─────────────────────────────────────────────
     blocked_by_date = {}
@@ -548,37 +549,35 @@ def mark_session_completed(session_name):
 # ------------------------------------------------------------------
 
 @frappe.whitelist()
-def submit_review(booking_name, rating, review):
-    """Submit a star rating + review text for a completed offering booking."""
+def submit_review(booking_name, rating, review, reviewed_by = frappe.session.user):
+
     if not frappe.db.exists("Mentor Session Booking", booking_name):
         frappe.throw(_("Invalid Booking"))
 
-    booking = frappe.db.get_value(
-        "Mentor Session Booking",
-        booking_name,
-        ["status", "docstatus", "offering"],
-        as_dict=True
-    )
-
-    if booking.docstatus != 1:
-        frappe.throw(_("Booking must be submitted before reviewing."))
+    booking = frappe.get_doc("Mentor Session Booking", booking_name)
 
     if booking.status != "Completed":
         frappe.throw(_("Only completed sessions can be reviewed."))
 
-    frappe.db.set_value("Mentor Session Booking", booking_name, {
-        "rating":  float(rating),
-        "review":  review
+    # Add child table row
+    booking.append("review", {
+        "rating": float(rating),
+        "review_text": review,
+        "reviewed_by": reviewed_by,
+        "reviewed_on": now_datetime()
     })
 
-    # Refresh offering aggregates
+    booking.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    # Refresh aggregates
     if booking.offering:
         offering = frappe.get_doc("Mentor Offering", booking.offering)
         offering.update_aggregates()
 
     return {"success": True}
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_upcoming_sessions(mentor, limit=20):
     return frappe.get_all(
         "Mentor Session Booking",
@@ -590,7 +589,7 @@ def get_upcoming_sessions(mentor, limit=20):
     )
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_session_history(mentor, from_date=None, to_date=None, limit=50):
     filters = {"mentor": mentor, "status": ["in", ["Completed", "Cancelled"]]}
     if from_date and to_date:
@@ -606,7 +605,7 @@ def get_session_history(mentor, from_date=None, to_date=None, limit=50):
 
 
 @frappe.whitelist()
-def get_weekly_booked_sessions(mentor, week_start_date):
+def get_weekly_booked_sessions(mentor, week_start_date=None):
     start  = getdate(week_start_date)
     monday = start - datetime.timedelta(days=start.weekday())
     sunday = monday + datetime.timedelta(days=6)
@@ -624,6 +623,55 @@ def get_weekly_booked_sessions(mentor, week_start_date):
     for s in sessions:
         s["student_full_name"] = frappe.db.get_value("User", s.student, "full_name") or s.student
     return sessions
+
+
+@frappe.whitelist()
+def get_monthly_booked_sessions(mentor, month_date=None):
+
+    # Use current date if not provided
+    if not month_date:
+        month_date = nowdate()
+
+    start = getdate(month_date)
+
+    # First day of month
+    first_day = start.replace(day=1)
+
+    # Last day of month
+    last_day_num = calendar.monthrange(start.year, start.month)[1]
+    last_day = start.replace(day=last_day_num)
+
+    sessions = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "mentor": mentor,
+            "session_date": ["between", [str(first_day), str(last_day)]],
+            "status": ["in", ["Scheduled", "Completed"]],
+        },
+        fields=[
+            "name",
+            "student",
+            "topic",
+            "session_date",
+            "from_time",
+            "to_time",
+            "duration",
+            "status",
+            "meeting_link",
+            "offering",
+        ],
+        order_by="session_date asc, from_time asc",
+    )
+
+    for s in sessions:
+        s["student_full_name"] = (
+            frappe.db.get_value("User", s.student, "full_name")
+            or s.student
+        )
+
+    return sessions
+
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slot Generation  (replaces split_into_hour_slots)
@@ -833,7 +881,7 @@ def get_pending_requests(mentor):
         },
         fields=[
             "name", "student", "offering", "topic",
-            "requested_date", "requested_time",
+            "session_date", "from_time","to_time",
             "session_type", "priority", "student_message",
             "amount_paid",
         ],
@@ -945,70 +993,71 @@ def student_confirm_alt_time(booking_name):
     return {"status": "Pending"}
 
 
-
 # ── Add this standalone function at module level ──────────────────────────────
-
+@frappe.whitelist()
 def _update_mentor_stats(mentor):
-    """
-    Recalculate and update mentor's aggregate stats on the Mentor doctype.
-    Called whenever a session is Completed or Cancelled.
 
-    Calculates:
-      total_sessions  → count of Completed bookings
-      total_hours     → sum of duration (minutes) / 60
-      total_earnings  → sum of amount_paid for Completed bookings
-      avg_rating      → average of non-zero ratings on Completed bookings
-    """
     if not mentor:
-        return
+        return {"success": False, "message": "Mentor is required"}
 
-    # ── Check which doctype stores mentor profile ─────────────────────
-    # Change "Mentor" to your actual mentor doctype name
     MENTOR_DOCTYPE = "Mentor"
 
     if not frappe.db.exists(MENTOR_DOCTYPE, mentor):
-        # Try by mentor field (if name ≠ user email)
-        mentor_doc_name = frappe.db.get_value(MENTOR_DOCTYPE, {"mentor": mentor}, "name")
+        mentor_doc_name = frappe.db.get_value(
+            MENTOR_DOCTYPE,
+            {"mentor": mentor},
+            "name"
+        )
+
         if not mentor_doc_name:
-            return   # No mentor profile found — skip silently
+            return {
+                "success": False,
+                "message": "Mentor profile not found"
+            }
     else:
         mentor_doc_name = mentor
 
-    # ── Single SQL query for all stats ────────────────────────────────
     result = frappe.db.sql("""
         SELECT
-            COUNT(*)                                    AS total_sessions,
-            COALESCE(SUM(duration), 0)                  AS total_minutes,
-            COALESCE(SUM(amount_paid), 0)               AS total_earnings,
-            COALESCE(AVG(NULLIF(rating, 0)), 0)         AS avg_rating
+            COUNT(*)                            AS total_sessions,
+            COALESCE(SUM(duration), 0)          AS total_minutes,
+            COALESCE(SUM(amount_paid), 0)       AS total_earnings,
+            COALESCE(AVG(NULLIF(rating, 0)), 0) AS avg_rating
         FROM `tabMentor Session Booking`
-        WHERE
-            mentor  = %(mentor)s
-            AND status = 'Completed'
+        WHERE mentor = %(mentor)s
+        AND status = 'Completed'
     """, {"mentor": mentor}, as_dict=True)
 
-    if not result:
-        return
+    row = result[0]
 
-    row            = result[0]
     total_sessions = int(row.total_sessions or 0)
-    total_hours    = round(float(row.total_minutes or 0) / 60, 2)
+    total_hours = round(float(row.total_minutes or 0) / 60, 2)
     total_earnings = float(row.total_earnings or 0)
-    avg_rating     = round(float(row.avg_rating or 0), 1)
+    avg_rating = round(float(row.avg_rating or 0), 1)
 
-    # ── Update mentor profile doc ─────────────────────────────────────
     frappe.db.set_value(
         MENTOR_DOCTYPE,
         mentor_doc_name,
         {
             "total_sessions": total_sessions,
-            "total_hours":    total_hours,
+            "total_hours": total_hours,
             "total_earnings": total_earnings,
-            "avg_rating":     avg_rating,
+            "avg_rating": avg_rating,
         },
-        update_modified=False   # don't bump modified timestamp for stat updates
+        update_modified=False
     )
+
     frappe.db.commit()
+
+    return {
+        "success": True,
+        "mentor": mentor_doc_name,
+        "total_sessions": total_sessions,
+        "total_hours": total_hours,
+        "total_earnings": total_earnings,
+        "avg_rating": avg_rating
+    }
+
 
 # ── Update update_status API (used for submitted offering bookings) ────────────
 @frappe.whitelist()
