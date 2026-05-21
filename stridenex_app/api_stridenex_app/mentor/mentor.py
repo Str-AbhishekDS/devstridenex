@@ -172,15 +172,14 @@ def update_mentor(email_id):
         mentor.save(ignore_permissions=True)
 
 
-        # if mentor.email_id:
-
-        #     frappe.db.set_value(
-        #         "User",
-        #         mentor.email_id,
-        #         "is_onboarded",
-        #         onboarding_status
-        #     )
-
+        if email_id and frappe.db.exists("User", email_id):
+            onboarding_status = 0
+            if data.get("country"):
+                onboarding_status = 2
+            if data.get("type"):
+                onboarding_status = 3
+            frappe.db.set_value("User", email_id, "is_onboarded", onboarding_status)
+            frappe.db.commit()
         frappe.db.commit()
 
         return gen_response(

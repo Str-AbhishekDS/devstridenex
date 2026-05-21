@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "column_break_ardd",
   "student",
   "offering",
   "offering_type",
@@ -16,6 +17,8 @@
   "amount_paid",
   "notes",
   "review",
+  "shared_with_student",
+  "student_message",
   "column_break_lugc",
   "payment_reference",
   "status",
@@ -29,7 +32,6 @@
   "amended_from",
   "alt_time",
   "alt_date",
-  "student_message",
   "requested_date",
   "requested_time",
   "mentor_request_status"
@@ -200,12 +202,21 @@
    "fieldtype": "Select",
    "label": "Mentor Request Status",
    "options": "Pending\nAccepted\nDeclined\nSuggested Alt Time"
+  },
+  {
+   "fieldname": "shared_with_student",
+   "fieldtype": "Small Text",
+   "label": "Shared with Student"
+  },
+  {
+   "fieldname": "column_break_ardd",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-19 17:42:52.675372",
+ "modified": "2026-05-21 11:19:59.337013",
  "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Mentor Session Booking",

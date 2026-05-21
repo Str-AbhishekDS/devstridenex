@@ -3,6 +3,7 @@ from frappe.auth import LoginManager
 from frappe.utils.password import update_password
 import random
 import requests
+from urllib.parse import quote
 from frappe.utils import now_datetime, add_to_date
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response, 
@@ -146,67 +147,126 @@ def logout():
         return gen_response(200, "Logged out successfully.")
     except Exception as e:
         return exception_handel(e)
-
-
 @frappe.whitelist(allow_guest=True)
 def send_mobile_otp(mobile_no=None):
+
     if not mobile_no:
-        return gen_response(400, "Mobile number is required")
+        return gen_response(
+            400,
+            "Mobile number is required"
+        )
 
-    # Generate OTP
+    # -----------------------------------
+    # GENERATE OTP
+    # -----------------------------------
+
     otp = str(random.randint(100000, 999999))
-    expiry_time = add_to_date(now_datetime(), minutes=10)
 
-    # Save / Update OTP in DB
-    if frappe.db.exists("Validate Mobile OTP", mobile_no):
-        doc = frappe.get_doc("Validate Mobile OTP", mobile_no)
-        doc.otp = otp
-        doc.expiry_time = expiry_time
-        doc.save(ignore_permissions=True)
-    else:
-        doc = frappe.get_doc({
-            "doctype": "Validate Mobile OTP",
-            "mobile_no": mobile_no,
-            "otp": otp,
-            "expiry_time": expiry_time
-        })
-        doc.insert(ignore_permissions=True)
+    expiry_time = add_to_date(
+        now_datetime(),
+        minutes=10
+    )
 
-    frappe.db.commit()
+    # -----------------------------------
+    # SAVE OTP RECORD
+    # -----------------------------------
 
-    # -------------------------------
-    # ✅ CALL SMS API HERE
-    # -------------------------------
     try:
-        url = "https://erpvppl.erpdata.in/api/method/sugar_mill.sugar_mill.doctype.sanction_sugar.sanction_sugar_api.send_otp_sms_api"
 
-        payload = {
-            "start_date": "2024-04-01",
-            "end_date": "2024-04-30",
-            "mobile_number": mobile_no,
-            "otp": otp,
-            "sugar_allocate": "100",
-            "season": "2025-2026",
-            "sugar_price": "3200",
-            "vendor_name": "Test Vendor"
-        }
+        existing_doc = frappe.db.exists(
+            "Validate Mobile OTP",
+            {"mobile_no": mobile_no}
+        )
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": "token 3affe41277aea9d:e1eca2cd6111f66"
-        }
+        if existing_doc:
 
-        response = requests.post(url, json=payload, headers=headers)
-        response_data = response.json()
+            otp_doc = frappe.get_doc(
+                "Validate Mobile OTP",
+                existing_doc
+            )
+
+            otp_doc.otp = otp
+            otp_doc.expiry_time = expiry_time
+
+            otp_doc.save(ignore_permissions=True)
+
+        else:
+
+            otp_doc = frappe.get_doc({
+                "doctype": "Validate Mobile OTP",
+                "mobile_no": mobile_no,
+                "otp": otp,
+                "expiry_time": expiry_time
+            })
+
+            otp_doc.insert(ignore_permissions=True)
+
+        # IMPORTANT
+        frappe.db.commit()
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "OTP SMS Failed")
-        return gen_response(500, "OTP generated but SMS failed")
 
-    return gen_response(200, "OTP sent successfully", {
-        "mobile_no": mobile_no,
-        "sms_response": response_data
-    })
+        frappe.log_error(
+            frappe.get_traceback(),
+            "OTP Save Failed"
+        )
+
+        return gen_response(
+            500,
+            f"OTP save failed: {str(e)}"
+        )
+
+    # -----------------------------------
+    # SEND SMS
+    # -----------------------------------
+
+    try:
+
+        message = quote(
+            f"Your Stridenex account verification OTP is {otp} "
+            f".Valid for 10 minutes.Do not share this OTP."
+        )
+
+        sms_url = (
+            "http://vas.mobilogi.com/api.php"
+            f"?username=strdnx"
+            f"&password=pass123"
+            f"&route=1"
+            f"&sender=STRDNX"
+            f"&mobile[]={mobile_no}"
+            f"&message[]={message}"
+            f"&templateid=1007550961776829496"
+        )
+
+        response = requests.get(
+            sms_url,
+            timeout=15
+        )
+
+        response_text = response.text.strip()
+
+    except Exception as e:
+
+        frappe.log_error(
+            frappe.get_traceback(),
+            "OTP SMS Failed"
+        )
+
+        return gen_response(
+            500,
+            f"SMS failed: {str(e)}"
+        )
+
+    return gen_response(
+        200,
+        "OTP sent successfully",
+        {
+            "mobile_no": mobile_no,
+            "sms_response": response_text
+        }
+    )
+    
+    
 
 @frappe.whitelist(allow_guest=True)
 def validate_mobile_otp(mobile_no=None, otp=None,email=None):

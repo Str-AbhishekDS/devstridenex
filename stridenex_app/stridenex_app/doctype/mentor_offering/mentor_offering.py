@@ -94,6 +94,7 @@ def create_mentor_offering():
         "category": data.get("category"),
         "duration_minutes": data.get("duration_minutes"),
         "price_per_session": data.get("price_per_session"),
+        "max_group_size": data.get("max_group_size"),
         "description": data.get("description"),
         "status": data.get("status", "Draft"),
         "is_featured": data.get("is_featured", 0),

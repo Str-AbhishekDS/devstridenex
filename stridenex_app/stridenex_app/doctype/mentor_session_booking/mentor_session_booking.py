@@ -7,6 +7,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
     remove_student_from_batch,
     get_or_create_course_enrollment,
 )
+from frappe.email.doctype.email_queue.email_queue import send_now
 
 import frappe
 from frappe.utils import now_datetime
@@ -672,7 +673,86 @@ def get_monthly_booked_sessions(mentor, month_date=None):
     return sessions
 
 
+@frappe.whitelist(allow_guest=True)
+def get_mentor_dashboard_stats(mentor):
 
+    if not mentor:
+        return {
+            "success": False,
+            "message": "Mentor is required"
+        }
+
+    today = getdate(nowdate())
+
+    # Month start
+    first_day = today.replace(day=1)
+
+    # Month end
+    if today.month == 12:
+        last_day = today.replace(
+            year=today.year + 1,
+            month=1,
+            day=1
+        ) - datetime.timedelta(days=1)
+    else:
+        last_day = today.replace(
+            month=today.month + 1,
+            day=1
+        ) - datetime.timedelta(days=1)
+
+    # Total students mentored
+    total_students = frappe.db.sql("""
+        SELECT COUNT(DISTINCT student) AS total_students
+        FROM `tabMentor Session Booking`
+        WHERE mentor = %(mentor)s
+        AND status = 'Completed'
+    """, {
+        "mentor": mentor
+    }, as_dict=True)[0].total_students or 0
+
+    # This month mentored students
+    this_month_students = frappe.db.sql("""
+        SELECT COUNT(DISTINCT student) AS total_students
+        FROM `tabMentor Session Booking`
+        WHERE mentor = %(mentor)s
+        AND status = 'Completed'
+        AND session_date BETWEEN %(first_day)s AND %(last_day)s
+    """, {
+        "mentor": mentor,
+        "first_day": first_day,
+        "last_day": last_day
+    }, as_dict=True)[0].total_students or 0
+
+    # Sessions this month
+    sessions_this_month = frappe.db.count(
+        "Mentor Session Booking",
+        filters={
+            "mentor": mentor,
+            "status": ["in", ["Scheduled", "Completed"]],
+            "session_date": ["between", [str(first_day), str(last_day)]]
+        }
+    )
+
+    # Upcoming sessions
+    upcoming_sessions = frappe.db.count(
+        "Mentor Session Booking",
+        filters={
+            "mentor": mentor,
+            "status": "Scheduled",
+            "session_date": [">=", str(today)]
+        }
+    )
+
+    return {
+        "success": True,
+        "mentor": mentor,
+        "total_students_mentored": total_students,
+        "this_month_mentored_students": this_month_students,
+        "sessions_this_month": sessions_this_month,
+        "upcoming_sessions": upcoming_sessions,
+        "month_start": str(first_day),
+        "month_end": str(last_day)
+    }
 # ─────────────────────────────────────────────────────────────────────────────
 # Slot Generation  (replaces split_into_hour_slots)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1187,3 +1267,255 @@ def get_student_session_history(student, from_date=None, to_date=None, limit=50)
     for s in sessions:
         s["mentor_name"] = frappe.db.get_value("User", s.mentor, "full_name") or s.mentor
     return sessions
+
+
+@frappe.whitelist()
+def save_session_notes(
+    student,
+    session_name,
+    notes=None,
+    shared_with_student=None
+):
+
+    try:
+
+        # -----------------------------------
+        # Validate Required Parameters
+        # -----------------------------------
+        if not student:
+            return {
+                "status": "error",
+                "message": "student is required"
+            }
+
+        if not session_name:
+            return {
+                "status": "error",
+                "message": "session_name is required"
+            }
+
+        # -----------------------------------
+        # Fetch Session Document
+        # -----------------------------------
+        session_doc = frappe.get_doc(
+            "Mentor Session Booking",
+            session_name
+        )
+
+        # -----------------------------------
+        # Validate Student
+        # -----------------------------------
+        if session_doc.student != student:
+            return {
+                "status": "error",
+                "message": "This session does not belong to this student"
+            }
+
+        # -----------------------------------
+        # Detect Add or Edit
+        # -----------------------------------
+        is_edit = False
+
+        if session_doc.notes:
+            is_edit = True
+
+        # -----------------------------------
+        # Save Notes
+        # -----------------------------------
+        if notes is not None:
+            session_doc.notes = notes
+
+        if shared_with_student is not None:
+            session_doc.shared_with_student = shared_with_student
+
+        # -----------------------------------
+        # Save Document
+        # -----------------------------------
+        session_doc.save(ignore_permissions=True)
+
+        frappe.db.commit()
+
+        # -----------------------------------
+        # Dynamic Success Message
+        # -----------------------------------
+        success_message = (
+            "Session note updated successfully"
+            if is_edit
+            else "Session note added successfully"
+        )
+
+        return {
+            "status": "success",
+            "message": success_message,
+            "is_edit": is_edit,
+            "data": {
+                "student": session_doc.student,
+                "session_name": session_doc.name,
+                "notes": session_doc.notes,
+                "shared_with_student": session_doc.shared_with_student
+            }
+        }
+
+    except Exception as e:
+
+        frappe.db.rollback()
+
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Save Session Notes Error"
+        )
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+        
+
+@frappe.whitelist()
+def get_session_note(student, session_name):
+
+    try:
+
+        # -----------------------------------
+        # Validate Required Parameters
+        # -----------------------------------
+        if not student:
+            return {
+                "status": "error",
+                "message": "student is required"
+            }
+
+        if not session_name:
+            return {
+                "status": "error",
+                "message": "session_name is required"
+            }
+
+        # -----------------------------------
+        # Fetch Session Document
+        # -----------------------------------
+        session_doc = frappe.get_doc(
+            "Mentor Session Booking",
+            session_name
+        )
+
+        # -----------------------------------
+        # Validate Student
+        # -----------------------------------
+        if session_doc.student != student:
+            return {
+                "status": "error",
+                "message": "This session does not belong to this student"
+            }
+
+        # -----------------------------------
+        # Return Existing Notes
+        # -----------------------------------
+        return {
+            "status": "success",
+            "message": "Session note fetched successfully",
+            "data": {
+                "student": session_doc.student,
+                "session_name": session_doc.name,
+                "notes": session_doc.notes,
+                "shared_with_student": session_doc.shared_with_student
+            }
+        }
+
+    except Exception as e:
+
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Get Session Note Error"
+        )
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+from frappe.email.doctype.email_queue.email_queue import send_now
+
+@frappe.whitelist()
+def email_to_student(student, session_name, subject, message):
+    try:
+        session_doc = frappe.get_doc("Mentor Session Booking", session_name)
+
+        if session_doc.student != student:
+            return {"status": "error", "message": "Invalid student"}
+
+        student_email = session_doc.student
+        mentor_email = session_doc.mentor
+
+        if not student_email:
+            return {"status": "error", "message": "Student email not found"}
+
+        if not mentor_email:
+            return {"status": "error", "message": "Mentor email not found"}
+
+        # ── Run email operations as Administrator to bypass permission issues ──
+        current_user = frappe.session.user  # save current user
+        frappe.set_user("Administrator")
+
+        try:
+            # Step 1: Queue the email
+            email_queue = frappe.sendmail(
+                recipients=[student_email],
+                sender=mentor_email,
+                reply_to=mentor_email,
+                subject=subject,
+                message=message,
+                now=False
+            )
+
+            frappe.db.commit()
+
+            # Step 2: Manually trigger send_now
+            if email_queue and hasattr(email_queue, "name"):
+                send_now(email_queue.name)
+            else:
+                queued = frappe.db.get_value(
+                    "Email Queue",
+                    {
+                        "status": "Not Sent",
+                        "recipients": student_email
+                    },
+                    "name",
+                    order_by="creation desc"
+                )
+                if queued:
+                    send_now(queued)
+                else:
+                    return {
+                        "status": "error",
+                        "message": "Email queued but could not find record to send"
+                    }
+
+            # Step 3: Verify sent status
+            if email_queue and hasattr(email_queue, "name"):
+                status = frappe.db.get_value(
+                    "Email Queue",
+                    email_queue.name,
+                    "status"
+                )
+                if status != "Sent":
+                    error_msg = frappe.db.get_value(
+                        "Email Queue",
+                        email_queue.name,
+                        "error"
+                    )
+                    return {
+                        "status": "error",
+                        "message": f"Email failed. SMTP Error: {error_msg}"
+                    }
+
+        finally:
+            frappe.set_user(current_user)  # ← Always restore original user
+
+        return {
+            "status": "success",
+            "message": f"Email sent successfully to {student_email}"
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Email To Student Error")
+        return {"status": "error", "message": str(e)}
