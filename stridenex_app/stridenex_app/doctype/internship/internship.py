@@ -1,24 +1,31 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import today
+from frappe.utils import today,getdate
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
     exception_handel,
     append_child_rows
 )
-class Internship(Document):
-    def validate(self):
-        # Deadline validation
-        if self.deadline and self.deadline < today():
-            frappe.throw("Deadline cannot be in the past")
 
-    def before_save(self):
-        # Auto status handling
-        if self.deadline:
-            if self.deadline < today():
-                self.status = "Closed"
-            elif not self.status:
-                self.status = "Active"
+
+class Internship(Document):
+    pass
+
+    # def validate(self):
+
+    #     if self.application_deadline:
+    #         if getdate(self.application_deadline) < getdate(today()):
+    #             frappe.throw("Deadline cannot be in the past")
+
+    # def before_save(self):
+
+    #     if self.application_deadline:
+
+    #         if getdate(self.application_deadline) < getdate(today()):
+    #             self.status = "Closed"
+
+    #         elif not self.status:
+    #             self.status = "Active"
                 
 @frappe.whitelist()
 def get_match_score(student, internship):
@@ -51,7 +58,7 @@ def create_internship():
 
         course_list = data.pop("course", [])
         department_list = data.pop("department", [])
-        academic_year_list = data.pop("acdemic_year", [])
+        academic_year_list = data.pop("academic_year", [])
         # return academic_year_list
 
         internship = frappe.get_doc({
@@ -59,10 +66,24 @@ def create_internship():
             **data
         })
 
-        # ✅ Adjust keys based on child tables
-        append_child_rows(internship, "course", course_list, "course")         # 🔁 change if needed
-        append_child_rows(internship, "department", department_list, "department")  # 🔁 change if needed
-        append_child_rows(internship, "academic_year", academic_year_list, "academic_year")  # ✅ confirmed
+        for course in course_list:
+            internship.append("course", {
+                "course": course if isinstance(course, str) else course.get("course")
+            })
+
+        # Department
+        for department in department_list:
+            internship.append("department", {
+                "department": department if isinstance(department, str) else department.get("department")
+            })
+
+        # Academic Year — field inside child DocType is "academic_year" (Link to "Academic Year")
+        for year in academic_year_list:
+            year_value = year if isinstance(year, str) else year.get("academic_year")
+            row = frappe.new_doc("Academic Year Table")
+            row.academic_year = year_value
+            internship.append("academic_year", row)
+
 
         internship.insert(ignore_permissions=True)
         frappe.db.commit()

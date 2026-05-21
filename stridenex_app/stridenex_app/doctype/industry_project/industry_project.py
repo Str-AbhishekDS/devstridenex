@@ -91,9 +91,9 @@ def get_project_list(industry=None, student=None, status=None, course=None, depa
                 "status",
                 "eligibility",
                 "industry",
-                "course",
-                "department",
-                "academic_year",
+                # "course",
+                # "department",
+                # "academic_year",
                 "application_deadline"
             ],
             order_by="creation desc"

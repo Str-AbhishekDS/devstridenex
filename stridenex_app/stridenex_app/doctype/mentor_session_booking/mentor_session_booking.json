@@ -6,6 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "column_break_ardd",
   "student",
   "offering",
   "offering_type",
@@ -15,8 +16,9 @@
   "session_date",
   "amount_paid",
   "notes",
-  "rating",
   "review",
+  "shared_with_student",
+  "student_message",
   "column_break_lugc",
   "payment_reference",
   "status",
@@ -30,7 +32,6 @@
   "amended_from",
   "alt_time",
   "alt_date",
-  "student_message",
   "requested_date",
   "requested_time",
   "mentor_request_status"
@@ -87,11 +88,6 @@
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes"
-  },
-  {
-   "fieldname": "rating",
-   "fieldtype": "Float",
-   "label": "Rating"
   },
   {
    "fieldname": "review",
@@ -206,13 +202,22 @@
    "fieldtype": "Select",
    "label": "Mentor Request Status",
    "options": "Pending\nAccepted\nDeclined\nSuggested Alt Time"
+  },
+  {
+   "fieldname": "shared_with_student",
+   "fieldtype": "Small Text",
+   "label": "Shared with Student"
+  },
+  {
+   "fieldname": "column_break_ardd",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-17 14:44:16.908835",
- "modified_by": "Administrator",
+ "modified": "2026-05-21 11:19:59.337013",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Mentor Session Booking",
  "naming_rule": "Expression (old style)",
@@ -227,6 +232,42 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Mentor",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Student",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "LMS Student",
    "share": 1,
    "write": 1
   }

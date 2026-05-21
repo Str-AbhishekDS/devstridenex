@@ -97,7 +97,7 @@ def _times_overlap(start1, end1, start2, end2):
 # Whitelisted API Methods
 # ------------------------------------------------------------------
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest = True)
 def get_blocked_times(mentor, from_date, to_date):
     """
     Return all blocked time slots for a mentor between two dates (inclusive).
@@ -138,8 +138,8 @@ def get_blocked_times(mentor, from_date, to_date):
 
     return blocks
 
-
-@frappe.whitelist()
+                    
+@frappe.whitelist(allow_guest=True)
 def block_time(mentor, date, from_time, to_time, reason=None):
     """
     Programmatically create a Mentor Blocked Time entry.
@@ -148,8 +148,8 @@ def block_time(mentor, date, from_time, to_time, reason=None):
     Returns:
         str: The name of the newly created document.
     """
-    if not frappe.has_permission("Mentor Blocked Time", "create"):
-        frappe.throw(_("You do not have permission to block time."), frappe.PermissionError)
+    # if not frappe.has_permission("Mentor Blocked Time", "create"):
+    #     frappe.throw(_("You do not have permission to block time."), frappe.PermissionError)
 
     doc = frappe.get_doc({
         "doctype": "Mentor Blocked Time",

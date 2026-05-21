@@ -45,7 +45,7 @@ class MentorOffering(Document):
 
 # ── Whitelisted APIs ───────────────────────────────────────────────────────────
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_mentor_offerings(mentor, status=None):
     filters = {"mentor": mentor}
     if status:
@@ -54,15 +54,129 @@ def get_mentor_offerings(mentor, status=None):
         "Mentor Offering",
         filters=filters,
         fields=[
-            "name", "title", "offering_type", "category",
-            "duration_minutes", "price_per_session", "status",
-            "total_bookings", "average_rating"
+           "name",
+            "mentor",
+            "title",
+            "offering_type",
+            "category",
+            "duration_minutes",
+            "price_per_session",
+            "description",
+            "status",
+            "is_featured",
+
+            "lms_course",
+            "lms_batch",
+            "start_date",
+            "end_date",
+            "start_time",
+            "end_time",
+            "batch_details",
+            "total_bookings",
+            "average_rating",
+
         ],
         order_by="creation desc"
     )
 
 
-@frappe.whitelist()
+
+@frappe.whitelist(allow_guest=True)
+def create_mentor_offering():
+
+    data = frappe.request.get_json()
+
+    doc = frappe.get_doc({
+        "doctype": "Mentor Offering",
+        "mentor": data.get("mentor"),
+        "title": data.get("title"),
+        "offering_type": data.get("offering_type"),
+        "category": data.get("category"),
+        "duration_minutes": data.get("duration_minutes"),
+        "price_per_session": data.get("price_per_session"),
+        "max_group_size": data.get("max_group_size"),
+        "description": data.get("description"),
+        "status": data.get("status", "Draft"),
+        "is_featured": data.get("is_featured", 0),
+
+        "lms_course": data.get("lms_course"),
+        "lms_batch": data.get("lms_batch"),
+
+        "start_date": data.get("start_date"),
+        "end_date": data.get("end_date"),
+
+        "start_time": data.get("start_time"),
+        "end_time": data.get("end_time"),
+
+        "batch_details": data.get("batch_details")
+    })
+
+    doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+
+    return {
+        "status": "success",
+        "message": "Mentor Offering Created",
+        "name": doc.name
+    }
+
+
+
+@frappe.whitelist(allow_guest=True)
+def update_mentor_offering(name):
+
+    data = frappe.request.get_json()
+
+    # Check document exists
+    if not frappe.db.exists("Mentor Offering", name):
+        frappe.throw("Mentor Offering not found")
+
+    # Get document
+    doc = frappe.get_doc("Mentor Offering", name)
+
+    # Update fields
+    updatable_fields = [
+        "mentor",
+        "title",
+        "offering_type",
+        "category",
+        "duration_minutes",
+        "turnaround_hours",
+        "sessions_per_month",
+        "max_group_size",
+        "price_per_session",
+        "description",
+        "status",
+        "is_featured",
+        "lms_course",
+        "lms_batch",
+        "start_date",
+        "end_date",
+        "start_time",
+        "end_time",
+        "batch_details"
+    ]
+
+    for field in updatable_fields:
+        if field in data:
+            doc.set(field, data.get(field))
+
+    # Save document
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    return {
+        "status": "success",
+        "message": "Mentor Offering Updated Successfully",
+        "data": {
+            "name": doc.name,
+            "title": doc.title,
+            "status": doc.status,
+            "price_per_session": doc.price_per_session
+        }
+    }
+
+@frappe.whitelist(allow_guest=True)
 def toggle_offering_status(offering_name, action):
     doc = frappe.get_doc("Mentor Offering", offering_name)
     status_map = {
@@ -77,7 +191,7 @@ def toggle_offering_status(offering_name, action):
     return {"status": doc.status}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def create_lms_batch_for_offering(offering_name):
     """
     Create an LMS Batch linked to this offering.
@@ -136,7 +250,7 @@ def create_lms_batch_for_offering(offering_name):
     return {"batch_name": batch.name, "already_exists": False}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_open_batches_for_offering(offering):
     """
     Return open LMS Batches linked to this offering.
@@ -198,7 +312,7 @@ def get_open_batches_for_offering(offering):
     # Return as list so JS can use same card-picker pattern
     return [batch]
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def enroll_student_in_batch(offering, batch_name, student):
     """
     Enroll a student into an LMS Batch using the LMS Batch Enrollment doctype.

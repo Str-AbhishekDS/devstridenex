@@ -111,6 +111,7 @@ def get_student_list(college=None):
     except Exception as e:
         return exception_handel(e)
 
+
 @frappe.whitelist(allow_guest=True)
 def create_skill():
     try:
@@ -118,7 +119,7 @@ def create_skill():
 
         doc = frappe.get_doc({
             "doctype": "Skill",
-            "skill_name": data.get("skill_name"),
+            "skill_name": data.get("skill_name")
         })
 
         doc.insert(ignore_permissions=True)
