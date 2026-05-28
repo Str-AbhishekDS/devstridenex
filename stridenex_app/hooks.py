@@ -20,6 +20,13 @@ app_license = "mit"
 # 		"has_permission": "stridenex_app.api.permission.has_app_permission"
 # 	}
 # ]
+permission_query_conditions = {
+    "LMS Batch": "stridenex_app.permissions.lms_batch_query"
+}
+
+has_permission = {
+    "LMS Batch": "stridenex_app.permissions.has_permission"
+}
 
 # Includes in <head>
 # ------------------

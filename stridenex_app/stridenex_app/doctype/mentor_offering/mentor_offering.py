@@ -45,7 +45,7 @@ class MentorOffering(Document):
 
 # ── Whitelisted APIs ───────────────────────────────────────────────────────────
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_mentor_offerings(mentor, status=None):
     filters = {"mentor": mentor}
     if status:
@@ -54,32 +54,12 @@ def get_mentor_offerings(mentor, status=None):
         "Mentor Offering",
         filters=filters,
         fields=[
-           "name",
-            "mentor",
-            "title",
-            "offering_type",
-            "category",
-            "duration_minutes",
-            "price_per_session",
-            "description",
-            "status",
-            "is_featured",
-
-            "lms_course",
-            "lms_batch",
-            "start_date",
-            "end_date",
-            "start_time",
-            "end_time",
-            "batch_details",
-            "total_bookings",
-            "average_rating",
-
+            "name", "title", "offering_type", "category",
+            "duration_minutes", "price_per_session", "status",
+            "total_bookings", "average_rating"
         ],
         order_by="creation desc"
     )
-
-
 
 @frappe.whitelist(allow_guest=True)
 def create_mentor_offering():
@@ -119,7 +99,6 @@ def create_mentor_offering():
         "message": "Mentor Offering Created",
         "name": doc.name
     }
-
 
 
 @frappe.whitelist(allow_guest=True)
@@ -176,7 +155,8 @@ def update_mentor_offering(name):
         }
     }
 
-@frappe.whitelist(allow_guest=True)
+
+@frappe.whitelist()
 def toggle_offering_status(offering_name, action):
     doc = frappe.get_doc("Mentor Offering", offering_name)
     status_map = {
@@ -191,7 +171,7 @@ def toggle_offering_status(offering_name, action):
     return {"status": doc.status}
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_lms_batch_for_offering(offering_name):
     """
     Create an LMS Batch linked to this offering.
@@ -233,8 +213,13 @@ def create_lms_batch_for_offering(offering_name):
 
     # Add instructor row — fieldname confirmed from LMS source
     # batch_data["instructors"] = [{"instructor": mentor_full_name}]
-    batch_data["instructors"] = [{"instructor": offering.mentor}]
-    
+    batch_data["mentor"] = offering.mentor
+
+    batch_data["instructors"] = [
+        {
+            "instructor": offering.mentor
+        }
+    ]
 
     # Link lms_course only if the field exists and is filled
     if offering.get("lms_course"):
@@ -250,7 +235,7 @@ def create_lms_batch_for_offering(offering_name):
     return {"batch_name": batch.name, "already_exists": False}
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_open_batches_for_offering(offering):
     """
     Return open LMS Batches linked to this offering.
@@ -312,7 +297,7 @@ def get_open_batches_for_offering(offering):
     # Return as list so JS can use same card-picker pattern
     return [batch]
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def enroll_student_in_batch(offering, batch_name, student):
     """
     Enroll a student into an LMS Batch using the LMS Batch Enrollment doctype.
@@ -385,15 +370,27 @@ def enroll_student_in_batch(offering, batch_name, student):
     }
     
 @frappe.whitelist(allow_guest=True)
-def get_mentor_listings(skill=None, min_price=None, max_price=None,
-                        min_rating=None, availability_day=None,
-                        offering_type=None, search=None, limit=20, offset=0):
-    """
-    Main API for the Mentors tab card grid.
-    Returns mentor cards with: name, designation, company, tags,
-    avg_rating, total_sessions, price_per_session, next available slot.
-    """
-    filters = {"status": "Live"}
+def get_mentor_listings(
+    skill=None,
+    min_price=None,
+    max_price=None,
+    min_rating=None,
+    availability_day=None,
+    offering_type=None,
+    search=None,
+    limit=20,
+    offset=0
+):
+
+    limit = int(limit or 20)
+    offset = int(offset or 0)
+
+    # ---------------------------------------------------------
+    # Filters
+    # ---------------------------------------------------------
+    filters = {
+        "status": "Live"
+    }
 
     if offering_type:
         filters["offering_type"] = offering_type
@@ -402,68 +399,177 @@ def get_mentor_listings(skill=None, min_price=None, max_price=None,
         filters["price_per_session"] = [">=", float(min_price)]
 
     if max_price:
-        filters.setdefault("price_per_session", ["between", [float(min_price or 0), float(max_price)]])
+        filters["price_per_session"] = [
+            "<=",
+            float(max_price)
+        ]
 
     if min_rating:
-        filters["average_rating"] = [">=", float(min_rating)]
+        filters["average_rating"] = [
+            ">=",
+            float(min_rating)
+        ]
 
+    # ---------------------------------------------------------
+    # Fetch ALL offerings
+    # IMPORTANT:
+    # No limit here
+    # ---------------------------------------------------------
     offerings = frappe.get_all(
         "Mentor Offering",
         filters=filters,
-        fields=["name", "mentor", "title", "offering_type",
-                "price_per_session", "average_rating",
-                "total_bookings", "duration_minutes"],
-        order_by="average_rating desc, total_bookings desc",
-        limit_page_length=int(limit),
-        limit_start=int(offset),
+        fields=[
+            "name",
+            "mentor",
+            "title",
+            "offering_type",
+            "price_per_session",
+            "average_rating",
+            "total_bookings",
+            "duration_minutes",
+            "creation"
+        ],
+        order_by="""
+            average_rating desc,
+            total_bookings desc,
+            creation desc
+        """
     )
 
-    result = []
-    seen_mentors = set()
-
+    # ---------------------------------------------------------
+    # Remove duplicate mentors
+    # Keep latest/best offering only
+    # ---------------------------------------------------------
+    unique_mentors = {}
+    
     for o in offerings:
-        mentor_email = o.mentor
-        if mentor_email in seen_mentors:
-            continue
-        seen_mentors.add(mentor_email)
 
-        # Get mentor profile details
+        if o.mentor not in unique_mentors:
+            unique_mentors[o.mentor] = o
+
+    mentor_offerings = list(unique_mentors.values())
+
+    # ---------------------------------------------------------
+    # Apply pagination AFTER filtering
+    # ---------------------------------------------------------
+    mentor_offerings = mentor_offerings[offset: offset + limit]
+
+    result = []
+
+    # ---------------------------------------------------------
+    # Build response
+    # ---------------------------------------------------------
+    for o in mentor_offerings:
+
+        mentor_email = o.mentor
+
+        # -----------------------------------------------------
+        # Mentor Profile
+        # -----------------------------------------------------
         mentor_profile = frappe.db.get_value(
-            "Mentor",       # ← your mentor doctype name
+            "Mentor",
             mentor_email,
-            ["first_name","last_name", 
-              "total_sessions",
-             "total_hours", "avg_rating"],
+            [
+                "first_name",
+                "last_name",
+                "total_sessions",
+                "total_hours",
+                "avg_rating"
+            ],
             as_dict=True
         ) or {}
 
-        # Get skill tags
+        # -----------------------------------------------------
+        # Full Name
+        # -----------------------------------------------------
+        full_name = " ".join(
+            filter(
+                None,
+                [
+                    mentor_profile.get("first_name"),
+                    mentor_profile.get("last_name")
+                ]
+            )
+        ).strip()
+
+        if not full_name:
+            full_name = mentor_email
+
+        # -----------------------------------------------------
+        # Skill Tags
+        # -----------------------------------------------------
         tags = frappe.get_all(
-            "Student Skill Table",         # ← your skills child table / doctype
+            "Student Skill Table",
             filters={"parent": mentor_email},
             fields=["skill"],
             limit=5
         )
 
-        # Get next available slot (preview shown on card)
+        # -----------------------------------------------------
+        # Next Available Slot
+        # -----------------------------------------------------
         next_slot = _get_next_available_slot(mentor_email)
 
+        # -----------------------------------------------------
+        # Search Filter
+        # -----------------------------------------------------
+        if search:
+
+            search_text = search.lower()
+
+            searchable = " ".join([
+                full_name,
+                o.title or ""
+            ]).lower()
+
+            if search_text not in searchable:
+                continue
+
+        # -----------------------------------------------------
+        # Skill Filter
+        # -----------------------------------------------------
+        if skill:
+
+            mentor_skills = [
+                (t.skill or "").lower()
+                for t in tags
+            ]
+
+            if skill.lower() not in mentor_skills:
+                continue
+
+        # -----------------------------------------------------
+        # Final Result
+        # -----------------------------------------------------
         result.append({
-            "mentor":        mentor_email,
-            "full_name":     mentor_profile.get("full_name") or mentor_email,
-            "designation":   mentor_profile.get("designation", ""),
-            "company":       mentor_profile.get("company", ""),
-            "profile_image": mentor_profile.get("profile_image", ""),
-            "tags":          [t.skill for t in tags],
-            "avg_rating":    mentor_profile.get("avg_rating") or o.average_rating or 0,
-            "total_sessions":mentor_profile.get("total_sessions") or o.total_bookings or 0,
-            "price_per_hour":o.price_per_session,
+            "mentor": mentor_email,
+            "full_name": full_name,
+            "designation": "",
+            "company": "",
+            "profile_image": "",
+            "tags": [t.skill for t in tags],
+            "avg_rating": (
+                mentor_profile.get("avg_rating")
+                or o.average_rating
+                or 0
+            ),
+            "total_sessions": (
+                mentor_profile.get("total_sessions")
+                or o.total_bookings
+                or 0
+            ),
+            "price_per_hour": o.price_per_session,
             "offering_name": o.name,
+            "offering_title": o.title,
             "offering_type": o.offering_type,
-            "next_slot":     next_slot,   # e.g. "Feb 27, 4PM" or "Available"
+            "duration_minutes": o.duration_minutes,
+            "next_slot": next_slot,
         })
 
-    return result
+    return {
+        "count": len(result),
+        "data": result
+    }
 
 @frappe.whitelist(allow_guest=True)
 def _get_next_available_slot(mentor):
@@ -505,7 +611,7 @@ def _get_next_available_slot(mentor):
         if available:
             slot_time = available[0]["from_time"][:5]
 
-            dt = datetime.datetime.strptime(str(check_date), "%Y-%m-%d")
+            dt = datetime.datetime.strptime(str(check_date), "%Y-%m-%d")    
             day_label = dt.strftime("%b %d")   # safer format
 
             # Convert to 12-hour format
