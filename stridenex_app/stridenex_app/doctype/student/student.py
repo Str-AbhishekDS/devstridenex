@@ -3,10 +3,11 @@
 
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
-    exception_handel
+    exception_handel,get_pagination_params,make_cache_key,make_pagination_meta
 )
 import frappe
 from frappe.model.document import Document
+CACHE_TTL   = 300 
 
 class Student(Document):
     def validate(self):
@@ -76,37 +77,63 @@ def get_student_count():
 
     except Exception as e:
         return exception_handel(e)
-    
+DEFAULT_PAGE_SIZE = 20
 @frappe.whitelist(allow_guest=True)
-def get_student_list(college=None):
+def get_student_list(college=None, page=1, page_size=DEFAULT_PAGE_SIZE):
     try:
+        page, page_size, limit, offset = get_pagination_params(page, page_size)
+
         filters = {}
         if college:
             filters["college"] = college
-    
-        
+
+        # ── Cache key unique to every (college, page, page_size) combo ──────
+        cache_key = make_cache_key("student_list", college=college, page=page, page_size=page_size)
+
+        cached = frappe.cache().get_value(cache_key)
+        if cached:
+            return cached                         # ← cache HIT, return immediately
+
+        # ── Total count (for pagination meta) ───────────────────────────────
+        total = frappe.db.count("Student", filters=filters)
+
+        # ── Paginated fetch ─────────────────────────────────────────────────
         students = frappe.get_all(
             "Student",
             filters=filters,
-            fields=["*"
-            ],
-            order_by="creation desc"
+            fields=["*"],
+            order_by="creation desc",
+            limit=limit,
+            start=offset,
         )
-        for domain in students:
-            # 👇 Skills child table
-            skills = frappe.get_all(
+
+        # ── Enrich with child table in one DB round-trip ─────────────────────
+        if students:
+            parent_names = [s["name"] for s in students]
+            all_skills = frappe.get_all(
                 "Student Skill Table",
-                filters={"parent": domain["name"]},
-                fields=["skill"]
+                filters=[["parent", "in", parent_names]],
+                fields=["parent", "skill"],
             )
-            domain["skills"] = skills
+            # Group skills by parent
+            skills_map = {}
+            for sk in all_skills:
+                skills_map.setdefault(sk["parent"], []).append({"skill": sk["skill"]})
+            for student in students:
+                student["skills"] = skills_map.get(student["name"], [])
 
-
-        return gen_response(
+        # ── Build response ───────────────────────────────────────────────────
+        result = gen_response(
             status=200,
             message="Student list fetched successfully",
-            data=students
+            data={
+                "students":   students,
+                "pagination": make_pagination_meta(total, page, page_size),
+            }
         )
+
+        frappe.cache().set_value(cache_key, result, expires_in_sec=CACHE_TTL)
+        return result
 
     except Exception as e:
         return exception_handel(e)

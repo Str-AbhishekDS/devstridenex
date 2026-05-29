@@ -638,9 +638,9 @@ def reschedule_session(
         session_name
     )
 
-    if doc.status != "Scheduled":
+    if doc.status != "Pending":
         frappe.throw(
-            _("Only Scheduled sessions can be rescheduled.")
+            _("Only Pending sessions can be rescheduled.")
         )
 
 

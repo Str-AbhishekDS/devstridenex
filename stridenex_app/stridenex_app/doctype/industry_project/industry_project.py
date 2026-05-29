@@ -8,9 +8,9 @@ import frappe
 from frappe.utils import today
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
-    exception_handel
+    exception_handel,get_pagination_params,make_cache_key,make_pagination_meta
 )
-
+DEFAULT_PAGE_SIZE = 20
 class IndustryProject(Document):
 	pass
 
@@ -62,7 +62,7 @@ def create_project():
     
 
 @frappe.whitelist(allow_guest=True)
-def get_project_list(industry=None, student=None, status=None, course=None, department=None, academic_year=None):
+def get_project_list(industry=None, student=None, status=None, course=None, department=None, academic_year=None, page=1, page_size=DEFAULT_PAGE_SIZE):
     try:
         filters = {}
         if industry:
@@ -77,6 +77,7 @@ def get_project_list(industry=None, student=None, status=None, course=None, depa
             filters["academic_year"] = academic_year
 
         # ✅ Get all projects
+        total = frappe.db.count("Industry Project", filters=filters)
         projects = frappe.get_all(
             "Industry Project",
             filters=filters,
@@ -149,7 +150,10 @@ def get_project_list(industry=None, student=None, status=None, course=None, depa
         return gen_response(
             status=200,
             message="Project list fetched successfully",
-            data=projects
+            data={
+                "projects":   projects,
+                "pagination": make_pagination_meta(total, page, page_size),
+            }
         )
     except Exception as e:
         return exception_handel(e)
