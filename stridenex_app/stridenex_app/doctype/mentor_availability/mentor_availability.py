@@ -202,3 +202,66 @@ def get_available_slots_for_date(mentor, date):
         })
 
     return result
+
+@frappe.whitelist()
+def save_mentor_availability(name=None, **kwargs):
+
+    # ---------------------------------------------------------
+    # UPDATE
+    # ---------------------------------------------------------
+    if name:
+
+        doc = frappe.get_doc("Mentor Availability", name)
+
+        doc.update(kwargs)
+
+        doc.save(ignore_permissions=True)
+
+        message = "Mentor Availability Updated Successfully"
+
+    # ---------------------------------------------------------
+    # CREATE
+    # ---------------------------------------------------------
+    else:
+
+        doc = frappe.get_doc({
+            "doctype": "Mentor Availability",
+            **kwargs
+        })
+
+        doc.insert(ignore_permissions=True)
+
+        message = "Mentor Availability Created Successfully"
+
+    frappe.db.commit()
+
+    return {
+        "status": "success",
+        "message": message,
+        "name": doc.name
+    }
+
+
+@frappe.whitelist()
+def delete_mentor_availability(mentor):
+
+    docs = frappe.get_all(
+        "Mentor Availability",
+        filters={"mentor": mentor},
+        pluck="name"
+    )
+
+    for doc_name in docs:
+
+        frappe.delete_doc(
+            "Mentor Availability",
+            doc_name,
+            ignore_permissions=True
+        )
+
+    frappe.db.commit()
+
+    return {
+        "status": "success",
+        "message": "All Mentor Availability Deleted Successfully"
+    }

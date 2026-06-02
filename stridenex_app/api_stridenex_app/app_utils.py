@@ -3,6 +3,10 @@ from bs4 import BeautifulSoup
 from frappe import _
 from frappe.utils import cstr
 from frappe.utils import now_datetime, nowdate
+from frappe import cache
+import hashlib
+import json
+
 
 def gen_response(status, message, data=None):
     if data is None:
@@ -259,13 +263,7 @@ def enroll_student_in_batch(offering, batch_name, student):
     if not lms_course:
         frappe.throw(_("No LMS Course linked to this offering."))
 
-    # ── Monthly limit check ─────────────────────────────────────────
-    # from stridenex_app.stridenex_app.doctype.mentor_session_booking.mentor_session_booking import (
-    #     _check_sessions_per_month,
-    # )
-    # _check_sessions_per_month(offering_doc, student, nowdate())
 
-    # ── Batch enrollment ────────────────────────────────────────────
     add_student_to_batch(batch_name, student)   # raises if full / duplicate
 
     # ── LMS Course enrollment ───────────────────────────────────────
@@ -286,3 +284,52 @@ def append_child_rows(doc, table_field, values, child_key):
         doc.append(table_field, {
             child_key: value
         })
+
+
+
+# ─── Config ────────────────────────────────────────────────────────────────────
+CACHE_TTL   = 300   # seconds (5 min) — change per endpoint as needed
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE     = 100
+
+
+# ─── Helpers ───────────────────────────────────────────────────────────────────
+
+# ─── Helpers ───────────────────────────────────────────────────────────────────
+
+def make_cache_key(*args, **kwargs) -> str:
+    """Stable cache key from any args/kwargs."""
+    raw = json.dumps({"args": args, "kwargs": kwargs}, sort_keys=True, default=str)
+    return "api_cache:" + hashlib.md5(raw.encode()).hexdigest()
+
+
+def get_pagination_params(page=1, page_size=DEFAULT_PAGE_SIZE):
+    """
+    Parse and validate pagination inputs.
+    Returns (page, page_size, limit, offset).
+    Call this at the top of any endpoint.
+    """
+    page      = max(1, int(page or 1))
+    page_size = max(1, min(int(page_size or DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE))
+    limit     = page_size
+    offset    = (page - 1) * page_size
+    return page, page_size, limit, offset
+
+
+def make_pagination_meta(total: int, page: int, page_size: int) -> dict:
+    """
+    Build the pagination block returned in every response.
+    Paste this object straight into your gen_response data.
+    """
+    total_pages = max(1, -(-total // page_size))   # ceiling division
+    return {
+        "total":       total,
+        "page":        page,
+        "page_size":   page_size,
+        "total_pages": total_pages,
+        "has_next":    page < total_pages,
+        "has_prev":    page > 1,
+        "next_page":   page + 1 if page < total_pages else None,
+        "prev_page":   page - 1 if page > 1 else None,
+    }
+
