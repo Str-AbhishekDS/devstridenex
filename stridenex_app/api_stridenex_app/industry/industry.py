@@ -106,10 +106,18 @@ def update_industry(company_name):
         # =========================
         # ✅ Job Function (replace)
         # =========================
+        industry.set("job_functions", [])
         if isinstance(job_functions, list):
-            industry.job_functions = ", ".join(
-                [j.get("job_function") for j in job_functions if isinstance(j, dict)]
-            )
+            for spec in job_functions:
+                if isinstance(spec, dict):
+                    industry.append("job_functions", {
+                        "job_function": spec.get("job_function")
+                    })
+                elif isinstance(spec, str):
+                    industry.append("job_functions", {
+                        "job_function": spec
+                    })
+
 
         # =========================
         # ✅ Specializations (replace)   NEW
@@ -253,6 +261,13 @@ def get_industry_by_name(email):
                 }
                 for row in doc.specializations
             ],
+            # ✅ Job Functions
+            "job_functions": [
+                {
+                    "job_function": row.job_function
+                }
+                for row in doc.job_functions
+            ],
 
             # ✅ Location
             "location": {
@@ -276,13 +291,7 @@ def get_industry_by_name(email):
                 for row in doc.operating_hours
             ],
 
-            # ✅ Job Functions
-            "job_functions": [
-                {
-                    "job_function": row.job_function
-                }
-                for row in doc.job_function
-            ],
+            
 
             # ✅ Contact Details
             "contact_details": [

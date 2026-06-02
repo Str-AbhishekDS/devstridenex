@@ -1,8 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:job_function",
- "creation": "2026-02-17 14:53:07.201432",
+ "creation": "2026-05-30 09:01:30.489558",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -14,25 +13,22 @@
    "fieldname": "job_function",
    "fieldtype": "Link",
    "label": "Job Function",
-   "options": "Job Function",
-   "unique": 1
+   "options": "Job Function"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-17 14:58:22.168116",
+ "modified": "2026-05-30 09:03:41.519995",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Job Function Table",
- "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": [],
- "title_field": "job_function"
+ "states": []
 }

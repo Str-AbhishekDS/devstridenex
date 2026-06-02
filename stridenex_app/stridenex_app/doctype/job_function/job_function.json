@@ -1,29 +1,27 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:job_function",
  "creation": "2026-02-17 11:17:05.879677",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "job_function"
+  "job_function_name"
  ],
  "fields": [
   {
-   "fieldname": "job_function",
+   "fieldname": "job_function_name",
    "fieldtype": "Data",
-   "label": "Job Function",
+   "label": "Job Function Name",
    "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-17 17:45:17.418045",
- "modified_by": "Administrator",
+ "modified": "2026-05-30 08:57:03.274313",
+ "modified_by": "roshani.babar@erpdata.in",
  "module": "Stridenex App",
  "name": "Job Function",
- "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

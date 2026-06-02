@@ -147,6 +147,8 @@ def logout():
         return gen_response(200, "Logged out successfully.")
     except Exception as e:
         return exception_handel(e)
+    
+    
 @frappe.whitelist(allow_guest=True)
 def send_mobile_otp(mobile_no=None):
 
@@ -343,7 +345,7 @@ def send_email_otp(email=None):
                 <h2>{otp}</h2>
                 <p>This OTP is valid for 5 minutes.</p>
                 <br>
-                <p>Regards,<br>Your Company</p>
+                <p>Regards,<br>Stridenex Admin</p>
             """,
             now = True
         )
