@@ -7,17 +7,19 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_3fek",
+  "job_title",
   "college",
+  "industry_name",
   "industry",
   "registeration_deadline",
   "drive_date",
   "package_offered",
   "backlog",
   "criteria",
-  "role",
+  "branches",
+  "required_skill",
   "section_break_ipjv",
   "designation",
-  "department",
   "amended_from"
  ],
  "fields": [
@@ -63,12 +65,6 @@
    "label": "Criteria(CGPA)"
   },
   {
-   "fieldname": "role",
-   "fieldtype": "Link",
-   "label": "Role",
-   "options": "Industry Role"
-  },
-  {
    "fieldname": "section_break_ipjv",
    "fieldtype": "Section Break"
   },
@@ -79,12 +75,6 @@
    "options": "Industry Designation Table"
   },
   {
-   "fieldname": "department",
-   "fieldtype": "Table",
-   "label": "Department",
-   "options": "Department Table"
-  },
-  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -93,14 +83,37 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "industry_name",
+   "fieldtype": "Data",
+   "label": "Industry Name"
+  },
+  {
+   "fieldname": "job_title",
+   "fieldtype": "Data",
+   "label": "Job Title",
+   "options": "Role"
+  },
+  {
+   "fieldname": "branches",
+   "fieldtype": "Table MultiSelect",
+   "label": "Branches",
+   "options": "Branch Table"
+  },
+  {
+   "fieldname": "required_skill",
+   "fieldtype": "Table MultiSelect",
+   "label": "Required Skills",
+   "options": "Student Skill Table"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-21 09:31:23.599055",
- "modified_by": "roshni.babar@erpdata.in",
+ "modified": "2026-06-06 12:28:10.225745",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College Campus Drives",
  "naming_rule": "Expression (old style)",

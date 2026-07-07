@@ -78,20 +78,30 @@ def get_match_score(student, internship):
 
     return round(score)
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def get_student_application_list(industry=None):
     try:
+        session_user = frappe.session.user
+
+        # if not frappe.has_permission(
+        #     "Internship Application",
+        #     ptype="read",
+        #     user=session_user
+        # ):
+        #     frappe.throw(
+        #         "You do not have permission to access Internship Applications.",
+        #         frappe.PermissionError
+        #     )
+
         filters = {}
 
-        # Apply filter only if industry is provided
         if industry:
             filters["industry"] = industry
 
-        internship = frappe.get_all(
+        internship = frappe.get_list(
             "Internship Application",
             filters=filters,
-            fields=["*"
-            ],
+            fields=["*"],
             order_by="creation desc"
         )
 
@@ -105,9 +115,20 @@ def get_student_application_list(industry=None):
         return exception_handel(e)
     
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def get_application_status_count(industry=None):
     try:
+        session_user = frappe.session.user
+
+        if not frappe.has_permission(
+            "Internship Application",
+            ptype="read",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to access Internship Applications.",
+                frappe.PermissionError
+            )
 
         conditions = ""
         values = {}
@@ -135,11 +156,15 @@ def get_application_status_count(industry=None):
             "Selected"
         ]
 
-        count_map = {}
-        for row in result:
-            count_map[row["status"]] = row["count"]
+        count_map = {
+            row["status"]: row["count"]
+            for row in result
+        }
 
-        final_result = {status: count_map.get(status, 0) for status in all_status}
+        final_result = {
+            status: count_map.get(status, 0)
+            for status in all_status
+        }
 
         return gen_response(
             status=200,
@@ -150,12 +175,25 @@ def get_application_status_count(industry=None):
     except Exception as e:
         return exception_handel(e)
     
-@frappe.whitelist(allow_guest=True)
+    
+@frappe.whitelist(allow_guest=False)
 def create_student_application():
     try:
+        session_user = frappe.session.user
+
+        if not frappe.has_permission(
+            "Internship Application",
+            ptype="create",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to create Internship Application.",
+                frappe.PermissionError
+            )
+
         data = frappe.request.get_json()
         student = data.get("student")
-        
+
         application_count = frappe.db.count(
             "Internship Application",
             {"student": student}
@@ -170,8 +208,6 @@ def create_student_application():
 
         doc = frappe.get_doc({
             "doctype": "Internship Application",
-
-            # 👇 fields based on your response
             "student": data.get("student"),
             "internship": data.get("internship"),
             "status": data.get("status") or "Applied",
@@ -182,7 +218,8 @@ def create_student_application():
             "industry": data.get("industry"),
         })
 
-        doc.insert(ignore_permissions=True)
+        doc.insert()
+
         frappe.db.commit()
 
         return gen_response(
@@ -195,30 +232,52 @@ def create_student_application():
         return exception_handel(e)
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def update_application_status(name, status):
     try:
+        session_user = frappe.session.user
+
+        if not frappe.has_permission(
+            "Internship Application",
+            ptype="write",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to update Internship Application.",
+                frappe.PermissionError
+            )
+
         if not name:
-            return {"status": 400, "message": "Application name is required"}
+            return {
+                "status": 400,
+                "message": "Application name is required"
+            }
 
         if not status:
-            return {"status": 400, "message": "Status is required"}
+            return {
+                "status": 400,
+                "message": "Status is required"
+            }
 
-        # Check if document exists
-        if not frappe.db.exists("Internship Application", name):
+        if not frappe.db.exists(
+            "Internship Application",
+            name
+        ):
             return gen_response(
                 status=404,
                 message="Internship Application not found",
                 data={"success": False}
             )
 
-        # Fetch document
-        doc = frappe.get_doc("Internship Application", name)
+        doc = frappe.get_doc(
+            "Internship Application",
+            name
+        )
 
-        # Update only status
         doc.status = status
 
-        doc.save(ignore_permissions=True)
+        doc.save()
+
         frappe.db.commit()
 
         return gen_response(
@@ -231,5 +290,8 @@ def update_application_status(name, status):
         )
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "update_application_status")
+        frappe.log_error(
+            frappe.get_traceback(),
+            "update_application_status"
+        )
         return exception_handel(e)

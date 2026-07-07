@@ -13,7 +13,8 @@
   "end_date",
   "price",
   "event_type",
-  "amended_from"
+  "amended_from",
+  "participation_scope"
  ],
  "fields": [
   {
@@ -60,14 +61,20 @@
    "fieldname": "event_type",
    "fieldtype": "Select",
    "label": "Event Type",
-   "options": "Competation\nHackathon"
+   "options": "Competition\nHackathon"
+  },
+  {
+   "fieldname": "participation_scope",
+   "fieldtype": "Select",
+   "label": "Participation Scope",
+   "options": "Inter College\nIntra College"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-22 13:03:31.558445",
+ "modified": "2026-06-04 13:11:53.980144",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College Event",

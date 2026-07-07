@@ -12,11 +12,27 @@ import frappe
 class StudentProjectEnrollment(Document):
 	pass
 
-
 @frappe.whitelist(allow_guest=True)
 def create_student_project_enrollment():
     try:
+        # ----------------------------------------------------------
+        # PERMISSION CHECK
+        # Respects Role Permission Manager configuration
+        # ----------------------------------------------------------
+        # session_user = frappe.session.user
+
+        # if not frappe.has_permission(
+        #     "Student Project Enrollment",
+        #     ptype="create",
+        #     user=session_user
+        # ):
+        #     frappe.throw(
+        #         "You do not have permission to create Student Project Enrollment.",
+        #         frappe.PermissionError
+        #     )
+
         data = frappe.request.get_json()
+        
 
         doc = frappe.get_doc({
             "doctype": "Student Project Enrollment",
@@ -29,10 +45,12 @@ def create_student_project_enrollment():
             "resume": data.get("resume"),
             "match_score": data.get("match_score") or 0.0,
             "notes": data.get("notes"),
-            "industry":data.get("industry")
+            "industry": data.get("industry")
         })
 
+        # Respects Role Permission Manager
         doc.insert(ignore_permissions=True)
+
         frappe.db.commit()
 
         return gen_response(
@@ -43,21 +61,48 @@ def create_student_project_enrollment():
 
     except Exception as e:
         return exception_handel(e)
-
-@frappe.whitelist(allow_guest=True)
-def get_application_count_by_industry(industry=None,project=None,status=None):
+    
+    
+@frappe.whitelist(allow_guest=False)
+def get_application_count_by_industry(
+    industry=None,
+    project=None,
+    status=None
+):
     try:
+        # ----------------------------------------------------------
+        # PERMISSION CHECK
+        # Respects Role Permission Manager configuration
+        # ----------------------------------------------------------
+        session_user = frappe.session.user
+
+        if not frappe.has_permission(
+            "Student Project Enrollment",
+            ptype="read",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to access Student Project Enrollment.",
+                frappe.PermissionError
+            )
+
         filters = {}
 
         # ✅ Optional filter
         if industry:
             filters["industry"] = industry
+
         if project:
             filters["project"] = project
+
         if status:
             filters["status"] = status
+
         # ✅ Count total applications
-        total_count = frappe.db.count("Student Project Enrollment", filters)
+        total_count = frappe.db.count(
+            "Student Project Enrollment",
+            filters
+        )
 
         return gen_response(
             status=200,
@@ -66,49 +111,6 @@ def get_application_count_by_industry(industry=None,project=None,status=None):
                 "industry": industry if industry else "All",
                 "total_applications": total_count
             }
-        )
-
-    except Exception as e:
-        return exception_handel(e)
-
-@frappe.whitelist(allow_guest=True)
-def update_student_project_enrollment():
-    try:
-        data = frappe.request.get_json()
-
-        enrollment_id = data.get("name")
-        industry = data.get("industry")
-        status = data.get("status")
-
-        # ✅ Validation
-        if not enrollment_id:
-            return gen_response(400, "Enrollment ID (name) is required")
-
-        # ✅ Fetch document
-        doc = frappe.get_doc("Student Project Enrollment", enrollment_id)
-
-        # ✅ Update industry (if provided)
-        if industry:
-            doc.industry = industry
-
-        # ✅ Update status ONLY if not empty
-        if status:
-            doc.status = status
-
-            # Optional date logic
-            if status.lower() == "approved":
-                doc.approved_on = frappe.utils.nowdate()
-
-            if status.lower() == "completed":
-                doc.completed_on = frappe.utils.nowdate()
-
-        doc.save(ignore_permissions=True)
-        frappe.db.commit()
-
-        return gen_response(
-            200,
-            "Enrollment updated successfully",
-            doc
         )
 
     except Exception as e:

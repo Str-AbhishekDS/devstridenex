@@ -30,7 +30,7 @@ class Student(Document):
         if self.github and "github.com" not in self.github.lower():
             frappe.throw("Please enter a valid GitHub URL.")
             
-    def before_submit(self):
+    def after_insert(self):
         self.create_student_skills()
 
     def create_student_skills(self):
@@ -77,6 +77,8 @@ def get_student_count():
 
     except Exception as e:
         return exception_handel(e)
+
+        
 DEFAULT_PAGE_SIZE = 20
 @frappe.whitelist(allow_guest=True)
 def get_student_list(college=None, page=1, page_size=DEFAULT_PAGE_SIZE):
@@ -94,7 +96,7 @@ def get_student_list(college=None, page=1, page_size=DEFAULT_PAGE_SIZE):
         if cached:
             return cached                         # ← cache HIT, return immediately
 
-        # ── Total count (for pagination meta) ───────────────────────────────
+        # ── Total count (for pagination meta) ───────────────────ps aux | grep gunicorn────────────
         total = frappe.db.count("Student", filters=filters)
 
         # ── Paginated fetch ─────────────────────────────────────────────────

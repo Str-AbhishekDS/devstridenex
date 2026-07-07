@@ -50,10 +50,10 @@ def signup():
 
         # Map UI role to system role
         role_map = {
-            "student": "Student",
-            "college": "College User",
+            "student": "Student base",
+            "college": "College base",
             "mentor": "Mentor",
-            "industry": "Industry User"
+            "industry": "Industry base"
         }
 
         frappe_role = role_map.get(selected_role)
@@ -292,6 +292,7 @@ def validate_mobile_otp(mobile_no=None, otp=None,email=None):
      
     if str(doc.otp) != str(otp):
         return gen_response(400, "Invalid OTP", {"success": False})
+    
     user = frappe.db.get_value("User", {"email": email}, "name")
     if user:
         frappe.db.set_value("User", user, "is_onboarded", 1)  
@@ -394,10 +395,10 @@ def validate_email_otp(email=None, otp=None):
     if str(doc.otp) != str(otp):
         return gen_response(400, "Invalid OTP", {"success": False})
     
-    user = frappe.db.get_value("User", {"email": email}, "name")
-    if user:
-        frappe.db.set_value("User", user, "is_onboarded", 1) 
-        frappe.db.commit()
+    # user = frappe.db.get_value("User", {"email": email}, "name")
+    # if user:
+    #     frappe.db.set_value("User", user, "is_onboarded", 1) 
+    #     frappe.db.commit()
 
     return gen_response(200, "Email verified successfully", {"success": True})
 

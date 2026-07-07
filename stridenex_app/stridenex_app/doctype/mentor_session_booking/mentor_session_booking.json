@@ -201,7 +201,7 @@
    "fieldname": "mentor_request_status",
    "fieldtype": "Select",
    "label": "Mentor Request Status",
-   "options": "Pending\nAccepted\nDeclined\nSuggested Alt Time"
+   "options": "Pending\nAccepted\nDeclined\nSuggested Alt Time\nCompleted"
   },
   {
    "fieldname": "shared_with_student",
@@ -216,7 +216,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-21 11:19:59.337013",
+ "modified": "2026-07-04 13:13:24.650433",
  "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Mentor Session Booking",
@@ -232,42 +232,6 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Mentor",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Student",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "LMS Student",
    "share": 1,
    "write": 1
   }

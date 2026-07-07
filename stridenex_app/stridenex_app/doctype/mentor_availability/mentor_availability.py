@@ -97,21 +97,56 @@ def _times_overlap(start1, end1, start2, end2):
 # ------------------------------------------------------------------
 # Whitelisted API Methods
 # ------------------------------------------------------------------
-
+@frappe.whitelist(allow_guest=False)
 def get_mentor_weekly_availability(mentor):
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # Respects Role Permission Manager configuration
+    # ----------------------------------------------------------
+    session_user = frappe.session.user
+
+    if not frappe.has_permission(
+        "Mentor Availability",
+        ptype="read",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to access Mentor Availability.",
+            frappe.PermissionError
+        )
 
     docs = frappe.get_all(
         "Mentor Availability",
-        filters={"mentor": mentor, "is_available": 1},
+        filters={
+            "mentor": mentor,
+            "is_available": 1
+        },
         fields=["name"]
     )
 
-    availability = {day: [] for day in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]}
+    availability = {
+        day: []
+        for day in [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+        ]
+    }
 
     for d in docs:
-        doc = frappe.get_doc("Mentor Availability", d.name)
+
+        doc = frappe.get_doc(
+            "Mentor Availability",
+            d.name
+        )
 
         for row in doc.daily_schedule:
+
             availability[row.day].append({
                 "from_time": str(row.from_time),
                 "to_time": str(row.to_time)
@@ -120,102 +155,35 @@ def get_mentor_weekly_availability(mentor):
     return availability
 
 
-@frappe.whitelist()
-def get_available_slots_for_date(mentor, date):
-    """
-    Return all availability slots for a mentor on a given date, annotated with
-    booking and block status. The front-end uses this to render the availability grid.
-
-    Args:
-        mentor (str): User ID of the mentor.
-        date   (str): ISO date string, e.g. "2024-03-01".
-
-    Response shape:
-        [
-            {
-                "from_time": "10:00:00",
-                "to_time":   "11:00:00",
-                "is_blocked": false,
-                "is_booked":  true,
-                "available":  false
-            },
-            ...
-        ]
-    """
-    if not mentor or not date:
-        frappe.throw(_("Both Mentor and Date are required."))
-
-    date_obj = frappe.utils.getdate(date)
-    day_name = date_obj.strftime("%A")   # "Monday", "Tuesday", …
-
-    # Weekly availability for the resolved weekday
-    weekly_slots = []
-
-    docs = frappe.get_all(
-        "Mentor Availability",
-        filters={"mentor": mentor, "is_available": 1},
-        fields=["name"]
-    )
-
-    for d in docs:
-        doc = frappe.get_doc("Mentor Availability", d.name)
-
-        for row in doc.daily_schedule:
-            if row.day == day_name:
-                weekly_slots.append(row)
-
-
-    # Blocked times on this specific date
-    blocked_slots = frappe.get_all(
-        "Mentor Blocked Time",
-        filters={"mentor": mentor, "date": date},
-        fields=["from_time", "to_time"],
-    )
-
-    # Active bookings on this specific date
-    booked_slots = frappe.get_all(
-        "Mentor Session Booking",
-        filters={
-            "mentor": mentor,
-            "session_date": date,
-            "status": ["in", ["Scheduled", "Completed"]],
-        },
-        fields=["from_time", "to_time"],
-    )
-
-    result = []
-    for slot in weekly_slots:
-        is_blocked = any(
-            _times_overlap(slot.from_time, slot.to_time, b.from_time, b.to_time)
-            for b in blocked_slots
-        )
-        is_booked = any(
-            _times_overlap(slot.from_time, slot.to_time, bk.from_time, bk.to_time)
-            for bk in booked_slots
-        )
-        result.append({
-            "from_time": str(slot.from_time),
-            "to_time": str(slot.to_time),
-            "is_blocked": is_blocked,
-            "is_booked": is_booked,
-            "available": not is_blocked and not is_booked,
-        })
-
-    return result
-
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def save_mentor_availability(name=None, **kwargs):
+
+    session_user = frappe.session.user
 
     # ---------------------------------------------------------
     # UPDATE
     # ---------------------------------------------------------
     if name:
 
-        doc = frappe.get_doc("Mentor Availability", name)
+        if not frappe.has_permission(
+            "Mentor Availability",
+            ptype="write",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to update Mentor Availability.",
+                frappe.PermissionError
+            )
+
+        doc = frappe.get_doc(
+            "Mentor Availability",
+            name
+        )
 
         doc.update(kwargs)
 
-        doc.save(ignore_permissions=True)
+        # Respects Role Permission Manager
+        doc.save()
 
         message = "Mentor Availability Updated Successfully"
 
@@ -224,12 +192,23 @@ def save_mentor_availability(name=None, **kwargs):
     # ---------------------------------------------------------
     else:
 
+        if not frappe.has_permission(
+            "Mentor Availability",
+            ptype="create",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to create Mentor Availability.",
+                frappe.PermissionError
+            )
+
         doc = frappe.get_doc({
             "doctype": "Mentor Availability",
             **kwargs
         })
 
-        doc.insert(ignore_permissions=True)
+        # Respects Role Permission Manager
+        doc.insert()
 
         message = "Mentor Availability Created Successfully"
 
@@ -242,8 +221,24 @@ def save_mentor_availability(name=None, **kwargs):
     }
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def delete_mentor_availability(mentor):
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # Respects Role Permission Manager configuration
+    # ----------------------------------------------------------
+    session_user = frappe.session.user
+
+    if not frappe.has_permission(
+        "Mentor Availability",
+        ptype="delete",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to delete Mentor Availability.",
+            frappe.PermissionError
+        )
 
     docs = frappe.get_all(
         "Mentor Availability",
@@ -255,8 +250,7 @@ def delete_mentor_availability(mentor):
 
         frappe.delete_doc(
             "Mentor Availability",
-            doc_name,
-            ignore_permissions=True
+            doc_name
         )
 
     frappe.db.commit()

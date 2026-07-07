@@ -1,0 +1,96 @@
+{
+    "doctype": "DocType",
+    "name": "Campus Drive Application",
+    "module": "Stridenex App",
+    "autoname": "CDAPP-.YYYY.-.#####",
+    "is_submittable": 1,
+    "fields": [
+        {
+            "fieldname": "student",
+            "fieldtype": "Link",
+            "label": "Student",
+            "options": "Student",
+            "reqd": 1,
+            "in_list_view": 1
+        },
+        {
+            "fieldname": "drive",
+            "fieldtype": "Link",
+            "label": "Campus Drive",
+            "options": "College Campus Drives",
+            "reqd": 1,
+            "in_list_view": 1
+        },
+        {
+            "fieldname": "college",
+            "fieldtype": "Link",
+            "label": "College",
+            "options": "College",
+            "read_only": 1,
+            "fetch_from": "drive.college",
+            "fetch_if_empty": 1,
+            "in_list_view": 1,
+            "in_filter": 1
+        },
+        {
+            "fieldname": "column_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "application_date",
+            "fieldtype": "Date",
+            "label": "Application Date",
+            "default": "Today"
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "label": "Status",
+            "options": "Applied\nShortlisted\nSelected\nRejected\nNot Applied",
+            "default": "Applied",
+            "in_list_view": 1,
+            "in_filter": 1
+        },
+        {
+            "fieldname": "section_break_2",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "package_lpa",
+            "fieldtype": "Float",
+            "label": "Package (LPA)"
+        },
+        {
+            "fieldname": "offer_letter",
+            "fieldtype": "Attach",
+            "label": "Offer Letter"
+        },
+        {
+            "fieldname": "column_break_2",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "selection_id",
+            "fieldtype": "Data",
+            "label": "Selection ID"
+        },
+        {
+            "fieldname": "remarks",
+            "fieldtype": "Small Text",
+            "label": "Remarks"
+        }
+    ],
+    "permissions": [
+        {
+            "role": "System Manager",
+            "read": 1,
+            "write": 1,
+            "create": 1,
+            "delete": 1,
+            "submit": 1,
+            "cancel": 1,
+            "report": 1,
+            "export": 1
+        }
+    ]
+}
