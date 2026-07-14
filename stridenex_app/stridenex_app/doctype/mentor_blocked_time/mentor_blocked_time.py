@@ -13,7 +13,7 @@ class MentorBlockedTime(Document):
         self.validate_date_not_past()
         self.validate_time_range()
         self.check_overlap_with_existing_blocks()
-        self.warn_if_booked_sessions_exist()
+        self.validate_no_booked_sessions()
 
     def validate_date_not_past(self):
         """Block times cannot be set for past dates."""
@@ -48,12 +48,14 @@ class MentorBlockedTime(Document):
                     ).format(self.mentor, self.date, block.from_time, block.to_time)
                 )
 
-    def warn_if_booked_sessions_exist(self):
+    
+    def validate_no_booked_sessions(self):
         """
-        Issue a warning (not an error) if a booked session falls within the
-        blocked window so the mentor can cancel / reschedule it manually.
+        Prevent mentor from creating a block time if any scheduled
+        session already exists in the selected time range.
         """
-        booked = frappe.get_all(
+
+        booked_sessions = frappe.get_all(
             "Mentor Session Booking",
             filters={
                 "mentor": self.mentor,
@@ -63,20 +65,30 @@ class MentorBlockedTime(Document):
             fields=["name", "from_time", "to_time", "student"],
         )
 
-        conflicting = [
-            b for b in booked
-            if _times_overlap(self.from_time, self.to_time, b.from_time, b.to_time)
+        conflicting_sessions = [
+            session
+            for session in booked_sessions
+            if _times_overlap(
+                self.from_time,
+                self.to_time,
+                session.from_time,
+                session.to_time,
+            )
         ]
 
-        if conflicting:
-            sessions = ", ".join(c.name for c in conflicting)
-            frappe.msgprint(
+        if conflicting_sessions:
+            session_names = ", ".join(
+                [session.name for session in conflicting_sessions]
+            )
+
+            frappe.throw(
                 _(
-                    "Warning: The following scheduled session(s) overlap with this blocked time "
-                    "and should be rescheduled or cancelled: {0}"
-                ).format(sessions),
-                title=_("Conflicting Sessions"),
-                indicator="orange",
+                    "Cannot create Block Time because the following session(s) "
+                    "are already booked during this period: <b>{0}</b>.<br><br>"
+                    "Please reschedule or cancel the session(s) first, "
+                    "then create the block time."
+                ).format(session_names),
+                title=_("Booked Session Exists"),
             )
 
 
@@ -96,8 +108,7 @@ def _times_overlap(start1, end1, start2, end2):
 # ------------------------------------------------------------------
 # Whitelisted API Methods
 # ------------------------------------------------------------------
-
-@frappe.whitelist(allow_guest = True)
+@frappe.whitelist(allow_guest=False)
 def get_blocked_times(mentor, from_date, to_date):
     """
     Return all blocked time slots for a mentor between two dates (inclusive).
@@ -106,23 +117,30 @@ def get_blocked_times(mentor, from_date, to_date):
         mentor    (str): User ID of the mentor.
         from_date (str): Start date in YYYY-MM-DD.
         to_date   (str): End date in YYYY-MM-DD.
-
-    Response shape:
-        [
-            {
-                "name": "MBT-0001",
-                "date": "2024-03-05",
-                "from_time": "14:00:00",
-                "to_time": "16:00:00",
-                "reason": "Personal appointment"
-            },
-            ...
-        ]
     """
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # Respects Role Permission Manager configuration
+    # ----------------------------------------------------------
+    session_user = frappe.session.user
+
+    if not frappe.has_permission(
+        "Mentor Blocked Time",
+        ptype="read",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to access Mentor Blocked Time.",
+            frappe.PermissionError
+        )
+
     if not mentor:
         frappe.throw(_("Mentor is required."))
+
     if not from_date or not to_date:
         frappe.throw(_("Both from_date and to_date are required."))
+
     if getdate(from_date) > getdate(to_date):
         frappe.throw(_("from_date must be on or before to_date."))
 
@@ -132,14 +150,20 @@ def get_blocked_times(mentor, from_date, to_date):
             "mentor": mentor,
             "date": ["between", [from_date, to_date]],
         },
-        fields=["name", "date", "from_time", "to_time", "reason"],
+        fields=[
+            "name",
+            "date",
+            "from_time",
+            "to_time",
+            "reason"
+        ],
         order_by="date asc, from_time asc",
     )
 
     return blocks
 
                     
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def block_time(mentor, date, from_time, to_time, reason=None):
     """
     Programmatically create a Mentor Blocked Time entry.
@@ -148,8 +172,22 @@ def block_time(mentor, date, from_time, to_time, reason=None):
     Returns:
         str: The name of the newly created document.
     """
-    # if not frappe.has_permission("Mentor Blocked Time", "create"):
-    #     frappe.throw(_("You do not have permission to block time."), frappe.PermissionError)
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # Respects Role Permission Manager configuration
+    # ----------------------------------------------------------
+    session_user = frappe.session.user
+
+    if not frappe.has_permission(
+        "Mentor Blocked Time",
+        ptype="create",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to create Mentor Blocked Time.",
+            frappe.PermissionError
+        )
 
     doc = frappe.get_doc({
         "doctype": "Mentor Blocked Time",
@@ -159,6 +197,10 @@ def block_time(mentor, date, from_time, to_time, reason=None):
         "to_time": to_time,
         "reason": reason or "",
     })
-    doc.insert(ignore_permissions=False)
+
+    # Respects Role Permission Manager
+    doc.insert()
+
     frappe.db.commit()
+
     return doc.name

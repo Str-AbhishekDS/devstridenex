@@ -56,29 +56,19 @@ def create_job_function():
             "message": str(e)
         }
         
-@frappe.whitelist(allow_guest=False)
+@frappe.whitelist(allow_guest=True)
 def create_designation():
     try:
-        session_user = frappe.session.user
-
-        if not frappe.has_permission(
-            "Industry Designation",
-            ptype="create",
-            user=session_user
-        ):
-            frappe.throw(
-                "You do not have permission to create Industry Designation.",
-                frappe.PermissionError
-            )
+        
 
         data = frappe.form_dict
 
         doc = frappe.get_doc({
             "doctype": "Industry Designation",
-            "designation_name": data.get("designation_name")
+            "designation": data.get("designation_name")
         })
 
-        doc.insert()
+        doc.insert(ignore_permissions=True)
         frappe.db.commit()
 
         return {

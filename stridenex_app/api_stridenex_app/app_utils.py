@@ -1,3 +1,6 @@
+import random
+import time
+
 import frappe
 from bs4 import BeautifulSoup
 from frappe import _
@@ -333,3 +336,186 @@ def make_pagination_meta(total: int, page: int, page_size: int) -> dict:
         "prev_page":   page - 1 if page > 1 else None,
     }
 
+# ============================================================
+# SHARED HELPER — call this at the end of every module update
+# ============================================================
+def sync_billing_account_master(email, data=None, module_type=None):
+    """
+    Finds the Billing Account Master record by email and updates
+    the fields relevant for invoice generation.
+
+    Args:
+        email       : the user's email (used as the BAM name/key)
+        data        : the raw request dict (used to pull address fields etc.)
+        module_type : "mentor" | "student" | "college" | "industry"
+                      used to derive account_type where needed
+    """
+    if not email or not frappe.db.exists("Billing Account Master", email):
+        return  # nothing to sync; record may not exist yet
+
+    data = data or {}
+    bam  = frappe.get_doc("Billing Account Master", email)
+    bam.flags.ignore_permissions = True
+
+    # ── account type ──────────────────────────────────────────
+    if module_type in ("college", "industry"):
+        bam.account_type = "Organization"
+    elif module_type in ("mentor", "student"):
+        bam.account_type = "Individual"
+
+    # ── name fields ───────────────────────────────────────────
+    for field in ("first_name", "middle_name", "last_name"):
+        if data.get(field) is not None:
+            bam.set(field, data[field])
+
+    # rebuild full_name if any name part was updated
+    name_parts = [
+        bam.first_name or "",
+        bam.middle_name or "",
+        bam.last_name  or "",
+    ]
+    bam.full_name = " ".join(p for p in name_parts if p).strip()
+
+    # ── company / organisation name ───────────────────────────
+    # College uses "college_name", Industry uses "company_name",
+    # Mentor/Student don't have a company field — just skip.
+    for src_field in ("company_name", "college_name"):
+        if data.get(src_field) is not None:
+            bam.company_name = data[src_field]
+            break
+
+    # ── country ───────────────────────────────────────────────
+    if data.get("country") is not None:
+        bam.country = data["country"]
+
+    # ── address ───────────────────────────────────────────────
+    # Industry sends address inside a nested "location" dict;
+    # other modules send flat fields.
+    location = data.get("location", {}) if isinstance(data.get("location"), dict) else {}
+
+    addr_map = {
+        "address_line_1": "address_line1",   # Industry/location key → BAM field
+        "address_line_2": "address_line2",
+        "pincode":        "pincode",
+        "address_line1":  "address_line1",   # flat key (college/mentor/student)
+        "address_line2":  "address_line2",
+        "city":           "city",
+        "state":          "state",
+    }
+
+    # Flat fields first, then location dict overrides (industry)
+    for src, dest in addr_map.items():
+        if data.get(src) is not None:
+            bam.set(dest, data[src])
+    for src, dest in addr_map.items():
+        if location.get(src) is not None:
+            bam.set(dest, location[src])
+            
+    if data.get("gst_number") is not None:
+        bam.gstin = data["gst_number"]
+
+    bam.save(ignore_permissions=True)
+    frappe.db.commit()
+    
+    
+    
+    
+def _process_student_job(data, resume_bytes=None, resume_filename=None):
+    """
+    Runs inside a background worker.
+    Retries up to 3 times on deadlock (MySQL error 1213).
+    Tables are always touched in the same order:
+        Student → User → File
+    This fixed order eliminates the circular-wait condition that causes deadlocks.
+    """
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            _do_create_student(data, resume_bytes, resume_filename)
+            return  # success — exit retry loop
+        except Exception as e:
+            is_deadlock = "1213" in str(e) or "Deadlock" in str(e)
+            if is_deadlock and attempt < max_retries - 1:
+                # Exponential backoff with jitter: 0.1s, 0.2s, 0.4s …
+                delay = (0.1 * (2 ** attempt)) + random.uniform(0, 0.05)
+                frappe.logger().warning(
+                    f"Deadlock on attempt {attempt + 1}, retrying in {delay:.2f}s"
+                )
+                time.sleep(delay)
+                frappe.db.rollback()   # clean slate before retry
+            else:
+                frappe.log_error(
+                    title="Student Job Failed",
+                    message=frappe.get_traceback()
+                )
+                raise
+
+
+def _do_create_student(data, resume_bytes=None, resume_filename=None):
+    """
+    All DB work in one transaction, tables locked in fixed order:
+    1. Student  2. User  3. File
+    Never deviate from this order — that's what prevents deadlocks.
+    """
+    email = data.get("email_id")
+
+    # Clean up fields that are handled separately
+    data = {k: v for k, v in data.items()
+            if k not in ("resume", "skill", "career_interest", "courses_type")}
+
+    # ── LOCK ORDER 1: Student ────────────────────────────────────────────────
+    student = frappe.get_doc({"doctype": "Student", **data})
+
+    skills  = frappe.form_dict.getlist("skill[0][skill]") if hasattr(frappe, "form_dict") else []
+    careers = frappe.form_dict.getlist("career_interest[0][career_interest]") if hasattr(frappe, "form_dict") else []
+    courses = frappe.form_dict.getlist("courses_type[0][course_type]") if hasattr(frappe, "form_dict") else []
+
+    for s in skills:
+        student.append("skill", {"skill": s})
+    for c in careers:
+        student.append("career_interest", {"career_interest": c})
+    for c in courses:
+        student.append("courses_type", {"course_type": c})
+
+    student.insert(ignore_permissions=True)
+
+    # ── LOCK ORDER 2: User ───────────────────────────────────────────────────
+    if email:
+        _upsert_user(student, email)
+
+    # ── LOCK ORDER 3: File ───────────────────────────────────────────────────
+    if resume_bytes and resume_filename:
+        file_doc = frappe.get_doc({
+            "doctype": "File",
+            "file_name": resume_filename,
+            "attached_to_doctype": "Student",
+            "attached_to_name": student.name,
+            "content": resume_bytes,
+        })
+        file_doc.save(ignore_permissions=True)
+
+    frappe.db.commit()
+
+
+def _upsert_user(student, email):
+    """Separated so lock order is obvious at a glance."""
+    if frappe.db.exists("User", email):
+        user = frappe.get_doc("User", email)
+        if "Student" not in [r.role for r in user.roles]:
+            user.append("roles", {"role": "Student"})
+            user.save(ignore_permissions=True)
+        frappe.db.set_value("User", email, "is_onboarded", 2)
+    else:
+        user = frappe.get_doc({
+            "doctype": "User",
+            "email": email,
+            "first_name": student.first_name,
+            "last_name": student.last_name,
+            "enabled": 1,
+            "send_welcome_email": 0,
+            "roles": [{"role": "Student"}],
+        })
+        user.insert(ignore_permissions=True)
+
+    student.user = email
+    student.save(ignore_permissions=True)

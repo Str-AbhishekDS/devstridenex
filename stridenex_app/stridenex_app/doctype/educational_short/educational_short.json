@@ -1,0 +1,155 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "autoincrement",
+ "creation": "2026-07-11 14:03:45.540641",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "video",
+  "thumbnail",
+  "cover_gradient",
+  "duration_seconds",
+  "skill",
+  "status",
+  "column_break_views",
+  "view_count",
+  "like_count",
+  "avg_watch_time",
+  "embedding_vector",
+  "uploaded_by",
+  "published_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "video",
+   "fieldtype": "Attach",
+   "label": "Video File",
+   "reqd": 1
+  },
+  {
+   "fieldname": "thumbnail",
+   "fieldtype": "Attach Image",
+   "label": "Thumbnail"
+  },
+  {
+   "description": "fallback color when no thumbnail",
+   "fieldname": "cover_gradient",
+   "fieldtype": "Data",
+   "label": "Cover Gradient (CSS)"
+  },
+  {
+   "default": "30",
+   "fieldname": "duration_seconds",
+   "fieldtype": "Int",
+   "label": "Duration (sec)"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "options": "Draft\nPublished\nArchived"
+  },
+  {
+   "fieldname": "column_break_views",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "view_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Views",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "like_count",
+   "fieldtype": "Int",
+   "label": "Likes",
+   "read_only": 1
+  },
+  {
+   "fieldname": "avg_watch_time",
+   "fieldtype": "Float",
+   "label": "Avg Watch Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "embedding_vector",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Embedding JSON"
+  },
+  {
+   "default": "__user",
+   "fieldname": "uploaded_by",
+   "fieldtype": "Link",
+   "label": "Uploaded By",
+   "options": "User"
+  },
+  {
+   "fieldname": "published_on",
+   "fieldtype": "Datetime",
+   "label": "Published On"
+  },
+  {
+   "fieldname": "skill",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Skill",
+   "options": "Skill"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-13 12:10:46.366279",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Educational Short",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Content Creator",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All"
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

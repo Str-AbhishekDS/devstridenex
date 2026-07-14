@@ -1,0 +1,187 @@
+{
+    "actions": [],
+    "allow_import": 1,
+    "autoname": "SSTORY-.YYYY.-.#####",
+    "creation": "2026-07-11 12:26:57.946980",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "student",
+        "college",
+        "column_break_1",
+        "outcome_category",
+        "is_featured",
+        "status",
+        "section_break_1",
+        "outcome_title",
+        "outcome_metric",
+        "column_break_2",
+        "avatar_initials",
+        "avatar_color",
+        "avatar_image",
+        "section_break_2",
+        "testimonial",
+        "column_break_3",
+        "display_order",
+        "published_date",
+        "amended_from"
+    ],
+    "fields": [
+        {
+            "fieldname": "student",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Student",
+            "options": "Student",
+            "reqd": 1
+        },
+        {
+            "fetch_from": "student.college",
+            "fetch_if_empty": 1,
+            "fieldname": "college",
+            "fieldtype": "Link",
+            "in_filter": 1,
+            "in_list_view": 1,
+            "label": "College",
+            "options": "College",
+            "read_only": 1
+        },
+        {
+            "fieldname": "column_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "outcome_category",
+            "fieldtype": "Select",
+            "in_filter": 1,
+            "in_list_view": 1,
+            "label": "Category",
+            "options": "Placement\nStartup\nInternship\nHigher Studies\nOther"
+        },
+        {
+            "default": "0",
+            "fieldname": "is_featured",
+            "fieldtype": "Check",
+            "in_filter": 1,
+            "in_list_view": 1,
+            "label": "Is Featured"
+        },
+        {
+            "default": "Draft",
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "in_filter": 1,
+            "in_list_view": 1,
+            "label": "Status",
+            "options": "Draft\nPublished\nArchived"
+        },
+        {
+            "fieldname": "section_break_1",
+            "fieldtype": "Section Break",
+            "label": "Outcome Details"
+        },
+        {
+            "fieldname": "outcome_title",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Outcome Title",
+            "reqd": 1,
+            "description": "e.g. SDE @ Google, Founded Fintech Startup"
+        },
+        {
+            "fieldname": "outcome_metric",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Outcome Metric",
+            "description": "e.g. ₹42 LPA, Seed Funded"
+        },
+        {
+            "fieldname": "column_break_2",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "avatar_initials",
+            "fieldtype": "Data",
+            "label": "Avatar Initials",
+            "length": 3
+        },
+        {
+            "fieldname": "avatar_color",
+            "fieldtype": "Color",
+            "label": "Avatar Color"
+        },
+        {
+            "fieldname": "avatar_image",
+            "fieldtype": "Attach Image",
+            "label": "Avatar Image"
+        },
+        {
+            "fieldname": "section_break_2",
+            "fieldtype": "Section Break",
+            "label": "Testimonial"
+        },
+        {
+            "fieldname": "testimonial",
+            "fieldtype": "Small Text",
+            "label": "Testimonial",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_3",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "display_order",
+            "fieldtype": "Int",
+            "label": "Display Order"
+        },
+        {
+            "default": "Today",
+            "fieldname": "published_date",
+            "fieldtype": "Date",
+            "label": "Published Date"
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "Success Story",
+            "print_hide": 1,
+            "read_only": 1,
+            "search_index": 1
+        }
+    ],
+    "is_submittable": 0,
+    "links": [],
+    "modified": "2026-07-11 12:26:57.946980",
+    "modified_by": "Administrator",
+    "module": "Stridenex App",
+    "name": "Success Story",
+    "naming_rule": "Expression",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "read": 1,
+            "role": "Student",
+            "if_owner": 1
+        }
+    ],
+    "row_format": "Dynamic",
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "states": [],
+    "track_changes": 1
+}

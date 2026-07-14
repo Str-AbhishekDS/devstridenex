@@ -3,6 +3,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
     exception_handel
 )
+from stridenex_app.api_stridenex_app.app_utils import sync_billing_account_master
 
 # industry apis
 @frappe.whitelist(allow_guest=True)
@@ -71,7 +72,7 @@ def create_industry_users(contact_details):
                 "send_welcome_email": 0,
                 "roles": [
                     {
-                        "role": role
+                        "role": "Industry Base"
                     }
                 ]
             })
@@ -80,119 +81,97 @@ def create_industry_users(contact_details):
 
     return True
 
+# ============================================================
+# INDUSTRY — updated
+# ============================================================
+
 @frappe.whitelist(allow_guest=True)
-def update_industry(company_name):
+def update_industry(company_name,email):
     try:
         data = frappe.request.get_json()
         if not data:
             return gen_response(400, "Invalid request data")
 
-        # ✅ Get doc with permission bypass
         industry = frappe.get_doc("Industry list", company_name)
         industry.flags.ignore_permissions = True
 
-        # ✅ Extract fields
-        contact_details = data.pop("contact_details", [])
-        job_functions = data.pop("job_functions", [])
-        specializations = data.pop("specializations", [])        # NEW
-        operating_hours = data.pop("operating_hours", [])        # NEW
-        email = data.get("email")
+        contact_details  = data.pop("contact_details", [])
+        job_functions    = data.pop("job_functions", [])
+        specializations  = data.pop("specializations", [])
+        operating_hours  = data.pop("operating_hours", [])
+        location         = data.pop("location", {})       # popped early so it doesn't land on industry doc
+        email            = data.get("email")
+
+
 
         ignore_fields = ["name", "doctype", "owner", "creation", "modified"]
         for key, value in data.items():
             if key not in ignore_fields:
                 industry.set(key, value)
 
-        # =========================
-        # ✅ Job Function (replace)
-        # =========================
+        # Job functions
         industry.set("job_functions", [])
         if isinstance(job_functions, list):
             for spec in job_functions:
                 if isinstance(spec, dict):
-                    industry.append("job_functions", {
-                        "job_function": spec.get("job_function")
-                    })
+                    industry.append("job_functions", {"job_function": spec.get("job_function")})
                 elif isinstance(spec, str):
-                    industry.append("job_functions", {
-                        "job_function": spec
-                    })
+                    industry.append("job_functions", {"job_function": spec})
 
-
-        # =========================
-        # ✅ Specializations (replace)   NEW
-        # =========================
+        # Specializations
         industry.set("specializations", [])
         if isinstance(specializations, list):
             for spec in specializations:
                 if isinstance(spec, dict):
-                    industry.append("specializations", {
-                        "specialization": spec.get("specialization")
-                    })
+                    industry.append("specializations", {"specialization": spec.get("specialization")})
                 elif isinstance(spec, str):
-                    industry.append("specializations", {
-                        "specialization": spec
-                    })
+                    industry.append("specializations", {"specialization": spec})
 
-        # =========================
-        # ✅ Operating Hours (replace)   NEW
-        # =========================
+        # Operating hours
         industry.set("operating_hours", [])
         if isinstance(operating_hours, list):
             for oh in operating_hours:
                 if isinstance(oh, dict):
                     industry.append("operating_hours", {
-                        "day": oh.get("day"),
-                        "is_closed": oh.get("is_closed", 0),
+                        "day":          oh.get("day"),
+                        "is_closed":    oh.get("is_closed", 0),
                         "opening_time": oh.get("opening_time") if not oh.get("is_closed") else None,
-                        "closing_time": oh.get("closing_time") if not oh.get("is_closed") else None
+                        "closing_time": oh.get("closing_time") if not oh.get("is_closed") else None,
                     })
 
-        # =========================
-        # ✅ Location fields (replace)   NEW
-        # =========================
-        location = data.pop("location", {})
+        # Location fields
         if isinstance(location, dict):
             if location.get("address_line_1") is not None:
-                industry.address_line_1 = location.get("address_line_1")
+                industry.address_line_1 = location["address_line_1"]
             if location.get("address_line_2") is not None:
-                industry.address_line_2 = location.get("address_line_2")
+                industry.address_line_2 = location["address_line_2"]
             if location.get("pincode") is not None:
-                industry.pincode = location.get("pincode")
+                industry.pincode = location["pincode"]
             if location.get("map_link") is not None:
-                industry.map_link = location.get("map_link")
+                industry.map_link = location["map_link"]
             if location.get("latitude") is not None:
-                industry.latitude = location.get("latitude")
+                industry.latitude = location["latitude"]
             if location.get("longitude") is not None:
-                industry.longitude = location.get("longitude")
+                industry.longitude = location["longitude"]
 
-        # =========================
-        # ✅ Contact Details (replace)
-        # =========================
+        # Contact details
         industry.set("contact_details", [])
         if isinstance(contact_details, list):
             for contact in contact_details:
                 if isinstance(contact, dict):
                     industry.append("contact_details", {
-                        "title": contact.get("title"),
-                        "first_name": contact.get("first_name"),
-                        "last_name": contact.get("last_name"),
+                        "title":       contact.get("title"),
+                        "first_name":  contact.get("first_name"),
+                        "last_name":   contact.get("last_name"),
                         "designation": contact.get("designation"),
-                        "contact_no": contact.get("contact_no"),
-                        "email": contact.get("email")
+                        "contact_no":  contact.get("contact_no"),
+                        "email":       contact.get("email"),
                     })
 
-        # ✅ Save ONLY ONCE
         industry.save(ignore_permissions=True)
-
-        # =========================
-        # ✅ Create users
-        # =========================
         create_industry_users(contact_details)
 
-        # =========================
-        # ✅ Onboarding logic
-        # =========================
+        # Onboarding status
         if email and frappe.db.exists("User", email):
             onboarding_status = 0
             if data.get("country"):
@@ -200,12 +179,21 @@ def update_industry(company_name):
             if contact_details:
                 onboarding_status = 4
             frappe.db.set_value("User", email, "is_onboarded", onboarding_status)
-            frappe.db.commit()
+
+        frappe.db.commit()
+
+        
+        # ✅ Sync billing — pass location back in data so the helper can read it
+        sync_billing_account_master(
+            email       = email,
+            data        = {**data, "location": location, "company_name": industry.company_name},
+            module_type = "industry",
+        )
 
         return gen_response(
             status=200,
             message="Industry updated successfully",
-            data={"name": industry.name}
+            data={"name": industry.name},
         )
 
     except Exception as e:

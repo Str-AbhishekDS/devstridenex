@@ -15,14 +15,18 @@
   "email",
   "intake_capacity",
   "year_of_establishment",
+  "gst_number",
   "column_break_yapy",
   "country",
   "state",
   "district",
   "tahsil",
   "city",
-  "approved_status_workflow",
   "trust__governing_body",
+  "address_line_1",
+  "address_line_2",
+  "pincode",
+  "approved_status_workflow",
   "is_active",
   "section_break_ffoy",
   "contact_details",
@@ -60,8 +64,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "University",
-   "options": "University",
-   "reqd": 1
+   "options": "University"
   },
   {
    "fieldname": "college_type",
@@ -111,6 +114,21 @@
    "options": "City"
   },
   {
+   "fieldname": "address_line_1",
+   "fieldtype": "Data",
+   "label": "Address Line 1"
+  },
+  {
+   "fieldname": "address_line_2",
+   "fieldtype": "Data",
+   "label": "Address Line 2"
+  },
+  {
+   "fieldname": "pincode",
+   "fieldtype": "Data",
+   "label": "Pincode"
+  },
+  {
    "allow_on_submit": 1,
    "fieldname": "approved_status_workflow",
    "fieldtype": "Select",
@@ -134,11 +152,13 @@
    "options": "College Courses Table"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "email",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Email",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "contact_details",
@@ -160,14 +180,19 @@
    "fieldname": "trust__governing_body",
    "fieldtype": "Data",
    "label": "Trust / Governing Body"
+  },
+  {
+   "fieldname": "gst_number",
+   "fieldtype": "Data",
+   "label": "GST Number"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-12 18:39:23.970027",
- "modified_by": "Administrator",
+ "modified": "2026-06-12 13:46:48.864578",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "College",
  "naming_rule": "By fieldname",

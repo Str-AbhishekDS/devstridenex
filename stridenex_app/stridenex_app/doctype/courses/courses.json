@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:course_name",
+ "autoname": "format:{college}-{course_name}",
  "creation": "2026-02-17 11:10:40.955332",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -15,8 +15,7 @@
   {
    "fieldname": "course_name",
    "fieldtype": "Data",
-   "label": "Course Name",
-   "unique": 1
+   "label": "Course Name"
   },
   {
    "fieldname": "stream",
@@ -40,11 +39,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-27 15:11:33.915073",
- "modified_by": "Administrator",
+ "modified": "2026-06-29 11:52:39.047624",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Courses",
- "naming_rule": "By fieldname",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

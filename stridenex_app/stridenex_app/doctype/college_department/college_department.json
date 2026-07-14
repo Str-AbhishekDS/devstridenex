@@ -8,9 +8,7 @@
  "field_order": [
   "department_name",
   "academic_years",
-  "semester",
   "column_break_ufsg",
-  "college",
   "courses"
  ],
  "fields": [
@@ -30,29 +28,17 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "college",
-   "fieldtype": "Link",
-   "label": "College",
-   "options": "College"
-  },
-  {
    "fieldname": "courses",
    "fieldtype": "Table MultiSelect",
    "label": "Courses",
    "options": "Course Table"
-  },
-  {
-   "fieldname": "semester",
-   "fieldtype": "Link",
-   "label": "Semester",
-   "options": "Semester"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-07 16:25:02.346669",
- "modified_by": "Administrator",
+ "modified": "2026-06-29 12:34:55.961983",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "College Department",
  "naming_rule": "By fieldname",

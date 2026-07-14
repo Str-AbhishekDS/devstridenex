@@ -45,24 +45,66 @@ class MentorOffering(Document):
 
 # ── Whitelisted APIs ───────────────────────────────────────────────────────────
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def get_mentor_offerings(mentor, status=None):
+
+    session_user = frappe.session.user
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # Respects Role Permission Manager configuration
+    # ----------------------------------------------------------
+    if not frappe.has_permission(
+        "Mentor Offering",
+        ptype="read",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to access Mentor Offerings.",
+            frappe.PermissionError
+        )
+
     filters = {"mentor": mentor}
+
     if status:
         filters["status"] = status
-    return frappe.get_all(
+
+    return frappe.get_list(
         "Mentor Offering",
         filters=filters,
         fields=[
-            "name", "title", "offering_type", "category",
-            "duration_minutes", "price_per_session", "status",
-            "total_bookings", "average_rating", "description"
+            "name",
+            "title",
+            "offering_type",
+            "category",
+            "duration_minutes",
+            "price_per_session",
+            "status",
+            "total_bookings",
+            "average_rating",
+            "description"
         ],
         order_by="creation desc"
     )
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def create_mentor_offering():
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # Respects Role Permission Manager configuration
+    # ----------------------------------------------------------
+    session_user = frappe.session.user
+
+    if not frappe.has_permission(
+        "Mentor Offering",
+        ptype="create",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to create Mentor Offering.",
+            frappe.PermissionError
+        )
 
     data = frappe.request.get_json()
 
@@ -91,7 +133,9 @@ def create_mentor_offering():
         "batch_details": data.get("batch_details")
     })
 
-    doc.insert(ignore_permissions=True)
+    # Respects Role Permission Manager
+    doc.insert()
+
     frappe.db.commit()
 
     return {
@@ -100,9 +144,24 @@ def create_mentor_offering():
         "name": doc.name
     }
 
-
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def update_mentor_offering(name):
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # Respects Role Permission Manager configuration
+    # ----------------------------------------------------------
+    session_user = frappe.session.user
+
+    if not frappe.has_permission(
+        "Mentor Offering",
+        ptype="write",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to update Mentor Offering.",
+            frappe.PermissionError
+        )
 
     data = frappe.request.get_json()
 
@@ -140,8 +199,9 @@ def update_mentor_offering(name):
         if field in data:
             doc.set(field, data.get(field))
 
-    # Save document
-    doc.save(ignore_permissions=True)
+    # Respects Role Permission Manager
+    doc.save()
+
     frappe.db.commit()
 
     return {
@@ -154,7 +214,6 @@ def update_mentor_offering(name):
             "price_per_session": doc.price_per_session
         }
     }
-
 
 @frappe.whitelist()
 def toggle_offering_status(offering_name, action):
@@ -190,53 +249,59 @@ def _assert_mentor_owns_offering(offering_doc):
         )
 
 
+    return {"batch_name": batch.name, "already_exists": False}
+
 @frappe.whitelist()
 def create_lms_batch_for_offering(offering_name):
     """
     Create an LMS Batch linked to this offering.
     Only the owning mentor (or admin) can call this.
     """
-    offering = frappe.get_doc("Mentor Offering", offering_name)
+    # ── Permission check on Mentor Offering ─────────────────────────
+    frappe.has_permission("Mentor Offering", ptype="read", doc=offering_name, throw=True)
 
-    # ── Ownership check ───────────────────────────────────────────────
-    _assert_mentor_owns_offering(offering)
+    offering = frappe.get_doc("Mentor Offering", offering_name)
 
     if offering.offering_type != "Group Session":
         frappe.throw(_("LMS Batch can only be created for Group Session offerings."))
 
-    # ── Already has a batch → return it ──────────────────────────────
+    # ── Already has a batch → return it ─────────────────────────────
     if offering.lms_batch:
         return {"batch_name": offering.lms_batch, "already_exists": True}
 
-    # ── Get mentor's full name for instructor field ───────────────────
-    mentor_full_name = frappe.db.get_value("User", offering.mentor, "full_name") or offering.mentor
-
-    # ── Build batch doc ───────────────────────────────────────────────
+    # ── Build batch doc ──────────────────────────────────────────────
     batch_data = {
-        "doctype":      "LMS Batch",
-        "title":        offering.title,
-        "published":    0,
-        "seat_count":   int(offering.max_group_size or 0),
-        "start_date":   offering.start_date,
-        "end_date":     offering.end_date,
-        "start_time":   offering.start_time,
-        "end_time":     offering.end_time,
-        "timezone":     "Asia/Kolkata",
+        "doctype": "LMS Batch",
+        "title": offering.title,
+        "published": 0,
+        "seat_count": int(offering.max_group_size or 0),
+        "start_date": offering.start_date,
+        "end_date": offering.end_date,
+        "start_time": offering.start_time,
+        "end_time": offering.end_time,
+        "timezone": "Asia/Kolkata",
         "batch_details": offering.batch_details,
-        "description":  offering.description,
-        "mentor":       offering.mentor,
-        "instructors":  [{"instructor": offering.mentor}],
+        "description": offering.description,
+        "mentor": offering.mentor,
     }
+
+    # ── Verify the child table field name in your LMS Batch doctype ──
+    # Check via: frappe.get_meta("LMS Batch").get_field("batch_instructors")
+    # Common field names: "batch_instructors" or "instructors"
+    batch_data["instructors"] = [{"instructor": offering.mentor}]
 
     if offering.get("lms_course"):
         batch_data["courses"] = [{"course": offering.lms_course}]
 
     batch = frappe.get_doc(batch_data)
     batch.insert(ignore_permissions=True)
-    frappe.db.commit()
 
-    # ── Save batch name back on offering ─────────────────────────────
-    frappe.db.set_value("Mentor Offering", offering_name, "lms_batch", batch.name)
+    if not batch.name:
+        frappe.throw(_("Batch creation failed. Please check server logs."))
+
+    # ── Save batch name back on the offering ────────────────────────
+    offering.db_set("lms_batch", batch.name, update_modified=False)
+    frappe.db.commit()
 
     return {"batch_name": batch.name, "already_exists": False}
 
@@ -442,7 +507,7 @@ def enroll_student_in_batch(offering, batch_name, student):
 #         "seats_left":      seats_left,
 #     }
     
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def get_mentor_listings(
     skill=None,
     min_price=None,
@@ -454,6 +519,22 @@ def get_mentor_listings(
     limit=20,
     offset=0
 ):
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # Respects Role Permission Manager configuration
+    # ----------------------------------------------------------
+    session_user = frappe.session.user
+
+    if not frappe.has_permission(
+        "Mentor Offering",
+        ptype="read",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to access Mentor Offering.",
+            frappe.PermissionError
+        )
 
     limit = int(limit or 20)
     offset = int(offset or 0)
@@ -485,8 +566,6 @@ def get_mentor_listings(
 
     # ---------------------------------------------------------
     # Fetch ALL offerings
-    # IMPORTANT:
-    # No limit here
     # ---------------------------------------------------------
     offerings = frappe.get_all(
         "Mentor Offering",
@@ -508,6 +587,8 @@ def get_mentor_listings(
             creation desc
         """
     )
+
+    # Existing logic unchanged below...
 
     # ---------------------------------------------------------
     # Remove duplicate mentors

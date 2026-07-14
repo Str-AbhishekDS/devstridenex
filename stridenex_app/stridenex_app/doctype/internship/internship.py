@@ -50,42 +50,69 @@ def get_match_score(student, internship):
     score = (len(matched) / len(required_skills)) * 100
 
     return round(score)
-
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def create_internship():
     try:
+        # ----------------------------------------------------------
+        # PERMISSION CHECK
+        # Respects Role Permission Manager configuration
+        # ----------------------------------------------------------
+        session_user = frappe.session.user
+
+        if not frappe.has_permission(
+            "Internship",
+            ptype="create",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to create Internship.",
+                frappe.PermissionError
+            )
+
         data = frappe.request.get_json()
 
         course_list = data.pop("course", [])
         department_list = data.pop("department", [])
         academic_year_list = data.pop("academic_year", [])
-        # return academic_year_list
 
         internship = frappe.get_doc({
             "doctype": "Internship",
             **data
         })
 
+        # Course
         for course in course_list:
             internship.append("course", {
-                "course": course if isinstance(course, str) else course.get("course")
+                "course": (
+                    course if isinstance(course, str)
+                    else course.get("course")
+                )
             })
 
         # Department
         for department in department_list:
             internship.append("department", {
-                "department": department if isinstance(department, str) else department.get("department")
+                "department": (
+                    department if isinstance(department, str)
+                    else department.get("department")
+                )
             })
 
-        # Academic Year — field inside child DocType is "academic_year" (Link to "Academic Year")
+        # Academic Year
         for year in academic_year_list:
-            year_value = year if isinstance(year, str) else year.get("academic_year")
+            year_value = (
+                year if isinstance(year, str)
+                else year.get("academic_year")
+            )
+
             row = frappe.new_doc("Academic Year Table")
             row.academic_year = year_value
+
             internship.append("academic_year", row)
 
+        # Respects Role Permission Manager
+        internship.insert()
 
-        internship.insert(ignore_permissions=True)
         frappe.db.commit()
 
         return gen_response(
@@ -95,33 +122,114 @@ def create_internship():
         )
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Create Internship Error")
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Create Internship Error"
+        )
+
         return {
             "status": 500,
             "message": str(e)
         }
         
+        
 @frappe.whitelist(allow_guest=True)
-def get_internship_list(industry=None, student=None,course=None,department=None,academic_year=None):
+def get_internship_list(
+    industry=None,
+    student=None,
+    course=None,
+    department=None,
+    current_year=None,
+    search=None
+):
     try:
+        # ----------------------------------------------------------
+        # PERMISSION CHECK
+        # Respects Role Permission Manager configuration
+        # ----------------------------------------------------------
+        # session_user = frappe.session.user
+
+        # if not frappe.has_permission(
+        #     "Internship",
+        #     ptype="read",
+        #     user=session_user
+        # ):
+        #     frappe.throw(
+        #         "You do not have permission to access Internship.",
+        #         frappe.PermissionError
+        #     )
+
         filters = {}
 
         if industry:
             filters["industry"] = industry
+
+        internship_names = None
+
+        # Course filter
         if course:
-            filters["course"]=course
+            names = frappe.get_all(
+                "Course Table",
+                filters={"course": course},
+                pluck="parent"
+            )
+            internship_names = set(names)
+
+        # Department filter
         if department:
-            filters["department"]=department
-        if academic_year:
-            filters["academic_year"]=academic_year
+            names = frappe.get_all(
+                "Department Table",
+                filters={"department": department},
+                pluck="parent"
+            )
+
+            if internship_names is None:
+                internship_names = set(names)
+            else:
+                internship_names &= set(names)
+
+        # Academic Year filter
+        # if current_year:
+        #     names = frappe.get_all(
+        #         "Academic Year Table",
+        #         filters={"academic_year": current_year},
+        #         pluck="parent"
+        #     )
+
+        #     if internship_names is None:
+        #         internship_names = set(names)
+        #     else:
+        #         internship_names &= set(names)
+        or_filters = None
+        if search:
+            or_filters = [
+                ["title", "like", f"%{search}%"],
+                ["description", "like", f"%{search}%"],
+                ["location", "like", f"%{search}%"],
+            ]
+        # Apply parent filter
+        if internship_names is not None:
+            if internship_names:
+                filters["name"] = ["in", list(internship_names)]
+            else:
+                return gen_response(
+                    status=200,
+                    message="No internships found",
+                    data=[]
+                )
 
         internships = frappe.get_all(
             "Internship",
             filters=filters,
-            fields=["*"],
+            or_filters=or_filters,
+            fields=["name","creation","owner","title","duration","openings",
+                    "required_skills","internship_type","location","required_skills",
+                    "start_date","end_date","industry","type","work_mode","stipend","deadline",
+                    "status","posted_by","description","eligibility","payment_mode"],
             order_by="creation desc"
         )
-
+ 
+        
         internship_names = [i["name"] for i in internships]
 
         # ✅ Skills mapping
@@ -132,14 +240,18 @@ def get_internship_list(industry=None, student=None,course=None,department=None,
         )
 
         skill_map = {}
+
         for s in all_skills:
-            skill_map.setdefault(s["parent"], []).append({
+            skill_map.setdefault(
+                s["parent"],
+                []
+            ).append({
                 "skill": s["skill"]
             })
-        
 
         # ✅ Application status mapping
         enrollment_map = {}
+
         if student:
             enrollments = frappe.get_all(
                 "Internship Application",
@@ -148,20 +260,47 @@ def get_internship_list(industry=None, student=None,course=None,department=None,
             )
 
             enrollment_map = {
-                e["internship"]: e["status"] for e in enrollments
+                e["internship"]: e["status"]
+                for e in enrollments
             }
+            
+        scheduled_interview_count = 0
+
+        if student:
+            scheduled_interview_count = sum(
+                1 for e in enrollments
+                if e["status"] in ["Tech Interview", "Final", "HR"]
+            )
 
         # ✅ Final response
         for internship in internships:
-            internship["skills"] = skill_map.get(internship["name"], [])
-            doc = frappe.get_doc("Internship", internship["name"])
-            internship["course"] = [r.course for r in doc.course]
-            internship["department"] = [r.department for r in doc.department]
-            internship["academic_year"] = [r.academic_year for r in doc.academic_year]
+
+            internship["skills"] = skill_map.get(
+                internship["name"],
+                []
+            )
+
+            doc = frappe.get_doc(
+                "Internship",
+                internship["name"]
+            )
+
+            internship["course"] = [
+                r.course for r in doc.course
+            ]
+
+            internship["department"] = [
+                r.department for r in doc.department
+            ]
+
+            internship["academic_year"] = [
+                r.academic_year for r in doc.academic_year
+            ]
 
             if student:
                 internship["applied_status"] = enrollment_map.get(
-                    internship["name"], "Not Applied"
+                    internship["name"],
+                    "Not Applied"
                 )
             else:
                 internship["applied_status"] = "Not Applied"
@@ -169,66 +308,128 @@ def get_internship_list(industry=None, student=None,course=None,department=None,
         return gen_response(
             status=200,
             message="Internship list fetched successfully",
-            data=internships
+            data={
+                "internships": internships,
+                "statistics": {
+                    "total_internships": len(internships),
+                    "scheduled_interview_count": scheduled_interview_count
+                }
+            }
         )
-
     except Exception as e:
         return exception_handel(e)
     
-
+    
 @frappe.whitelist(allow_guest=True)
 def update_internship():
     try:
+        # ----------------------------------------------------------
+        # PERMISSION CHECK
+        # Respects Role Permission Manager configuration
+        # ----------------------------------------------------------
+        # session_user = frappe.session.user
+
+        # if not frappe.has_permission(
+        #     "Internship",
+        #     ptype="write",
+        #     user=session_user
+        # ):
+        #     frappe.throw(
+        #         "You do not have permission to update Internship.",
+        #         frappe.PermissionError
+        #     )
+
         data = frappe.request.get_json()
         name = data.pop("name", None)
 
         if not name:
-            return gen_response(status=400, message="Name is required", data=[])
+            return gen_response(
+                status=400,
+                message="Name is required",
+                data=[]
+            )
 
         # Pop Table MultiSelect and Child Table fields before setattr loop
-        course_list        = data.pop("course", None)
-        department_list    = data.pop("department", None)
-        academic_year_list = data.pop("academic_year", None)   # correct fieldname from schema
-        required_skills    = data.pop("required_skills", None)
+        course_list = data.pop("course", None)
+        department_list = data.pop("department", None)
+        academic_year_list = data.pop("academic_year", None)
+        required_skills = data.pop("required_skills", None)
 
         # Pop unknown/non-schema fields to avoid setattr noise
         data.pop("internship_name", None)
 
-        internship = frappe.get_doc("Internship", name)
+        internship = frappe.get_doc(
+            "Internship",
+            name
+        )
 
-        # Set all remaining simple fields (Data, Select, Int, Currency, Date, Link)
+        # Set all remaining simple fields
         for key, value in data.items():
             setattr(internship, key, value)
 
-        # Course (Table MultiSelect → Course Table, link field: "course")
+        # Course
         if course_list is not None:
             internship.set("course", [])
-            for item in course_list:
-                course_value = item if isinstance(item, str) else item.get("course")
-                internship.append("course", {"course": course_value})
 
-        # Department (Table MultiSelect → Department Table, link field: "department")
+            for item in course_list:
+                course_value = (
+                    item if isinstance(item, str)
+                    else item.get("course")
+                )
+
+                internship.append(
+                    "course",
+                    {"course": course_value}
+                )
+
+        # Department
         if department_list is not None:
             internship.set("department", [])
-            for item in department_list:
-                dept_value = item if isinstance(item, str) else item.get("department")
-                internship.append("department", {"department": dept_value})
 
-        # Academic Year (Table MultiSelect → Academic Year Table, link field: "academic_year")
+            for item in department_list:
+                dept_value = (
+                    item if isinstance(item, str)
+                    else item.get("department")
+                )
+
+                internship.append(
+                    "department",
+                    {"department": dept_value}
+                )
+
+        # Academic Year
         if academic_year_list is not None:
             internship.set("academic_year", [])
-            for item in academic_year_list:
-                year_value = item if isinstance(item, str) else item.get("academic_year")
-                internship.append("academic_year", {"academic_year": year_value})
 
-        # Required Skills (Child Table → Internship Required Skill, link field: "skill")
+            for item in academic_year_list:
+                year_value = (
+                    item if isinstance(item, str)
+                    else item.get("academic_year")
+                )
+
+                internship.append(
+                    "academic_year",
+                    {"academic_year": year_value}
+                )
+
+        # Required Skills
         if required_skills is not None:
             internship.set("required_skills", [])
-            for item in required_skills:
-                skill_value = item if isinstance(item, str) else item.get("skill")
-                internship.append("required_skills", {"skill": skill_value})
 
-        internship.save(ignore_permissions=True)
+            for item in required_skills:
+                skill_value = (
+                    item if isinstance(item, str)
+                    else item.get("skill")
+                )
+
+                internship.append(
+                    "required_skills",
+                    {"skill": skill_value}
+                )
+
+        # Respects Role Permission Manager
+        internship.save()
+
         frappe.db.commit()
 
         return gen_response(
@@ -238,23 +439,53 @@ def update_internship():
         )
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Update Internship Error")
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Update Internship Error"
+        )
+
         return exception_handel(e)
     
     
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def inactive_internship(name):
     try:
-        if not frappe.db.exists("Internship", name):
+        # ----------------------------------------------------------
+        # PERMISSION CHECK
+        # Respects Role Permission Manager configuration
+        # ----------------------------------------------------------
+        session_user = frappe.session.user
+
+        if not frappe.has_permission(
+            "Internship",
+            ptype="write",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to update Internship.",
+                frappe.PermissionError
+            )
+
+        if not frappe.db.exists(
+            "Internship",
+            name
+        ):
             return gen_response(
                 status=404,
                 message="Internship not found",
                 data=[]
             )
 
-        project = frappe.get_doc("Internship", name)
-        project.status = "Closed"   # or "Inactive"
-        project.save(ignore_permissions=True)
+        project = frappe.get_doc(
+            "Internship",
+            name
+        )
+
+        project.status = "Closed"  # or "Inactive"
+
+        # Respects Role Permission Manager
+        project.save()
+
         frappe.db.commit()
 
         return gen_response(

@@ -38,7 +38,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Applied\nShortlisted\nInterview Scheduled\nRejected\nSelected\nAwarded"
+   "options": "Applied\nShortlisted\nInterview Scheduled\nRejected\nSelected\nCompleted\nAwarded"
   },
   {
    "fieldname": "applied_on",
@@ -80,8 +80,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-28 14:33:21.734639",
- "modified_by": "roshani.babar@erpdata.in",
+ "modified": "2026-07-07 13:07:12.178482",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Student Project Enrollment",
  "naming_rule": "Expression (old style)",

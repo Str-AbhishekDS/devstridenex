@@ -1,18 +1,14 @@
 import json
 
-import frappe
-from stridenex_app.api_stridenex_app.app_utils import (
-    gen_response,
-    exception_handel
-)
-
+from stridenex_app.api_stridenex_app.app_utils import sync_billing_account_master
 
 import frappe
+
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
-    exception_handel
+    exception_handel,get_pagination_params,make_cache_key,make_pagination_meta
 )
-
+CACHE_TTL   = 300 
 
 @frappe.whitelist(allow_guest=True)
 def create_mentor():
@@ -72,106 +68,65 @@ def create_mentor():
         return exception_handel(e)
 
 
+# ============================================================
+# MENTOR — updated
+# ============================================================
 
 @frappe.whitelist(allow_guest=True)
 def update_mentor(email_id):
-
     try:
         data = frappe.request.get_json()
 
         if not data:
-            return gen_response(
-                400,
-                "Invalid request data"
-            )
+            return gen_response(400, "Invalid request data")
 
-        mentor_name = frappe.db.get_value(
-            "Mentor",
-            {"email_id": email_id},
-            "name"
-        )
-
+        mentor_name = frappe.db.get_value("Mentor", {"email_id": email_id}, "name")
         if not mentor_name:
-            return gen_response(
-                404,
-                "Mentor not found"
-            )
+            return gen_response(404, "Mentor not found")
 
-        mentor = frappe.get_doc(
-            "Mentor",
-            mentor_name
-        )
-        # return mentor
+        mentor = frappe.get_doc("Mentor", mentor_name)
+        mentor.flags.ignore_permissions = True
 
-        # mentor.flags.ignore_permissions = True
-
-        mentor_skills = data.pop("skills", [])
-        domains = data.pop("domains", [])
-        mentor_platform_urls = data.pop(
-            "mentor_platform_urls",
-            []
-        )
+        mentor_skills        = data.pop("skills", [])
+        domains              = data.pop("domains", [])
+        mentor_platform_urls = data.pop("mentor_platform_urls", [])
 
         ignore_fields = [
-            "name",
-            "doctype",
-            "owner",
-            "creation",
-            "modified",
-            "email_id",
-            "mobile_no",
-            "approved_status",
-            "total_sessions",
-            "total_hours",
-            "total_earnings",
-            "avg_rating"
+            "name", "doctype", "owner", "creation", "modified",
+            "email_id", "mobile_no", "approved_status",
+            "total_sessions", "total_hours", "total_earnings", "avg_rating",
         ]
 
-        
-        # Mentor Skills
-        mentor.set("mentor_skills", [])
-
-        for row in mentor_skills:
-
-            mentor.append("mentor_skills", {
-                "skill": row.get("skill"),
-                "level": row.get("level")
-            })
-
-        # Domain
-        mentor.set("domain", [])
-
-        for row in domains:
-
-            mentor.append("domain", {
-                "domain": row.get("domain")
-            })
-
-        # Platform URLs
         for key, value in data.items():
-
             if key not in ignore_fields:
                 mentor.set(key, value)
 
+        # Mentor Skills
+        mentor.set("mentor_skills", [])
+        for row in mentor_skills:
+            mentor.append("mentor_skills", {
+                "skill": row.get("skill"),
+                "level": row.get("level"),
+            })
+
+        # Domains
+        mentor.set("domain", [])
+        for row in domains:
+            mentor.append("domain", {"domain": row.get("domain")})
+
+        # Platform URLs
         mentor.set("mentor_platform_urls", [])
-
         if isinstance(mentor_platform_urls, list):
-
             for row in mentor_platform_urls:
-
                 if isinstance(row, dict):
+                    mentor.append("mentor_platform_urls", {
+                        "platform": row.get("platform"),
+                        "url":      row.get("url"),
+                    })
 
-                    mentor.append(
-                        "mentor_platform_urls",
-                        {
-                            "platform": row.get("platform"),
-                            "url": row.get("url")
-                        }
-                    )
+        mentor.save(ignore_permissions=True)
 
-        mentor.save()
-
-
+        # Onboarding status
         if email_id and frappe.db.exists("User", email_id):
             onboarding_status = 0
             if data.get("country"):
@@ -179,24 +134,20 @@ def update_mentor(email_id):
             if data.get("type"):
                 onboarding_status = 3
             frappe.db.set_value("User", email_id, "is_onboarded", onboarding_status)
-            frappe.db.commit()
+
         frappe.db.commit()
 
-        return gen_response(
-            status=200,
-            message="Mentor updated successfully",
-            data={
-                "mentor": mentor.name,
-            }
+        # ✅ Sync billing
+        sync_billing_account_master(
+            email       = email_id,
+            data        = data,
+            module_type = "mentor",
         )
+
+        return gen_response(200, "Mentor updated successfully", {"mentor": mentor.name})
 
     except Exception as e:
-
-        frappe.log_error(
-            frappe.get_traceback(),
-            "UPDATE MENTOR ERROR"
-        )
-
+        frappe.log_error(frappe.get_traceback(), "UPDATE MENTOR ERROR")
         return exception_handel(e)
 
 
@@ -403,3 +354,76 @@ def get_mentor_by_email(email_id):
 
 
 
+DEFAULT_PAGE_SIZE = 20
+
+@frappe.whitelist(allow_guest=True)
+def get_mentor_list(college=None, page=1, search=None, page_size=DEFAULT_PAGE_SIZE):
+    try:
+        page, page_size, limit, offset = get_pagination_params(page, page_size)
+
+        # ── Base filters (AND conditions) ───────────────────────────────────
+        filters = {}
+        if college:
+            filters["college"] = college
+
+        # ── OR-based search filters using correct fieldnames ───────────────
+        if search:
+            search_term = f"%{search.strip()}%"
+            or_filters = [
+                ["Mentor", "first_name", "like", search_term],
+                ["Mentor", "last_name", "like", search_term],
+                ["Mentor", "email_id", "like", search_term],
+                ["Mentor", "city", "like", search_term],
+                ["Mentor", "state", "like", search_term],
+            ]
+        else:
+            or_filters = None
+
+        # ── Cache key unique to every (college, search, page, page_size) ───
+        cache_key = make_cache_key(
+            "mentor_list",
+            college=college,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+
+        cached = frappe.cache().get_value(cache_key)
+        if cached:
+            return cached
+
+        # ── Total count ──────────────────────────────────────────────────────
+        total = len(
+            frappe.get_all(
+                "Mentor",
+                filters=filters,
+                or_filters=or_filters,
+                pluck="name",
+            )
+        )
+
+        # ── Paginated fetch ─────────────────────────────────────────────────
+        mentors = frappe.get_all(
+            "Mentor",
+            filters=filters,
+            or_filters=or_filters,
+            fields=["*"],
+            order_by="creation desc",
+            limit=limit,
+            start=offset,
+        )
+
+        result = gen_response(
+            status=200,
+            message="Mentor list fetched successfully",
+            data={
+                "Mentor": mentors,
+                "pagination": make_pagination_meta(total, page, page_size),
+            },
+        )
+
+        frappe.cache().set_value(cache_key, result, expires_in_sec=CACHE_TTL)
+        return result
+
+    except Exception as e:
+        return exception_handel(e)

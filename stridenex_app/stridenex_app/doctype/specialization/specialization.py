@@ -12,14 +12,32 @@ from stridenex_app.api_stridenex_app.app_utils import (
 class Specialization(Document):
 	pass
 
-
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def create_specialization():
     try:
+        # ----------------------------------------------------------
+        # PERMISSION CHECK
+        # Respects Role Permission Manager configuration
+        # ----------------------------------------------------------
+        session_user = frappe.session.user
+
+        if not frappe.has_permission(
+            "Specialization",
+            ptype="create",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to create Specialization.",
+                frappe.PermissionError
+            )
+
         data = frappe.request.get_json()
 
         # Check for duplicate
-        if frappe.db.exists("Specialization", data.get("specialization_name")):
+        if frappe.db.exists(
+            "Specialization",
+            data.get("specialization_name")
+        ):
             return gen_response(
                 status=409,
                 message="Specialization already exists",
@@ -31,7 +49,9 @@ def create_specialization():
             "specialization_name": data.get("specialization_name")
         })
 
-        specialization.insert(ignore_permissions=True)
+        # Respects permissions
+        specialization.insert()
+
         frappe.db.commit()
 
         return gen_response(
@@ -41,5 +61,8 @@ def create_specialization():
         )
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Create Specialization Error")
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Create Specialization Error"
+        )
         return exception_handel(e)
