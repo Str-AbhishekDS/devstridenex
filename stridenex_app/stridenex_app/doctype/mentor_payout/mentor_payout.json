@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "autoname": "format:MP-{YYYY}-{MM}-{#####}",
+ "creation": "2026-07-10 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "mentor",
+  "month_year",
+  "status",
+  "payment_date",
+  "transaction_reference",
+  "column_break_1",
+  "total_sessions",
+  "gross_amount",
+  "commission_rate",
+  "commission_amount",
+  "net_payout"
+ ],
+ "fields": [
+  {
+   "fieldname": "mentor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Mentor",
+   "options": "Mentor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "month_year",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Month Year",
+   "reqd": 1,
+   "description": "e.g. February 2025"
+  },
+  {
+   "default": "Processing",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Processing\nPaid\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "payment_date",
+   "fieldtype": "Date",
+   "label": "Payment Date"
+  },
+  {
+   "fieldname": "transaction_reference",
+   "fieldtype": "Data",
+   "label": "Transaction Reference",
+   "description": "Bank UTR / RazorpayX payment ID"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_sessions",
+   "fieldtype": "Int",
+   "label": "Total Sessions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_amount",
+   "fieldtype": "Currency",
+   "label": "Gross Amount (₹)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "commission_rate",
+   "fieldtype": "Percent",
+   "label": "Commission Rate (%)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "commission_amount",
+   "fieldtype": "Currency",
+   "label": "Commission Amount (₹)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "net_payout",
+   "fieldtype": "Currency",
+   "label": "Net Payout (₹)",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-10 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Payout",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

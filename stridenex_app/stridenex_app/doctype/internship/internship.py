@@ -263,6 +263,14 @@ def get_internship_list(
                 e["internship"]: e["status"]
                 for e in enrollments
             }
+            
+        scheduled_interview_count = 0
+
+        if student:
+            scheduled_interview_count = sum(
+                1 for e in enrollments
+                if e["status"] in ["Tech Interview", "Final", "HR"]
+            )
 
         # ✅ Final response
         for internship in internships:
@@ -300,9 +308,14 @@ def get_internship_list(
         return gen_response(
             status=200,
             message="Internship list fetched successfully",
-            data=internships
+            data={
+                "internships": internships,
+                "statistics": {
+                    "total_internships": len(internships),
+                    "scheduled_interview_count": scheduled_interview_count
+                }
+            }
         )
-
     except Exception as e:
         return exception_handel(e)
     

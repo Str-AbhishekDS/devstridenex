@@ -214,6 +214,24 @@ def get_project_list(
                 for e in enrollments
             }
 
+        total_applied = 0
+        total_completed = 0
+        total_awarded = 0
+
+        if student:
+            total_applied = len(enrollments)
+
+            total_completed = len([
+                e for e in enrollments
+                if e["status"] == "Completed"
+            ])
+
+            total_awarded = len([
+                e for e in enrollments
+                if e["status"] == "Awarded"
+            ])
+        
+        
         all_enrollments = []
 
         if not student:
@@ -276,6 +294,12 @@ def get_project_list(
             message="Project list fetched successfully",
             data={
                 "projects": projects,
+                "statistics": {
+                    "total_projects": total,
+                    "total_applied": total_applied,
+                    "total_completed": total_completed,
+                    "total_awarded": total_awarded
+                },
                 "pagination": make_pagination_meta(
                     total,
                     page,

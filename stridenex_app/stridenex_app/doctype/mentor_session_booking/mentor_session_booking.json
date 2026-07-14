@@ -34,7 +34,10 @@
   "alt_date",
   "requested_date",
   "requested_time",
-  "mentor_request_status"
+  "mentor_request_status",
+  "payout_section",
+  "payout_status",
+  "payout_reference"
  ],
  "fields": [
   {
@@ -72,7 +75,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Pending\nScheduled\nAccepted\nCompleted\nCancelled"
+   "options": "Pending\nScheduled\nAccepted\nCompleted\nCancelled\nPayment Pending"
   },
   {
    "fieldname": "amount_paid",
@@ -211,13 +214,34 @@
   {
    "fieldname": "column_break_ardd",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payout_section",
+   "fieldtype": "Section Break",
+   "label": "Payout Details"
+  },
+  {
+   "default": "Unpaid",
+   "fieldname": "payout_status",
+   "fieldtype": "Select",
+   "in_list_view": 0,
+   "in_standard_filter": 1,
+   "label": "Payout Status",
+   "options": "Unpaid\nProcessing\nPaid"
+  },
+  {
+   "fieldname": "payout_reference",
+   "fieldtype": "Link",
+   "label": "Payout Reference",
+   "options": "Mentor Payout",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-04 13:13:24.650433",
- "modified_by": "abhisheksadale96@gmail.com",
+ "modified": "2026-07-08 11:37:25.331999",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Session Booking",
  "naming_rule": "Expression (old style)",

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "format:{student}-{internship}",
  "creation": "2026-03-31 17:48:12.682875",
  "doctype": "DocType",
@@ -21,8 +22,7 @@
    "in_list_view": 1,
    "label": "Student",
    "options": "Student",
-   "reqd": 1,
-   "unique": 1
+   "reqd": 1
   },
   {
    "fieldname": "internship",
@@ -61,13 +61,14 @@
   },
   {
    "fieldname": "industry",
-   "fieldtype": "Data",
-   "label": "Industry"
+   "fieldtype": "Link",
+   "label": "Industry",
+   "options": "Industry list"
   }
  ],
  "links": [],
- "modified": "2026-04-17 11:20:26.955265",
- "modified_by": "roshni.babar@erpdata.in",
+ "modified": "2026-07-09 16:02:59.394279",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Internship Application",
  "naming_rule": "Expression (old style)",

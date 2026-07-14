@@ -357,15 +357,359 @@ def _time_to_str(t):
 # Slot Calendar API
 # ------------------------------------------------------------------
 
+# @frappe.whitelist(allow_guest=False)
+# def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
+#     """
+#     Permission: READ on 'Mentor Session Booking'.
+#     Any role granted READ in Role Permission Manager can call this.
+#     """
+#     # ----------------------------------------------------------
+#     # PERMISSION CHECK
+#     # ----------------------------------------------------------
+#     session_user = frappe.session.user
+
+#     if not frappe.has_permission("Mentor Session Booking", ptype="read", user=session_user):
+#         frappe.throw(
+#             _("You do not have permission to view the session calendar."),
+#             frappe.PermissionError
+#         )
+
+#     # ----------------------------------------------------------
+#     # Unchanged logic below
+#     # ----------------------------------------------------------
+#     if not from_date and not to_date:
+#         from_date = nowdate()
+#         to_date   = add_days(from_date, 6)
+
+#     if not mentor or not from_date or not to_date:
+#         frappe.throw(_("mentor, from_date, and to_date are required"))
+
+#     duration_minutes = 60
+#     if offering:
+#         mins = frappe.db.get_value("Mentor Offering", offering, "duration_minutes")
+#         if mins:
+#             duration_minutes = int(mins)
+
+#     start = getdate(from_date)
+#     end   = getdate(to_date)
+
+#     avail_by_day = {}
+#     for avail in frappe.get_all(
+#         "Mentor Availability",
+#         filters={"mentor": mentor, "is_available": 1},
+#         fields=["name", "schedule_type"]
+#     ):
+#         doc = frappe.get_doc("Mentor Availability", avail.name)
+#         if avail.schedule_type == "Each Day Same Schedule":
+#             for row in (doc.days_multi or []):
+#                 key = (row.day or "").strip().lower()
+#                 avail_by_day.setdefault(key, []).append({
+#                     "from_time": _time_to_str(doc.from_time),
+#                     "to_time":   _time_to_str(doc.to_time),
+#                 })
+#         else:
+#             for row in (doc.daily_schedule or []):
+#                 key = (row.day or "").strip().lower()
+#                 avail_by_day.setdefault(key, []).append({
+#                     "from_time": _time_to_str(row.from_time),
+#                     "to_time":   _time_to_str(row.to_time),
+#                 })
+
+#     blocked_by_date = {}
+#     for b in frappe.get_all(
+#         "Mentor Blocked Time",
+#         filters={"mentor": mentor, "date": ["between", [from_date, to_date]]},
+#         fields=["date", "from_time", "to_time", "reason"]
+#     ):
+#         blocked_by_date.setdefault(str(b.date), []).append({
+#             "from_time": _time_to_str(b.from_time),
+#             "to_time":   _time_to_str(b.to_time),
+#             "reason":    b.reason or ""
+#         })
+
+#     booked_by_date = {}
+#     for b in frappe.get_all(
+#         "Mentor Session Booking",
+#         filters={
+#             "mentor":       mentor,
+#             "session_date": ["between", [from_date, to_date]],
+#             "status":       ["in", ["Scheduled", "Completed"]],
+#         },
+#         fields=["session_date", "from_time", "to_time", "student", "name", "topic"]
+#     ):
+#         booked_by_date.setdefault(str(b.session_date), []).append({
+#             "from_time":    _time_to_str(b.from_time),
+#             "to_time":      _time_to_str(b.to_time),
+#             "session_name": b.name,
+#             "student":      b.student,
+#             "topic":        b.topic,
+#         })
+
+#     cal      = {}
+#     current  = start
+
+#     while current <= end:
+#         date_str     = str(current)
+#         day_key      = current.strftime("%A").lower()
+#         raw_windows  = avail_by_day.get(day_key, [])
+#         day_bookings = booked_by_date.get(date_str, [])
+#         day_blocks   = blocked_by_date.get(date_str, [])
+
+#         occupied_intervals = (
+#             [(b["from_time"], b["to_time"]) for b in day_bookings] +
+#             [(b["from_time"], b["to_time"]) for b in day_blocks]
+#         )
+
+#         day_result = []
+
+#         for window in raw_windows:
+#             win_from_min = _to_minutes(window["from_time"])
+#             win_to_min   = _to_minutes(window["to_time"])
+
+#             occupied_chips = []
+
+#             for bk in day_bookings:
+#                 bk_from = _to_minutes(bk["from_time"])
+#                 bk_to   = _to_minutes(bk["to_time"])
+#                 if bk_from < win_to_min and bk_to > win_from_min:
+#                     chip_from = max(bk_from, win_from_min)
+#                     chip_to   = min(bk_to,   win_to_min)
+#                     occupied_chips.append({
+#                         "from_time":    _from_minutes(chip_from),
+#                         "to_time":      _from_minutes(chip_to),
+#                         "status":       "booked",
+#                         "session_name": bk["session_name"],
+#                         "student":      bk["student"],
+#                         "topic":        bk["topic"],
+#                         "reason":       "",
+#                     })
+
+#             for bl in day_blocks:
+#                 bl_from = _to_minutes(bl["from_time"])
+#                 bl_to   = _to_minutes(bl["to_time"])
+#                 if bl_from < win_to_min and bl_to > win_from_min:
+#                     chip_from = max(bl_from, win_from_min)
+#                     chip_to   = min(bl_to,   win_to_min)
+#                     occupied_chips.append({
+#                         "from_time":    _from_minutes(chip_from),
+#                         "to_time":      _from_minutes(chip_to),
+#                         "status":       "blocked",
+#                         "session_name": None,
+#                         "student":      None,
+#                         "topic":        None,
+#                         "reason":       bl["reason"],
+#                     })
+
+#             free_slots = split_into_duration_slots(
+#                 window["from_time"],
+#                 window["to_time"],
+#                 duration_minutes=duration_minutes,
+#                 booked_intervals=occupied_intervals,
+#             )
+#             for slot in free_slots:
+#                 slot["status"]       = "available"
+#                 slot["session_name"] = None
+#                 slot["student"]      = None
+#                 slot["topic"]        = None
+#                 slot["reason"]       = ""
+
+#             all_chips = free_slots + occupied_chips
+#             all_chips.sort(key=lambda s: _to_minutes(s["from_time"]))
+#             day_result.extend(all_chips)
+
+#         cal[date_str] = day_result
+#         current += datetime.timedelta(days=1)
+
+#     return cal
+
+
+# # @frappe.whitelist(allow_guest=False)
+# # import frappe
+# # from frappe import _
+# # from frappe.utils import get_time, getdate
+
+
+# @frappe.whitelist(allow_guest=False)
+# def book_slot(mentor, student, session_date, from_time, to_time, topic, offering=None):
+#     """
+#     Permission: CREATE on 'Mentor Session Booking'.
+#     Configured via Role Permission Manager — no hardcoded roles.
+#     """
+#     # ----------------------------------------------------------
+#     # PERMISSION CHECK
+#     # ----------------------------------------------------------
+#     session_user = frappe.session.user
+
+#     if not frappe.has_permission("Mentor Session Booking", ptype="create", user=session_user):
+#         frappe.throw(
+#             _("You do not have permission to book a session."),
+#             frappe.PermissionError
+#         )
+
+#     # ----------------------------------------------------------
+#     # BASIC INPUT VALIDATION
+#     # ----------------------------------------------------------
+#     if not (mentor and student and session_date and from_time and to_time):
+#         frappe.throw(_("Mentor, student, session date, from time and to time are all required."))
+
+#     session_date = getdate(session_date)
+#     new_from = get_time(from_time)
+#     new_to = get_time(to_time)
+
+#     if new_from >= new_to:
+#         frappe.throw(_("'From Time' must be earlier than 'To Time'."))
+
+#     # ----------------------------------------------------------
+#     # SLOT OVERLAP VALIDATION
+#     # Block if the SAME MENTOR already has ANY booking (with ANY
+#     # student) on the SAME DATE whose time range overlaps the
+#     # requested range. This blocks the slot for other users too.
+#     # ----------------------------------------------------------
+#     # Statuses that should NOT block a new booking (adjust to your workflow)
+#     non_blocking_statuses = ["Cancelled", "Rejected"]
+
+#     existing_bookings = frappe.get_all(
+#         "Mentor Session Booking",
+#         filters={
+#             "mentor": mentor,
+#             "session_date": session_date,
+#             "status": ["not in", non_blocking_statuses],
+#         },
+#         fields=["name", "from_time", "to_time", "student", "status"],
+#     )
+
+#     for booking in existing_bookings:
+#         existing_from = get_time(booking.from_time)
+#         existing_to = get_time(booking.to_time)
+
+#         # Standard interval overlap check:
+#         # overlap exists if new_from < existing_to AND new_to > existing_from
+#         if new_from < existing_to and new_to > existing_from:
+#             frappe.throw(
+#                 _(
+#                     "This time slot ({0} - {1}) on {2} is already booked "
+#                     "for mentor {3} (Booking: {4}). Please choose a different "
+#                     "date or time."
+#                 ).format(
+#                     from_time, to_time, session_date, mentor, booking.name
+#                 ),
+#                 frappe.ValidationError,
+#             )
+
+#     # ----------------------------------------------------------
+#     # (Optional) Also prevent the SAME student from double-booking
+#     # themselves into overlapping slots with any mentor.
+#     # ----------------------------------------------------------
+#     student_bookings = frappe.get_all(
+#         "Mentor Session Booking",
+#         filters={
+#             "student": student,
+#             "session_date": session_date,
+#             "status": ["not in", non_blocking_statuses],
+#         },
+#         fields=["name", "from_time", "to_time"],
+#     )
+
+#     for booking in student_bookings:
+#         existing_from = get_time(booking.from_time)
+#         existing_to = get_time(booking.to_time)
+
+#         if new_from < existing_to and new_to > existing_from:
+#             frappe.throw(
+#                 _(
+#                     "You already have another session booked during "
+#                     "{0} - {1} on {2} (Booking: {3})."
+#                 ).format(from_time, to_time, session_date, booking.name),
+#                 frappe.ValidationError,
+#             )
+
+#     # ----------------------------------------------------------
+#     # Unchanged logic below
+#     # ----------------------------------------------------------
+#     doc = frappe.get_doc({
+#         "doctype":      "Mentor Session Booking",
+#         "offering":     offering,
+#         "mentor":       mentor,
+#         "student":      student,
+#         "session_date": session_date,
+#         "from_time":    from_time,
+#         "to_time":      to_time,
+#         "topic":        topic,
+#         "status":       "Pending",
+#     })
+
+#     doc.insert(ignore_permissions=False)
+#     frappe.db.commit()
+
+#     create_notification(
+#         user=mentor,
+#         subject="New Session Booking",
+#         message=f"""
+#             A new mentor session has been booked.
+
+#             Student: {student}
+#             Date: {session_date}
+#             Time: {from_time} - {to_time}
+#             Topic: {topic}
+#         """,
+#         document_type="Mentor Session Booking",
+#         document_name=doc.name
+#     )
+
+#     return {"session_name": doc.name}
+
+import datetime
+
+import frappe
+from frappe import _
+from frappe.utils import nowdate, add_days, getdate, get_time
+
+# ----------------------------------------------------------------
+# CONFIG — matches your "Mentor Offering" schema
+# ----------------------------------------------------------------
+OFFERING_TYPE_FIELD = "offering_type"      # fieldname on Mentor Offering
+GROUP_SESSION_VALUE = "Group Session"      # exact value for group offerings
+ONE_ON_ONE_VALUE = "1:1 Mentorship"        # exact value for 1:1 offerings (adjust if different)
+CAPACITY_FIELD = "max_group_size"          # fieldname on Mentor Offering for group capacity
+
+NON_BLOCKING_STATUSES = ["Cancelled", "Rejected"]
+
+# Fields pulled from Mentor Offering for a group session response
+OFFERING_FIELDS = [
+    "name", "mentor", "title", "offering_type", "category", "lms_batch",
+    "duration_minutes", "start_date", "end_date", "start_time", "end_time",
+    "batch_details", "max_group_size", "price_per_session", "status", "description",
+]
+
+
+# ==================================================================
+# HELPER: fetch offering meta
+# ==================================================================
+def _get_offering_doc(offering):
+    """Raw dict of the Mentor Offering row, or None."""
+    if not offering:
+        return None
+    return frappe.db.get_value("Mentor Offering", offering, OFFERING_FIELDS, as_dict=True)
+
+
+def _is_group(offering_doc):
+    return bool(offering_doc) and offering_doc.get(OFFERING_TYPE_FIELD) == GROUP_SESSION_VALUE
+
+
+# ==================================================================
+# get_slot_calendar
+# ==================================================================
 @frappe.whitelist(allow_guest=False)
 def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
     """
     Permission: READ on 'Mentor Session Booking'.
-    Any role granted READ in Role Permission Manager can call this.
+
+    Behaviour now depends on the offering's type:
+      - offering_type == "Group Session": returns the offering's fixed
+        date/time/capacity + current booking count. No calendar is built.
+      - Anything else (1:1, or no offering given): original day-by-day
+        availability calendar, unchanged.
     """
-    # ----------------------------------------------------------
-    # PERMISSION CHECK
-    # ----------------------------------------------------------
     session_user = frappe.session.user
 
     if not frappe.has_permission("Mentor Session Booking", ptype="read", user=session_user):
@@ -374,24 +718,30 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
             frappe.PermissionError
         )
 
-    # ----------------------------------------------------------
-    # Unchanged logic below
-    # ----------------------------------------------------------
+    offering_doc = _get_offering_doc(offering)
+
+    # ------------------------------------------------------------
+    # GROUP SESSION -> return offering details, not a calendar
+    # ------------------------------------------------------------
+    if _is_group(offering_doc):
+        return _get_group_session_details(offering_doc, mentor)
+
+    # ------------------------------------------------------------
+    # 1:1 (or no offering) -> original calendar logic, unchanged
+    # ------------------------------------------------------------
     if not from_date and not to_date:
         from_date = nowdate()
-        to_date   = add_days(from_date, 6)
+        to_date = add_days(from_date, 6)
 
     if not mentor or not from_date or not to_date:
         frappe.throw(_("mentor, from_date, and to_date are required"))
 
     duration_minutes = 60
-    if offering:
-        mins = frappe.db.get_value("Mentor Offering", offering, "duration_minutes")
-        if mins:
-            duration_minutes = int(mins)
+    if offering_doc and offering_doc.get("duration_minutes"):
+        duration_minutes = int(offering_doc["duration_minutes"])
 
     start = getdate(from_date)
-    end   = getdate(to_date)
+    end = getdate(to_date)
 
     avail_by_day = {}
     for avail in frappe.get_all(
@@ -405,14 +755,14 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
                 key = (row.day or "").strip().lower()
                 avail_by_day.setdefault(key, []).append({
                     "from_time": _time_to_str(doc.from_time),
-                    "to_time":   _time_to_str(doc.to_time),
+                    "to_time": _time_to_str(doc.to_time),
                 })
         else:
             for row in (doc.daily_schedule or []):
                 key = (row.day or "").strip().lower()
                 avail_by_day.setdefault(key, []).append({
                     "from_time": _time_to_str(row.from_time),
-                    "to_time":   _time_to_str(row.to_time),
+                    "to_time": _time_to_str(row.to_time),
                 })
 
     blocked_by_date = {}
@@ -423,37 +773,37 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
     ):
         blocked_by_date.setdefault(str(b.date), []).append({
             "from_time": _time_to_str(b.from_time),
-            "to_time":   _time_to_str(b.to_time),
-            "reason":    b.reason or ""
+            "to_time": _time_to_str(b.to_time),
+            "reason": b.reason or ""
         })
 
     booked_by_date = {}
     for b in frappe.get_all(
         "Mentor Session Booking",
         filters={
-            "mentor":       mentor,
+            "mentor": mentor,
             "session_date": ["between", [from_date, to_date]],
-            "status":       ["in", ["Scheduled", "Completed"]],
+            "status": ["in", ["Scheduled", "Completed"]],
         },
         fields=["session_date", "from_time", "to_time", "student", "name", "topic"]
     ):
         booked_by_date.setdefault(str(b.session_date), []).append({
-            "from_time":    _time_to_str(b.from_time),
-            "to_time":      _time_to_str(b.to_time),
+            "from_time": _time_to_str(b.from_time),
+            "to_time": _time_to_str(b.to_time),
             "session_name": b.name,
-            "student":      b.student,
-            "topic":        b.topic,
+            "student": b.student,
+            "topic": b.topic,
         })
 
-    cal      = {}
-    current  = start
+    cal = {}
+    current = start
 
     while current <= end:
-        date_str     = str(current)
-        day_key      = current.strftime("%A").lower()
-        raw_windows  = avail_by_day.get(day_key, [])
+        date_str = str(current)
+        day_key = current.strftime("%A").lower()
+        raw_windows = avail_by_day.get(day_key, [])
         day_bookings = booked_by_date.get(date_str, [])
-        day_blocks   = blocked_by_date.get(date_str, [])
+        day_blocks = blocked_by_date.get(date_str, [])
 
         occupied_intervals = (
             [(b["from_time"], b["to_time"]) for b in day_bookings] +
@@ -464,40 +814,40 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
 
         for window in raw_windows:
             win_from_min = _to_minutes(window["from_time"])
-            win_to_min   = _to_minutes(window["to_time"])
+            win_to_min = _to_minutes(window["to_time"])
 
             occupied_chips = []
 
             for bk in day_bookings:
                 bk_from = _to_minutes(bk["from_time"])
-                bk_to   = _to_minutes(bk["to_time"])
+                bk_to = _to_minutes(bk["to_time"])
                 if bk_from < win_to_min and bk_to > win_from_min:
                     chip_from = max(bk_from, win_from_min)
-                    chip_to   = min(bk_to,   win_to_min)
+                    chip_to = min(bk_to, win_to_min)
                     occupied_chips.append({
-                        "from_time":    _from_minutes(chip_from),
-                        "to_time":      _from_minutes(chip_to),
-                        "status":       "booked",
+                        "from_time": _from_minutes(chip_from),
+                        "to_time": _from_minutes(chip_to),
+                        "status": "booked",
                         "session_name": bk["session_name"],
-                        "student":      bk["student"],
-                        "topic":        bk["topic"],
-                        "reason":       "",
+                        "student": bk["student"],
+                        "topic": bk["topic"],
+                        "reason": "",
                     })
 
             for bl in day_blocks:
                 bl_from = _to_minutes(bl["from_time"])
-                bl_to   = _to_minutes(bl["to_time"])
+                bl_to = _to_minutes(bl["to_time"])
                 if bl_from < win_to_min and bl_to > win_from_min:
                     chip_from = max(bl_from, win_from_min)
-                    chip_to   = min(bl_to,   win_to_min)
+                    chip_to = min(bl_to, win_to_min)
                     occupied_chips.append({
-                        "from_time":    _from_minutes(chip_from),
-                        "to_time":      _from_minutes(chip_to),
-                        "status":       "blocked",
+                        "from_time": _from_minutes(chip_from),
+                        "to_time": _from_minutes(chip_to),
+                        "status": "blocked",
                         "session_name": None,
-                        "student":      None,
-                        "topic":        None,
-                        "reason":       bl["reason"],
+                        "student": None,
+                        "topic": None,
+                        "reason": bl["reason"],
                     })
 
             free_slots = split_into_duration_slots(
@@ -507,11 +857,11 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
                 booked_intervals=occupied_intervals,
             )
             for slot in free_slots:
-                slot["status"]       = "available"
+                slot["status"] = "available"
                 slot["session_name"] = None
-                slot["student"]      = None
-                slot["topic"]        = None
-                slot["reason"]       = ""
+                slot["student"] = None
+                slot["topic"] = None
+                slot["reason"] = ""
 
             all_chips = free_slots + occupied_chips
             all_chips.sort(key=lambda s: _to_minutes(s["from_time"]))
@@ -523,21 +873,68 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
     return cal
 
 
-# @frappe.whitelist(allow_guest=False)
-# import frappe
-# from frappe import _
-# from frappe.utils import get_time, getdate
+def _get_group_session_details(offering_doc, mentor):
+    """
+    For a Group Session offering: no slot splitting, no calendar.
+    Just the offering's fixed date/time + how full it is.
+    """
+    offering_name = offering_doc["name"]
+    max_group_size = offering_doc.get(CAPACITY_FIELD) or 0
+
+    bookings = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "mentor": mentor,
+            "offering": offering_name,
+            "status": ["not in", NON_BLOCKING_STATUSES],
+        },
+        fields=["name", "student", "topic", "status"],
+    )
+
+    participants_booked = len(bookings)
+    seats_left = max(max_group_size - participants_booked, 0) if max_group_size else None
+    seat_status = "full" if (max_group_size and participants_booked >= max_group_size) else "open"
+
+    return {
+        "offering_type": GROUP_SESSION_VALUE,
+        "offering": offering_name,
+        "mentor": offering_doc.get("mentor") or mentor,
+        "title": offering_doc.get("title"),
+        "description": offering_doc.get("description"),
+        "category": offering_doc.get("category"),
+        "lms_batch": offering_doc.get("lms_batch"),
+        "batch_details": offering_doc.get("batch_details"),
+        "price_per_session": offering_doc.get("price_per_session"),
+        "status": offering_doc.get("status"),
+        "start_date": str(offering_doc["start_date"]) if offering_doc.get("start_date") else None,
+        "end_date": str(offering_doc["end_date"]) if offering_doc.get("end_date") else None,
+        "start_time": _time_to_str(offering_doc.get("start_time")),
+        "end_time": _time_to_str(offering_doc.get("end_time")),
+        "duration_minutes": offering_doc.get("duration_minutes"),
+        "max_group_size": max_group_size,
+        "participants_booked": participants_booked,
+        "seats_left": seats_left,
+        "seat_status": seat_status,
+        "participants": [
+            {"student": b.student, "session_name": b.name, "topic": b.topic, "status": b.status}
+            for b in bookings
+        ],
+    }
 
 
+# ==================================================================
+# book_slot
+# ==================================================================
 @frappe.whitelist(allow_guest=False)
 def book_slot(mentor, student, session_date, from_time, to_time, topic, offering=None):
     """
     Permission: CREATE on 'Mentor Session Booking'.
-    Configured via Role Permission Manager — no hardcoded roles.
+
+    For Group Session offerings, session_date/from_time/to_time are
+    IGNORED if passed and are instead taken directly from the offering
+    (they're fixed there) — this guarantees every participant lands on
+    the exact same slot and prevents mismatched/fragmented bookings.
     """
-    # ----------------------------------------------------------
-    # PERMISSION CHECK
-    # ----------------------------------------------------------
     session_user = frappe.session.user
 
     if not frappe.has_permission("Mentor Session Booking", ptype="create", user=session_user):
@@ -546,96 +943,48 @@ def book_slot(mentor, student, session_date, from_time, to_time, topic, offering
             frappe.PermissionError
         )
 
-    # ----------------------------------------------------------
-    # BASIC INPUT VALIDATION
-    # ----------------------------------------------------------
-    if not (mentor and student and session_date and from_time and to_time):
-        frappe.throw(_("Mentor, student, session date, from time and to time are all required."))
+    if not (mentor and student and topic):
+        frappe.throw(_("Mentor, student and topic are required."))
 
-    session_date = getdate(session_date)
+    offering_doc = _get_offering_doc(offering)
+    is_group = _is_group(offering_doc)
+
+    if is_group:
+        if not offering_doc.get("start_date") or not offering_doc.get("start_time") or not offering_doc.get("end_time"):
+            frappe.throw(_("This group offering is missing date/time details. Contact the mentor."))
+
+        session_date = getdate(offering_doc["start_date"])
+        from_time = offering_doc["start_time"]
+        to_time = offering_doc["end_time"]
+    else:
+        if not (session_date and from_time and to_time):
+            frappe.throw(_("Session date, from time and to time are required."))
+        session_date = getdate(session_date)
+
     new_from = get_time(from_time)
     new_to = get_time(to_time)
 
     if new_from >= new_to:
         frappe.throw(_("'From Time' must be earlier than 'To Time'."))
 
-    # ----------------------------------------------------------
-    # SLOT OVERLAP VALIDATION
-    # Block if the SAME MENTOR already has ANY booking (with ANY
-    # student) on the SAME DATE whose time range overlaps the
-    # requested range. This blocks the slot for other users too.
-    # ----------------------------------------------------------
-    # Statuses that should NOT block a new booking (adjust to your workflow)
-    non_blocking_statuses = ["Cancelled", "Rejected"]
+    if is_group:
+        _validate_group_booking(mentor, session_date, from_time, to_time, offering, offering_doc)
+    else:
+        _validate_1on1_booking(mentor, session_date, new_from, new_to, from_time, to_time)
 
-    existing_bookings = frappe.get_all(
-        "Mentor Session Booking",
-        filters={
-            "mentor": mentor,
-            "session_date": session_date,
-            "status": ["not in", non_blocking_statuses],
-        },
-        fields=["name", "from_time", "to_time", "student", "status"],
-    )
+    # Student can't be double-booked at the same time, group or 1:1.
+    _validate_student_conflict(student, session_date, new_from, new_to, from_time, to_time)
 
-    for booking in existing_bookings:
-        existing_from = get_time(booking.from_time)
-        existing_to = get_time(booking.to_time)
-
-        # Standard interval overlap check:
-        # overlap exists if new_from < existing_to AND new_to > existing_from
-        if new_from < existing_to and new_to > existing_from:
-            frappe.throw(
-                _(
-                    "This time slot ({0} - {1}) on {2} is already booked "
-                    "for mentor {3} (Booking: {4}). Please choose a different "
-                    "date or time."
-                ).format(
-                    from_time, to_time, session_date, mentor, booking.name
-                ),
-                frappe.ValidationError,
-            )
-
-    # ----------------------------------------------------------
-    # (Optional) Also prevent the SAME student from double-booking
-    # themselves into overlapping slots with any mentor.
-    # ----------------------------------------------------------
-    student_bookings = frappe.get_all(
-        "Mentor Session Booking",
-        filters={
-            "student": student,
-            "session_date": session_date,
-            "status": ["not in", non_blocking_statuses],
-        },
-        fields=["name", "from_time", "to_time"],
-    )
-
-    for booking in student_bookings:
-        existing_from = get_time(booking.from_time)
-        existing_to = get_time(booking.to_time)
-
-        if new_from < existing_to and new_to > existing_from:
-            frappe.throw(
-                _(
-                    "You already have another session booked during "
-                    "{0} - {1} on {2} (Booking: {3})."
-                ).format(from_time, to_time, session_date, booking.name),
-                frappe.ValidationError,
-            )
-
-    # ----------------------------------------------------------
-    # Unchanged logic below
-    # ----------------------------------------------------------
     doc = frappe.get_doc({
-        "doctype":      "Mentor Session Booking",
-        "offering":     offering,
-        "mentor":       mentor,
-        "student":      student,
+        "doctype": "Mentor Session Booking",
+        "offering": offering,
+        "mentor": mentor,
+        "student": student,
         "session_date": session_date,
-        "from_time":    from_time,
-        "to_time":      to_time,
-        "topic":        topic,
-        "status":       "Pending",
+        "from_time": from_time,
+        "to_time": to_time,
+        "topic": topic,
+        "status": "Pending",
     })
 
     doc.insert(ignore_permissions=False)
@@ -657,6 +1006,171 @@ def book_slot(mentor, student, session_date, from_time, to_time, topic, offering
     )
 
     return {"session_name": doc.name}
+
+
+def _validate_1on1_booking(mentor, session_date, new_from, new_to, from_time, to_time):
+    """Original exclusive-overlap check — unchanged."""
+    existing_bookings = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "mentor": mentor,
+            "session_date": session_date,
+            "status": ["not in", NON_BLOCKING_STATUSES],
+        },
+        fields=["name", "from_time", "to_time", "student", "status"],
+    )
+
+    for booking in existing_bookings:
+        existing_from = get_time(booking.from_time)
+        existing_to = get_time(booking.to_time)
+
+        if new_from < existing_to and new_to > existing_from:
+            frappe.throw(
+                _(
+                    "This time slot ({0} - {1}) on {2} is already booked "
+                    "for mentor {3} (Booking: {4}). Please choose a different "
+                    "date or time."
+                ).format(from_time, to_time, session_date, mentor, booking.name),
+                frappe.ValidationError,
+            )
+
+
+def _validate_group_booking(mentor, session_date, from_time, to_time, offering, offering_doc):
+    """
+    Since date/time are fixed and derived directly from the offering, we
+    only need to check capacity for THIS offering, and that the student
+    isn't already registered for it.
+    """
+    max_group_size = offering_doc.get(CAPACITY_FIELD) or 0
+
+    existing = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "mentor": mentor,
+            "offering": offering,
+            "status": ["not in", NON_BLOCKING_STATUSES],
+        },
+        fields=["name"],
+    )
+
+    if max_group_size and len(existing) >= max_group_size:
+        frappe.throw(
+            _(
+                "This group session ({0}) on {1} is already full ({2}/{3} seats)."
+            ).format(offering_doc.get("title") or offering, session_date, len(existing), max_group_size),
+            frappe.ValidationError,
+        )
+
+
+def _validate_student_conflict(student, session_date, new_from, new_to, from_time, to_time):
+    student_bookings = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "student": student,
+            "session_date": session_date,
+            "status": ["not in", NON_BLOCKING_STATUSES],
+        },
+        fields=["name", "from_time", "to_time"],
+    )
+
+    for booking in student_bookings:
+        existing_from = get_time(booking.from_time)
+        existing_to = get_time(booking.to_time)
+
+        if new_from < existing_to and new_to > existing_from:
+            frappe.throw(
+                _(
+                    "You already have another session booked during "
+                    "{0} - {1} on {2} (Booking: {3})."
+                ).format(from_time, to_time, session_date, booking.name),
+                frappe.ValidationError,
+            )
+
+
+# def _validate_group_booking(mentor, session_date, from_time, to_time, offering, offering_meta):
+#     """
+#     Group sessions: many students can share the SAME fixed (from_time, to_time)
+#     slot for the SAME offering, up to max_group_size. We only block when:
+#       1. Capacity is full for that exact slot, or
+#       2. The mentor has a conflicting (overlapping but not identical) booking
+#          of a DIFFERENT slot/offering at that time — mentor still can't be
+#          double-booked across two different sessions simultaneously.
+#     """
+#     max_group_size = offering_meta["max_group_size"]
+
+#     all_bookings = frappe.get_all(
+#         "Mentor Session Booking",
+#         filters={
+#             "mentor": mentor,
+#             "session_date": session_date,
+#             "status": ["not in", NON_BLOCKING_STATUSES],
+#         },
+#         fields=["name", "from_time", "to_time", "offering", "student"],
+#     )
+
+#     new_from = get_time(from_time)
+#     new_to = get_time(to_time)
+
+#     same_slot_count = 0
+#     for booking in all_bookings:
+#         existing_from = get_time(booking.from_time)
+#         existing_to = get_time(booking.to_time)
+#         same_slot = (
+#             existing_from == new_from
+#             and existing_to == new_to
+#             and booking.offering == offering
+#         )
+
+#         if same_slot:
+#             same_slot_count += 1
+#             continue
+
+#         # Different slot/offering but overlapping time -> mentor conflict
+#         if new_from < existing_to and new_to > existing_from:
+#             frappe.throw(
+#                 _(
+#                     "Mentor {0} already has a different session ({1}) that "
+#                     "overlaps {2} - {3} on {4}. Please choose a different time."
+#                 ).format(mentor, booking.name, from_time, to_time, session_date),
+#                 frappe.ValidationError,
+#             )
+
+#     if max_group_size is not None and same_slot_count >= max_group_size:
+#         frappe.throw(
+#             _(
+#                 "This group session ({0} - {1} on {2}) is already full "
+#                 "({3}/{4} participants)."
+#             ).format(from_time, to_time, session_date, same_slot_count, max_group_size),
+#             frappe.ValidationError,
+#         )
+
+
+# def _validate_student_conflict(student, session_date, new_from, new_to, from_time, to_time):
+#     student_bookings = frappe.get_all(
+#         "Mentor Session Booking",
+#         filters={
+#             "student": student,
+#             "session_date": session_date,
+#             "status": ["not in", NON_BLOCKING_STATUSES],
+#         },
+#         fields=["name", "from_time", "to_time"],
+#     )
+
+#     for booking in student_bookings:
+#         existing_from = get_time(booking.from_time)
+#         existing_to = get_time(booking.to_time)
+
+#         if new_from < existing_to and new_to > existing_from:
+#             frappe.throw(
+#                 _(
+#                     "You already have another session booked during "
+#                     "{0} - {1} on {2} (Booking: {3})."
+#                 ).format(from_time, to_time, session_date, booking.name),
+#                 frappe.ValidationError,
+#             )
+
+
+
 
 @frappe.whitelist(allow_guest=False)
 def reschedule_session(session_name, mentor, student, new_date, new_from_time, new_to_time):

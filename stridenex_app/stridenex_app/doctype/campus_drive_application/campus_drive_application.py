@@ -763,9 +763,21 @@ def get_student_Analytics_list(college=None, name=None, department=None,skill_ma
                         """
                     )
                     values.extend(skill_list)
+        if risk_level:
+            risk_level = risk_level.strip().lower() 
+                    
+        if risk_level and risk_level != "all risk levels":
+            if risk_level == "low":
+                conditions.append("s.cgpa >= 8.0")
 
+            elif risk_level == "medium":
+                conditions.append("s.cgpa >= 6.0")
+                conditions.append("s.cgpa < 8.0")
 
-        where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+            elif risk_level == "high":
+                conditions.append("s.cgpa < 6.0")  
+
+        where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""  
 
         # ✅ Count total using raw SQL to match same filters
         count_sql = f"""
@@ -810,6 +822,7 @@ def get_student_Analytics_list(college=None, name=None, department=None,skill_ma
                     AND cda2.status = 'Selected'
                 ) AS internship_count
             FROM `tabStudent` s
+            
             {where_clause}
             ORDER BY s.creation DESC
             LIMIT %s OFFSET %s
@@ -817,8 +830,8 @@ def get_student_Analytics_list(college=None, name=None, department=None,skill_ma
 
         # ✅ risk_level filter applied BEFORE pagination ideally, but if computed field, filter here
         # NOTE: filtering after pagination will reduce page results — move to SQL HAVING if possible
-        if risk_level and risk_level != "All Risk Levels":
-            data = [d for d in data if d.get("risk_level") == risk_level]
+        # if risk_level and risk_level != "All Risk Levels":
+        #     data = [d for d in data if d.get("risk_level") == risk_level]
 
         return {
             "status": 200,

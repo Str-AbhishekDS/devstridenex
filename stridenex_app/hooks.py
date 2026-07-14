@@ -152,6 +152,28 @@ app_license = "mit"
 # 	}
 # }
 
+
+doc_events = {
+    "Student": {
+        "on_update": "stridenex_app.employability.update_score_from_student",
+    },
+    "Student Skill": {
+        "after_insert": "stridenex_app.employability.update_score_from_skill",
+        "on_update": "stridenex_app.employability.update_score_from_skill",
+        "on_trash": "stridenex_app.employability.update_score_from_skill",
+    },
+    "Internship Application": {
+        "after_insert": "stridenex_app.employability.update_score_from_internship",
+        "on_update": "stridenex_app.employability.update_score_from_internship",
+        "on_trash": "stridenex_app.employability.update_score_from_internship",
+    },
+    "Student Project Enrollment": {
+        "after_insert": "stridenex_app.employability.update_score_from_project",
+        "on_update": "stridenex_app.employability.update_score_from_project",
+        "on_trash": "stridenex_app.employability.update_score_from_project",
+    },
+}
+
 # Scheduled Tasks
 # ---------------
 

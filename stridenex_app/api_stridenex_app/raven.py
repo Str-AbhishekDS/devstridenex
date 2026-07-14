@@ -34,28 +34,54 @@ def _is_admin():
 # CHANNELS
 # ===========================================================================
 
+import frappe
+
 @frappe.whitelist(allow_guest=True)
-def list_channels(channel_type=None, include_archived=False):
+def list_channels(channel_type="Public", include_archived=False):
     """
-    List channels visible to the current user.
+    List channels visible to the current user, with member and message counts.
     channel_type: "Public" | "Private" | "Open" (omit for all)
     """
     # _require_login()
-    # filters = {}
-    # if channel_type:
-    #     filters["type"] = channel_type
-    # if not include_archived:
-    #     filters["is_archived"] = 0
 
-    return frappe.get_all(
-        "Raven Channel",
-        
-        fields=[
-            "name", "channel_name", "type", "channel_description",
-            "is_archived", "owner", "creation", "modified",
-        ],
-        order_by="creation desc",
-    )
+    conditions = []
+    values = {}
+
+    if channel_type:
+        conditions.append("rc.type = %(channel_type)s")
+        values["channel_type"] = channel_type
+
+    if not include_archived:
+        conditions.append("rc.is_archived = 0")
+
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    channels = frappe.db.sql(f"""
+        SELECT
+            rc.name,
+            rc.channel_name,
+            rc.type,
+            rc.channel_description,
+            rc.is_archived,
+            rc.owner,
+            rc.creation,
+            rc.modified,
+            (
+                SELECT COUNT(*)
+                FROM `tabRaven Channel Member` rcm
+                WHERE rcm.channel_id = rc.name
+            ) AS member_count,
+            (
+                SELECT COUNT(*)
+                FROM `tabRaven Message` rm
+                WHERE rm.channel_id = rc.name
+            ) AS message_count
+        FROM `tabRaven Channel` rc
+        {where_clause}
+        ORDER BY rc.creation DESC
+    """, values, as_dict=True)
+
+    return channels
 
 
 @frappe.whitelist()
@@ -286,10 +312,10 @@ def remove_member(channel_id, user_id):
     return {"removed": user_id, "channel_id": channel_id}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def join_channel(channel_id):
     """Current user joins a Public/Open channel directly."""
-    _require_login()
+    # _require_login()
     channel = frappe.get_doc("Raven Channel", channel_id)
 
     if channel.type == "Private" and not _is_admin():
@@ -331,3 +357,18 @@ def list_users(search=None, limit=20):
         fields=["name", "full_name", "user_image"],
         limit_page_length=limit,
     )
+
+@frappe.whitelist(allow_guest=True)
+def get_category_list(parent_category=None):
+    filters = {"is_active": 1}
+
+    # if parent_category:
+    #     filters["parent_category"] = parent_category
+
+    categories = frappe.get_all(
+        "Channel Category",
+        filters=filters,
+        fields=["name", "parent_category", "category_name", "description", "icon", "color", "display_order"],
+        order_by="display_order asc"
+    )
+    return categories

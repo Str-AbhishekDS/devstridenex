@@ -28,14 +28,42 @@ def get_college_event_list(college=None, student=None, page=1, page_size=DEFAULT
         # Get paginated events
         events = frappe.get_all(
             "College Event",
-            filters=filters,
+            filters=[
+                [
+                    "College Event",
+                    "participation_scope",
+                    "=",
+                    "Intra College"
+                ],
+                "or",
+                [
+                    "College Event",
+                    "college",
+                    "=",
+                    college
+                ]
+            ],
             fields=["*"],
             order_by="creation desc",
             limit_page_length=limit,
             limit_start=offset
         )
 
-        total = frappe.db.count("College Event", filters=filters)
+        total = frappe.db.count("College Event", filters=[
+                [
+                    "College Event",
+                    "participation_scope",
+                    "=",
+                    "Intra College"
+                ],
+                "or",
+                [
+                    "College Event",
+                    "college",
+                    "=",
+                    college
+                ]
+            ],)
 
         # Get registration status (if student provided)
         registration_map = {}

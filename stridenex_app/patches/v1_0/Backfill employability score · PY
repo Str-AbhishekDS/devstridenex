@@ -1,0 +1,38 @@
+"""
+Location in your app:
+    apps/your_app/your_app/patches/v1_0/backfill_employability_score.py
+
+Also create apps/your_app/your_app/patches/v1_0/__init__.py (empty file)
+if the v1_0 folder doesn't already exist.
+
+Purpose: one-time backfill so every EXISTING Student record gets a
+real employability_score the moment the field + logic are deployed,
+instead of showing 0/null until something happens to trigger a
+recalculation naturally.
+
+Register this patch in apps/your_app/your_app/patches.txt (see
+patches_txt_entry.txt in this folder for the exact line to add), then
+run:
+
+    bench --site your-site.local migrate
+"""
+
+import frappe
+from your_app.employability import recalculate_employability_score
+
+
+def execute():
+    students = frappe.get_all("Student", pluck="name")
+
+    for student_name in students:
+        try:
+            recalculate_employability_score(student_name)
+        except Exception:
+            # Log and continue — one bad record shouldn't abort the
+            # whole migration for every other student.
+            frappe.log_error(
+                title=f"Employability backfill failed for {student_name}",
+                message=frappe.get_traceback(),
+            )
+
+    frappe.db.commit()
