@@ -37,7 +37,8 @@
   "mentor_request_status",
   "payout_section",
   "payout_status",
-  "payout_reference"
+  "payout_reference",
+  "mentor_absent"
  ],
  "fields": [
   {
@@ -233,8 +234,14 @@
    "fieldname": "payout_reference",
    "fieldtype": "Link",
    "label": "Payout Reference",
-   "options": "Mentor Payout",
+   "options": "Mentor Payout Sheet",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "mentor_absent",
+   "fieldtype": "Check",
+   "label": "Mentor Absent"
   }
  ],
  "grid_page_length": 50,

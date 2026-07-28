@@ -7,7 +7,9 @@ app_license = "mit"
 
 # Apps
 # ------------------
-
+on_session_creation = [
+    "stridenex_app.api_stridenex_app.notification.update_last_activity"
+]
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
@@ -127,7 +129,6 @@ app_license = "mit"
 # See frappe.core.notifications.get_notification_config
 
 # notification_config = "stridenex_app.notifications.get_notification_config"
-
 # Permissions
 # -----------
 # Permissions evaluated in scripted ways
@@ -172,6 +173,25 @@ doc_events = {
         "on_update": "stridenex_app.employability.update_score_from_project",
         "on_trash": "stridenex_app.employability.update_score_from_project",
     },
+    "Student Project Enrollment": {
+        "on_update": "stridenex_app.api_stridenex_app.notification.project_status_change",
+    },
+    "Internship Application": {
+        "on_update": "stridenex_app.api_stridenex_app.notification.internship_status_change"
+    },
+    # "User": {
+    #     "on_update": "stridenex_app.api_stridenex_app.notification.send_onboarding_email"
+    # },
+    "User": {
+           "on_update": [
+               "stridenex_app.api_stridenex_app.notification.send_onboarding_email",
+               "stridenex_app.api_stridenex_app.notification.send_mentor_onboarding_email",
+               "stridenex_app.api_stridenex_app.notification.send_college_onboarding_email",
+               "stridenex_app.api_stridenex_app.notification.send_industry_onboarding_email",
+               
+           ]
+       }
+
 }
 
 # Scheduled Tasks
@@ -199,8 +219,21 @@ scheduler_events = {
     "cron": {
         "* * * * *": [   # Every 10 minutes
             "stridenex_app.api_stridenex_app.app_utils.delete_expired_otps"
-        ]
-    }
+        ],
+        # "0 2 * * *": [
+        # "stridenex_app.api_stridenex_app.app_utils.send_onboarding_reminders"
+        # ],
+        # "0 8 * * *": [
+        #     "stridenex_app.api_stridenex_app.notification.send_daily_application_summaries"
+        # ],
+        
+    },
+    "monthly": [
+        "stridenex_app.api_stridenex_app.notification.send_monthly_summary"
+    ],
+    "monthly": [
+          "stridenex_app.api_stridenex_app.notification.send_industry_monthly_summary"
+      ]
 }
 
 # Testing

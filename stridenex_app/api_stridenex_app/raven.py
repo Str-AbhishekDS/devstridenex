@@ -196,9 +196,21 @@ def get_message(message_id):
 
 
 @frappe.whitelist()
-def send_message(channel_id, text, reply_to_message=None, message_type="Text"):
+def send_message():
     """Send a message to a channel."""
     _require_login()
+
+    channel_id = frappe.form_dict.get("channel_id")
+    text = frappe.form_dict.get("text")
+    reply_to_message = frappe.form_dict.get("reply_to_message")
+    file=frappe.frappe.form_dict.get("file")
+    message_type = frappe.form_dict.get("message_type") or "Text"
+
+    if not channel_id:
+        frappe.throw(_("Channel ID is required"))
+
+    if not text:
+        frappe.throw(_("Message text is required"))
 
     if not frappe.db.exists("Raven Channel", channel_id):
         frappe.throw(_("Channel not found"))
@@ -208,8 +220,10 @@ def send_message(channel_id, text, reply_to_message=None, message_type="Text"):
         "channel_id": channel_id,
         "text": text,
         "message_type": message_type,
+        "file":file
         **({"reply_to_message": reply_to_message} if reply_to_message else {}),
     })
+
     doc.insert(ignore_permissions=True)
     return doc.as_dict()
 
@@ -241,7 +255,37 @@ def delete_message(message_id):
     doc.delete(ignore_permissions=True)
     return {"deleted": message_id}
 
+@frappe.whitelist()
+def get_replies(message_id):
+    """Get all replies to a particular message."""
+    _require_login()
 
+    if not frappe.db.exists("Raven Message", message_id):
+        frappe.throw(_("Message not found"))
+
+    replies = frappe.get_all(
+        "Raven Message",
+        filters={"is_reply": message_id},
+        fields=[
+            "name",
+            "channel_id",
+            "text",
+            "message_type",
+            "owner",
+            "creation",
+            "modified",
+            "is_edited",
+            "is_reply"
+           
+        ],
+        order_by="creation asc",
+    )
+
+    return {
+        "message_id": message_id,
+        "reply_count": len(replies),
+        "replies": replies,
+    }
 @frappe.whitelist()
 def upload_and_send_file(channel_id, file_url, message_type="File"):
     """

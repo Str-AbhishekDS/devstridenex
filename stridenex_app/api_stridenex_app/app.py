@@ -402,3 +402,4 @@ def validate_email_otp(email=None, otp=None):
 
     return gen_response(200, "Email verified successfully", {"success": True})
 
+

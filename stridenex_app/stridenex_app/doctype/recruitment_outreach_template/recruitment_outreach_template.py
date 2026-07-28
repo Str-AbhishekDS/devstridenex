@@ -51,15 +51,15 @@ class RecruitmentOutreachTemplate(Document):
         return "Verified"
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def generate_email_template(industry, student=None):
     """Generate Professional Email Template"""
 
-    frappe.has_permission(
-        "Recruitment Outreach Template",
-        "create",
-        throw=True
-    )
+    # frappe.has_permission(
+    #     "Recruitment Outreach Template",
+    #     "create",
+    #     throw=True
+    # )
 
     industry_doc = frappe.get_doc("Industry list", industry)
 
@@ -86,12 +86,12 @@ def generate_email_template(industry, student=None):
         "is_ai_generated": 0,
     })
 
-    doc.insert()
+    doc.insert(ignore_permissions=True)
 
     return doc.as_dict()
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_invitation_template(
     industry,
     student=None,
@@ -99,11 +99,11 @@ def get_invitation_template(
 ):
     """Generate Student Invitation Template"""
 
-    frappe.has_permission(
-        "Recruitment Outreach Template",
-        "create",
-        throw=True
-    )
+    # frappe.has_permission(
+    #     "Recruitment Outreach Template",
+    #     "create",
+    #     throw=True
+    # )
 
     industry_doc = frappe.get_doc("Industry list", industry)
 
@@ -131,7 +131,7 @@ def get_invitation_template(
         "is_ai_generated": 1,
     })
 
-    doc.insert()
+    doc.insert(ignore_permissions=True)
 
     return doc.as_dict()
 
@@ -234,7 +234,7 @@ def create_manual_template(
 
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def list_templates(
     industry=None,
     template_type=None,
@@ -255,7 +255,7 @@ def list_templates(
     if verification_status:
         filters["verification_status"] = verification_status
 
-    return frappe.get_list(
+    return frappe.get_all(
         DOCTYPE,
         filters=filters,
         fields=[
@@ -271,8 +271,8 @@ def list_templates(
             "modified",
         ],
         order_by="creation desc",
-        limit_start=int(limit_start),
-        limit_page_length=int(limit_page_length),
+        start=int(limit_start),
+        page_length=int(limit_page_length),
     )
     
     

@@ -188,18 +188,7 @@ def get_internship_list(
             else:
                 internship_names &= set(names)
 
-        # Academic Year filter
-        # if current_year:
-        #     names = frappe.get_all(
-        #         "Academic Year Table",
-        #         filters={"academic_year": current_year},
-        #         pluck="parent"
-        #     )
-
-        #     if internship_names is None:
-        #         internship_names = set(names)
-        #     else:
-        #         internship_names &= set(names)
+     
         or_filters = None
         if search:
             or_filters = [

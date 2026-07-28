@@ -10,13 +10,15 @@ from stridenex_app.api_stridenex_app.app_utils import (
   
     make_pagination_meta,
 )
+from frappe import _
+from frappe.utils import get_url, format_datetime
+from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
 
 CACHE_TTL = 300
 DEFAULT_PAGE_SIZE = 20
 
-
 class CollegeCampusDrives(Document):
-
+    
     def autoname(self):
         if self.industry_name and self.drive_date:
             drive_date = getdate(self.drive_date)
@@ -32,7 +34,176 @@ class CollegeCampusDrives(Document):
                 self.name = f"{base_name}-{count}"
             else:
                 self.name = base_name
+                
+    def on_submit(self):
+        self.notify_students()
 
+    def notify_students(self):
+        students = self.get_matching_students()
+        if not students:
+            frappe.log_error(
+                title="College Campus Drive Notification",
+                message=f"No matching students found for drive {self.name} (College: {self.college})"
+            )
+            return
+
+        for student in students:
+            self.send_drive_email(student)
+            if student.get("user"):
+                self.send_drive_notification(student.get("user"))
+
+    def get_matching_students(self):
+        """Fetch students belonging to this college, optionally filtered by branch."""
+        filters = {"college": self.college}
+
+        # branch_list = [row.branch for row in self.branches] if self.branches else []
+        # if branch_list:
+        #     filters["branch"] = ["in", branch_list]
+
+        return frappe.get_all(
+            "Student",
+            filters=filters,
+            fields=["name", "first_name", "email_id"],
+        )
+
+    def send_drive_email(self, student):
+        if not student.get("email_id"):
+            frappe.log_error(
+                title="College Campus Drive Mail",
+                message=f"No email found for student {student.get('name')} (Drive: {self.name})"
+            )
+            return
+
+        record_url = get_url(f"/app/college-campus-drives/{self.name}")
+
+        subject = _("New Placement Drive: {0} - {1}").format(
+            self.industry_name or self.industry, self.job_title
+        )
+
+        message = f"""
+        <div style="margin:0;padding:0;background:#f6f6f8;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f6f8;padding:30px 15px;">
+                <tr>
+                    <td align="center">
+
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+                            style="max-width:650px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+
+                            <!-- Header -->
+                            <tr>
+                                <td style="background:#0f0fbd;padding:30px;text-align:center;">
+                                    <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">
+                                        🚀 New Campus Placement Drive
+                                    </h1>
+                                    <p style="margin:8px 0 0;color:#dbeafe;font-size:14px;">
+                                        Exciting career opportunity waiting for you
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <!-- Body -->
+                            <tr>
+                                <td style="padding:32px;">
+
+                                    <p style="margin:0 0 20px;color:#1E293B;font-size:16px;line-height:1.8;">
+                                        Dear <strong>{student.get('student_name') or 'Student'}</strong>,
+                                    </p>
+
+                                    <p style="margin:0 0 24px;color:#1E293B;font-size:15px;line-height:1.8;">
+                                        A new campus placement drive has been announced for your college.
+                                        Check the details below and register before the deadline.
+                                    </p>
+
+                                    <!-- Company Highlight -->
+                                    <div style="background:#eef2ff;border-left:4px solid #0f0fbd;padding:18px;border-radius:8px;margin-bottom:24px;">
+                                        <p style="margin:0;color:#1E293B;font-size:15px;line-height:1.8;">
+                                            <strong>🏢 Company:</strong> {self.industry_name or self.industry}<br>
+                                            <strong>💼 Job Title:</strong> {self.job_title}<br>
+                                            <strong>💰 Package Offered:</strong> {self.package_offered or 'Not specified'}
+                                        </p>
+                                    </div>
+
+                                    <!-- Eligibility -->
+                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:18px;border-radius:8px;margin-bottom:24px;">
+                                        <h3 style="margin:0 0 12px;color:#0f0fbd;font-size:16px;">
+                                            Eligibility Criteria
+                                        </h3>
+
+                                        <p style="margin:0;color:#1E293B;font-size:14px;line-height:1.9;">
+                                            <strong>🎓 Minimum CGPA:</strong> {self.criteria or 'Not specified'}<br>
+                                            <strong>📚 Maximum Backlogs Allowed:</strong> {self.backlog}<br>
+                                            <strong>📝 Registration Deadline:</strong> {format_datetime(self.registeration_deadline) if self.registeration_deadline else 'N/A'}<br>
+                                            <strong>📅 Drive Date:</strong> {format_datetime(self.drive_date) if self.drive_date else 'N/A'}
+                                        </p>
+                                    </div>
+
+                                    <!-- CTA -->
+                                    <div style="text-align:center;margin:30px 0;">
+                                        <a href="{record_url}"
+                                        style="background:#ff6b00;color:#ffffff;text-decoration:none;
+                                                padding:14px 30px;border-radius:8px;
+                                                font-size:15px;font-weight:600;display:inline-block;">
+                                            Register Now →
+                                        </a>
+                                    </div>
+
+                                    <!-- Note -->
+                                    <div style="background:#fff7ed;border-left:4px solid #ff6b00;padding:16px 18px;border-radius:8px;">
+                                        <p style="margin:0;color:#9a3412;font-size:14px;line-height:1.8;">
+                                            Don't miss this opportunity. Complete your registration before the deadline to participate in the placement process.
+                                        </p>
+                                    </div>
+
+                                </td>
+                            </tr>
+
+                            <!-- Footer -->
+                            <tr>
+                                <td style="background:#0F172A;padding:24px;text-align:center;">
+                                    <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;">
+                                        StrideNex Placement Cell
+                                    </p>
+
+                                    <p style="margin:10px 0 0;color:#94a3b8;font-size:13px;">
+                                        Connecting Students with Career Opportunities
+                                    </p>
+
+                                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #334155;">
+                                        <p style="margin:0;color:#94a3b8;font-size:12px;">
+                                            This notification was sent automatically by StrideNex.
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+
+                        </table>
+
+                    </td>
+                </tr>
+            </table>
+        </div>
+        """
+
+        frappe.sendmail(
+            recipients=[student["email_id"]],
+            subject=subject,
+            message=message,
+            reference_doctype=self.doctype,
+            reference_name=self.name,
+        )
+
+    def send_drive_notification(self, student_user):
+        notification_doc = frappe._dict({
+            "type": "Alert",
+            "document_type": self.doctype,
+            "document_name": self.name,
+            "subject": _("New Drive: {0} at {1}").format(self.job_title, self.industry_name or self.industry),
+            "from_user": frappe.session.user,
+            "email_content": _("Registration deadline: {0}").format(
+                format_datetime(self.registeration_deadline) if self.registeration_deadline else "N/A"
+            ),
+        })
+        enqueue_create_notification([student_user], notification_doc)
 
 @frappe.whitelist(allow_guest=True)
 def get_drives_by_college(college, page=1, page_size=DEFAULT_PAGE_SIZE):

@@ -381,7 +381,7 @@ def get_placement_ready_students(college: str = None):
 # PUBLIC API — COLLEGE-WISE SUMMARY (counts only, for dashboards)
 # ---------------------------------------------------------------------
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest= True)
 def get_college_employability_summary(college: str = None):
     """
     Returns counts (not full lists) per category.

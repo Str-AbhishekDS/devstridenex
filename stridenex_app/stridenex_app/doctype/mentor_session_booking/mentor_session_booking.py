@@ -2230,7 +2230,7 @@ def _update_mentor_stats(mentor):
             "total_earnings": total_earnings,
             "avg_rating":     avg_rating,
         },
-        update_modified=False
+        # update_modified=False
     )
     frappe.db.commit()
 

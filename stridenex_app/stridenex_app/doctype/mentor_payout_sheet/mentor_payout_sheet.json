@@ -1,0 +1,171 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:MPS-{YYYY}-{MM}-{#####}",
+ "creation": "2026-07-25 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "payout_cycle",
+  "start_date",
+  "end_date",
+  "status",
+  "tab_mentors",
+  "min_payout_filter",
+  "mentors",
+  "tab_sessions",
+  "session_mentor_filter",
+  "column_break_yusz",
+  "session_type_filter",
+  "section_break_rtfu",
+  "sessions",
+  "tab_penalties",
+  "penalty_mentor_filter",
+  "penalties",
+  "tab_summary",
+  "summary"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "read_only": 1
+  },
+  {
+   "default": "Monthly",
+   "fieldname": "payout_cycle",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payout Cycle",
+   "options": "Weekly\n10 Days\n15 Days\n20 Days\nMonthly",
+   "reqd": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "End Date",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nApproved\nPaid"
+  },
+  {
+   "fieldname": "tab_mentors",
+   "fieldtype": "Tab Break",
+   "label": "Mentors"
+  },
+  {
+   "description": "Enter amount to automatically check Release for mentors with higher net payout.",
+   "fieldname": "min_payout_filter",
+   "fieldtype": "Currency",
+   "label": "Min Payout Filter for Release (\u20b9)"
+  },
+  {
+   "fieldname": "mentors",
+   "fieldtype": "Table",
+   "label": "Mentors list for Period",
+   "options": "Mentor Payout Sheet Row"
+  },
+  {
+   "fieldname": "tab_sessions",
+   "fieldtype": "Tab Break",
+   "label": "Sessions"
+  },
+  {
+   "fieldname": "session_mentor_filter",
+   "fieldtype": "Link",
+   "label": "Filter by Mentor",
+   "options": "Mentor"
+  },
+  {
+   "fieldname": "session_type_filter",
+   "fieldtype": "Select",
+   "label": "Filter by Offering Type",
+   "options": "\n1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
+  },
+  {
+   "fieldname": "sessions",
+   "fieldtype": "Table",
+   "label": "Student Sessions History",
+   "options": "Mentor Payout Sheet Session Row"
+  },
+  {
+   "fieldname": "tab_penalties",
+   "fieldtype": "Tab Break",
+   "label": "Penalties"
+  },
+  {
+   "fieldname": "penalty_mentor_filter",
+   "fieldtype": "Link",
+   "label": "Filter by Mentor",
+   "options": "Mentor"
+  },
+  {
+   "fieldname": "penalties",
+   "fieldtype": "Table",
+   "label": "Missed Sessions Penalties",
+   "options": "Mentor Payout Sheet Penalty Row"
+  },
+  {
+   "fieldname": "tab_summary",
+   "fieldtype": "Tab Break",
+   "label": "Totals & Commissions Summary"
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Table",
+   "label": "Main Calculation Summary",
+   "options": "Mentor Payout Sheet Summary Row"
+  },
+  {
+   "fieldname": "column_break_yusz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_rtfu",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-25 12:25:54.224407",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Payout Sheet",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

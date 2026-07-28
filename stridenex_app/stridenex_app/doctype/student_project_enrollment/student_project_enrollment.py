@@ -115,3 +115,4 @@ def get_application_count_by_industry(
 
     except Exception as e:
         return exception_handel(e)
+    
