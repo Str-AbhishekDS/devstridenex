@@ -1,314 +1,329 @@
 {
-    "actions": [],
-    "allow_import": 1,
-    "allow_rename": 1,
-    "autoname": "field:email_id",
-    "creation": "2026-02-17 12:37:13.385592",
-    "doctype": "DocType",
-    "engine": "InnoDB",
-    "field_order": [
-        "section_break_plv1",
-        "first_name",
-        "last_name",
-        "mobile_no",
-        "email_id",
-        "type",
-        "mentor_platform_urls",
-        "role",
-        "column_break_eibm",
-        "domain",
-        "other_domain",
-        "mentor_skills",
-        "travelling_possible",
-        "approved_status",
-        "is_active",
-        "experience",
-        "column_break_ecju",
-        "country",
-        "state",
-        "district",
-        "tahsil",
-        "city",
-        "total_sessions",
-        "total_hours",
-        "total_earnings",
-        "avg_rating",
-        "section_break_nfae",
-        "bank_name",
-        "column_break_mmbv",
-        "account_number",
-        "column_break_miqy",
-        "ifsc_code",
-        "section_break_hqop",
-        "mentor_verification",
-        "section_break_lnjd",
-        "profile_description",
-        "terms_and_conditions",
-        "amended_from"
-    ],
-    "fields": [
-        {
-            "fieldname": "section_break_plv1",
-            "fieldtype": "Section Break"
-        },
-        {
-            "fieldname": "amended_from",
-            "fieldtype": "Link",
-            "label": "Amended From",
-            "no_copy": 1,
-            "options": "Mentor",
-            "print_hide": 1,
-            "read_only": 1,
-            "search_index": 1
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "first_name",
-            "fieldtype": "Data",
-            "label": "First Name"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "email_id",
-            "fieldtype": "Data",
-            "label": "Email ID",
-            "reqd": 1,
-            "unique": 1
-        },
-        {
-            "fieldname": "column_break_eibm",
-            "fieldtype": "Column Break"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "last_name",
-            "fieldtype": "Data",
-            "label": "Last Name"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "mobile_no",
-            "fieldtype": "Phone",
-            "label": "Mobile No."
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "approved_status",
-            "fieldtype": "Link",
-            "label": "Approved Status",
-            "options": "Workflow State"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "type",
-            "fieldtype": "Link",
-            "label": "Type",
-            "options": "Type"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "domain",
-            "fieldtype": "Table MultiSelect",
-            "in_standard_filter": 1,
-            "label": "Domain",
-            "options": "Str Domain"
-        },
-        {
-            "fieldname": "section_break_nfae",
-            "fieldtype": "Section Break",
-            "label": "Bank Details"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "bank_name",
-            "fieldtype": "Data",
-            "label": "Bank Name"
-        },
-        {
-            "fieldname": "column_break_mmbv",
-            "fieldtype": "Column Break"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "account_number",
-            "fieldtype": "Data",
-            "label": "Account Number"
-        },
-        {
-            "fieldname": "column_break_miqy",
-            "fieldtype": "Column Break"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "ifsc_code",
-            "fieldtype": "Data",
-            "label": "IFSC Code"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "travelling_possible",
-            "fieldtype": "Select",
-            "label": "Travelling Possible",
-            "options": "Yes\nNo"
-        },
-        {
-            "fieldname": "column_break_ecju",
-            "fieldtype": "Column Break"
-        },
-        {
-            "fieldname": "section_break_lnjd",
-            "fieldtype": "Section Break"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "profile_description",
-            "fieldtype": "Long Text",
-            "label": "Profile Description"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "terms_and_conditions",
-            "fieldtype": "Long Text",
-            "label": "Terms and Conditions"
-        },
-        {
-            "default": "0",
-            "fieldname": "is_active",
-            "fieldtype": "Check",
-            "label": "Is Active"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "country",
-            "fieldtype": "Link",
-            "in_list_view": 1,
-            "label": "Country",
-            "options": "Country"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "state",
-            "fieldtype": "Link",
-            "in_list_view": 1,
-            "label": "State",
-            "options": "State"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "district",
-            "fieldtype": "Link",
-            "label": "District",
-            "options": "District"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "city",
-            "fieldtype": "Link",
-            "label": "City",
-            "options": "City"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "tahsil",
-            "fieldtype": "Link",
-            "label": "Taluka",
-            "options": "Tahsil"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "mentor_skills",
-            "fieldtype": "Table",
-            "label": "Mentor Skills",
-            "options": "Student Skill Table"
-        },
-        {
-            "allow_on_submit": 1,
-            "depends_on": "eval:doc.domain.some(row => row.domain == \"Other\")",
-            "fieldname": "other_domain",
-            "fieldtype": "Data",
-            "label": "Other Domain"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "mentor_platform_urls",
-            "fieldtype": "Table",
-            "label": "Mentor Platform URLs",
-            "options": "Mentor Platform URLs"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "total_sessions",
-            "fieldtype": "Int",
-            "label": "Total Sessions"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "total_hours",
-            "fieldtype": "Float",
-            "label": "Total Hours"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "total_earnings",
-            "fieldtype": "Currency",
-            "label": "Total Earnings"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "avg_rating",
-            "fieldtype": "Float",
-            "label": "Avg Rating"
-        },
-        {
-            "fieldname": "role",
-            "fieldtype": "Data",
-            "label": "Role"
-        },
-        {
-            "fieldname": "experience",
-            "fieldtype": "Data",
-            "label": "Experience"
-        },
-        {
-            "fieldname": "section_break_hqop",
-            "fieldtype": "Section Break"
-        },
-        {
-            "fieldname": "mentor_verification",
-            "fieldtype": "Table",
-            "label": "Mentor Verification",
-            "options": "Mentor Verification Table"
-        }
-    ],
-    "grid_page_length": 50,
-    "index_web_pages_for_search": 1,
-    "is_submittable": 1,
-    "links": [],
-    "modified": "2026-05-28 15:21:04.871554",
-    "modified_by": "roshani.babar@erpdata.in",
-    "module": "Stridenex App",
-    "name": "Mentor",
-    "naming_rule": "By fieldname",
-    "owner": "Administrator",
-    "permissions": [
-        {
-            "create": 1,
-            "delete": 1,
-            "email": 1,
-            "export": 1,
-            "print": 1,
-            "read": 1,
-            "report": 1,
-            "role": "System Manager",
-            "select": 1,
-            "share": 1,
-            "submit": 1,
-            "write": 1
-        }
-    ],
-    "row_format": "Dynamic",
-    "rows_threshold_for_grid_search": 20,
-    "sort_field": "creation",
-    "sort_order": "DESC",
-    "states": []
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:email_id",
+ "creation": "2026-02-17 12:37:13.385592",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_plv1",
+  "first_name",
+  "last_name",
+  "mobile_no",
+  "email_id",
+  "type",
+  "mentor_platform_urls",
+  "role",
+  "gstin",
+  "column_break_eibm",
+  "domain",
+  "other_domain",
+  "mentor_skills",
+  "travelling_possible",
+  "approved_status",
+  "is_active",
+  "experience",
+  "column_break_ecju",
+  "country",
+  "state",
+  "district",
+  "tahsil",
+  "city",
+  "total_sessions",
+  "total_hours",
+  "total_earnings",
+  "avg_rating",
+  "skill_highlights",
+  "section_break_nfae",
+  "bank_name",
+  "column_break_mmbv",
+  "account_number",
+  "column_break_miqy",
+  "ifsc_code",
+  "section_break_hqop",
+  "mentor_verification",
+  "section_break_lnjd",
+  "profile_description",
+  "terms_and_conditions",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_plv1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Mentor",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "label": "First Name"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "email_id",
+   "fieldtype": "Data",
+   "label": "Email ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_eibm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "label": "Last Name"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mobile_no",
+   "fieldtype": "Phone",
+   "label": "Mobile No."
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "approved_status",
+   "fieldtype": "Link",
+   "label": "Approved Status",
+   "options": "Workflow State"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "type",
+   "fieldtype": "Link",
+   "label": "Type",
+   "options": "Type"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "domain",
+   "fieldtype": "Table MultiSelect",
+   "in_standard_filter": 1,
+   "label": "Domain",
+   "options": "Str Domain"
+  },
+  {
+   "fieldname": "section_break_nfae",
+   "fieldtype": "Section Break",
+   "label": "Bank Details"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "bank_name",
+   "fieldtype": "Data",
+   "label": "Bank Name"
+  },
+  {
+   "fieldname": "column_break_mmbv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "account_number",
+   "fieldtype": "Data",
+   "label": "Account Number"
+  },
+  {
+   "fieldname": "column_break_miqy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "ifsc_code",
+   "fieldtype": "Data",
+   "label": "IFSC Code"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "travelling_possible",
+   "fieldtype": "Select",
+   "label": "Travelling Possible",
+   "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "column_break_ecju",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_lnjd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "profile_description",
+   "fieldtype": "Long Text",
+   "label": "Profile Description"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "terms_and_conditions",
+   "fieldtype": "Long Text",
+   "label": "Terms and Conditions"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Country",
+   "options": "Country"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "state",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "State",
+   "options": "State"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "District"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "city",
+   "fieldtype": "Link",
+   "label": "City",
+   "options": "City"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "tahsil",
+   "fieldtype": "Link",
+   "label": "Taluka",
+   "options": "Tahsil"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mentor_skills",
+   "fieldtype": "Table",
+   "label": "Mentor Skills",
+   "options": "Student Skill Table"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.domain.some(row => row.domain == \"Other\")",
+   "fieldname": "other_domain",
+   "fieldtype": "Data",
+   "label": "Other Domain"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mentor_platform_urls",
+   "fieldtype": "Table",
+   "label": "Mentor Platform URLs",
+   "options": "Mentor Platform URLs"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_sessions",
+   "fieldtype": "Int",
+   "label": "Total Sessions"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_hours",
+   "fieldtype": "Float",
+   "label": "Total Hours"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_earnings",
+   "fieldtype": "Currency",
+   "label": "Total Earnings"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "avg_rating",
+   "fieldtype": "Float",
+   "label": "Avg Rating"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "skill_highlights",
+   "fieldtype": "Small Text",
+   "label": "Skill Highlights (from Reviews)",
+   "read_only": 1,
+   "description": "JSON list of top skills praised by students in reviews. Auto-computed on each review submission."
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Data",
+   "label": "Role"
+  },
+  {
+   "fieldname": "experience",
+   "fieldtype": "Data",
+   "label": "Experience"
+  },
+  {
+   "fieldname": "section_break_hqop",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "mentor_verification",
+   "fieldtype": "Table",
+   "label": "Mentor Verification",
+   "options": "Mentor Verification Table"
+  },
+  {
+   "fieldname": "gstin",
+   "fieldtype": "Data",
+   "label": "GSTIN"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-08-03 17:15:17.847897",
+ "modified_by": "abhisheksadale96@gmail.com",
+ "module": "Stridenex App",
+ "name": "Mentor",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
 }

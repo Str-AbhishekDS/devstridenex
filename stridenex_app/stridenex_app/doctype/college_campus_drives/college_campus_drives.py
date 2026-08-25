@@ -13,6 +13,11 @@ from stridenex_app.api_stridenex_app.app_utils import (
 from frappe import _
 from frappe.utils import get_url, format_datetime
 from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
+from stridenex_app.api_stridenex_app.app_utils import (
+    gen_response,
+    exception_handel,
+    
+)
 
 CACHE_TTL = 300
 DEFAULT_PAGE_SIZE = 20
@@ -303,8 +308,203 @@ def get_drives_by_college(college, page=1, page_size=DEFAULT_PAGE_SIZE):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Get Drives Error")
         return {"status": 500, "message": str(e)}
+    
 
+@frappe.whitelist(allow_guest=True)
+def get_campus_drive_list(
+    college=None,
+    student=None,
+    required_skill=None,
+    backlog=None,
+    criteria=None
+):
+    try:
+        # ----------------------------------------------------------
+        # PERMISSION CHECK
+        # ----------------------------------------------------------
+        # session_user = frappe.session.user
+        # if not frappe.has_permission(
+        #     "College Campus Drives",
+        #     ptype="read",
+        #     user=session_user
+        # ):
+        #     frappe.throw(
+        #         "You do not have permission to access College Campus Drives.",
+        #         frappe.PermissionError
+        #     )
 
+        filters = {}
+
+        if college:
+            filters["college"] = college
+
+        
+
+        drive_names = None
+
+        # Required skill filter (child table: Student Skill Table)
+        if required_skill:
+            names = frappe.get_all(
+                "Student Skill Table",
+                filters={"skill": required_skill},
+                pluck="parent"
+            )
+            drive_names = set(names)
+
+        # Apply child-table filter to parent query
+        if drive_names is not None:
+            if drive_names:
+                filters["name"] = ["in", list(drive_names)]
+            else:
+                return gen_response(
+                    status=200,
+                    message="No campus drives found",
+                    data=[]
+                )
+
+        drives = frappe.get_all(
+            "College Campus Drives",
+            filters=filters,
+            fields=[
+                "name", "creation", "owner", "job_title", "college",
+                "industry_name", "industry", "registeration_deadline",
+                "drive_date", "package_offered", "backlog", "criteria"
+            ],
+            order_by="creation desc"
+        )
+
+        drive_names_list = [d["name"] for d in drives]
+
+        # ✅ Required skills mapping
+        all_skills = frappe.get_all(
+            "Student Skill Table",
+            filters={"parent": ["in", drive_names_list]},
+            fields=["parent", "skill"]
+        )
+        skill_map = {}
+        for s in all_skills:
+            skill_map.setdefault(s["parent"], []).append({"skill": s["skill"]})
+
+        
+        # ✅ Application status mapping (Campus Drive Application)
+        ALL_STATUSES = ["Applied", "Shortlisted", "Selected", "Rejected"]
+        status_counts = {"Not Applied": 0}
+        status_counts.update({status: 0 for status in ALL_STATUSES})
+
+        enrollment_map = {}
+
+        if student:
+            applications = frappe.get_all(
+                "Campus Drive Application",
+                filters={"student": student},
+                fields=[
+                    "name", "drive", "college", "application_date",
+                    "status", "package_lpa", "offer_letter",
+                    "selection_id", "remarks"
+                ],
+                order_by="application_date desc"
+            )
+
+            for app in applications:
+                if not app.drive:
+                    continue
+
+                enrollment_map[app.drive] = {
+                    "application_name": app.name,
+                    "status": app.status,
+                    "application_date": app.application_date,
+                    "package_lpa": app.package_lpa,
+                    "offer_letter": app.offer_letter,
+                    "selection_id": app.selection_id,
+                    "remarks": app.remarks
+                }
+
+        # ✅ Fetch student CGPA once if criteria filter is requested
+        student_cgpa = None
+        if criteria and student:
+            student_cgpa = frappe.db.get_value("Student", student, "cgpa")
+            try:
+                student_cgpa = float(student_cgpa) if student_cgpa not in (None, "") else None
+            except (TypeError, ValueError):
+                student_cgpa = None
+        elif criteria and not student:
+            try:
+                student_cgpa = float(criteria)
+            except (TypeError, ValueError):
+                student_cgpa = None
+
+        # ✅ Fetch student backlog count once if backlog filter is requested
+        student_backlog = None
+        if backlog is not None and student:
+            student_backlog = frappe.db.get_value("Student", student, "backlog")
+            try:
+                student_backlog = int(student_backlog) if student_backlog not in (None, "") else 0
+            except (TypeError, ValueError):
+                student_backlog = 0
+        elif backlog is not None and not student:
+            try:
+                student_backlog = int(backlog)
+            except (TypeError, ValueError):
+                student_backlog = None
+
+        result = []
+
+        for drive in drives:
+            # ---- Eligibility filter: backlog ----
+            if student_backlog is not None:
+                try:
+                    drive_backlog_allowed = int(drive.get("backlog") or 0)
+                except (TypeError, ValueError):
+                    drive_backlog_allowed = 0
+                if drive_backlog_allowed < student_backlog:
+                    continue  # student's backlog count exceeds what this drive allows
+
+            # ---- Eligibility filter: criteria (CGPA) ----
+            if student_cgpa is not None:
+                raw_criteria = drive.get("criteria")
+                try:
+                    drive_min_cgpa = float(raw_criteria) if raw_criteria not in (None, "") else None
+                except (TypeError, ValueError):
+                    drive_min_cgpa = None
+
+                if drive_min_cgpa is not None and student_cgpa < drive_min_cgpa:
+                    continue  # student doesn't meet minimum CGPA for this drive
+
+            drive["required_skill"] = skill_map.get(drive["name"], [])
+           
+
+            if student:
+                application_info = enrollment_map.get(drive["name"])
+                if application_info:
+                    current_status = application_info["status"] or "Applied"
+                    drive["applied_status"] = current_status
+                    drive["application_details"] = application_info
+                else:
+                    current_status = "Not Applied"
+                    drive["applied_status"] = current_status
+                    drive["application_details"] = None
+            else:
+                current_status = "Not Applied"
+                drive["applied_status"] = current_status
+                drive["application_details"] = None
+
+            status_counts[current_status] = status_counts.get(current_status, 0) + 1
+            result.append(drive)
+
+        return gen_response(
+            status=200,
+            message="Campus drive list fetched successfully",
+            data={
+                "drives": result,
+                "statistics": {
+                    "total_drives": len(result),
+                    "status_counts": status_counts
+                }
+            }
+        )
+    except Exception as e:
+        return exception_handel(e)
+    
 @frappe.whitelist(allow_guest=True)
 def create_drive():
     try:
@@ -861,7 +1061,7 @@ def get_low_employability_students(college=None, threshold=50, limit=20, offset=
 
         where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-        # Fetch students
+        # Fetch students with the stored employability_score from Student doctype
         students = frappe.db.sql(f"""
             SELECT
                 s.name,
@@ -873,46 +1073,15 @@ def get_low_employability_students(college=None, threshold=50, limit=20, offset=
                 s.department,
                 s.course,
                 s.academic_year,
-                s.cgpa
+                s.cgpa,
+                COALESCE(s.employability_score, 0) AS employability_score
             FROM `tabStudent` s
             {where_clause}
         """, values, as_dict=True)
 
-        # Fetch skills — field is `level` (confirmed from DESCRIBE)
-        skill_rows = frappe.db.sql("""
-            SELECT
-                parent,
-                skill,
-                level
-            FROM `tabStudent Skill Table`
-            WHERE parenttype = 'Student'
-        """, as_dict=True)
-
-        level_scores = {
-            "Beginner":     25,
-            "Intermediate": 50,
-            "Advanced":     75,
-            "Expert":       100
-        }
-
-        # Build skill map: { student_name: [score1, score2, ...] }
-        skill_map = {}
-        for row in skill_rows:
-            score = level_scores.get(row.level, 50)  # default 50 if blank
-            if row.parent not in skill_map:
-                skill_map[row.parent] = []
-            skill_map[row.parent].append(score)
-
         result = []
         for s in students:
-            cgpa = float(s.cgpa or 0)
-            cgpa_normalized = (cgpa / 10.0) * 100  # CGPA out of 10
-
-            skill_scores = skill_map.get(s.name, [])
-            avg_skill_score = (sum(skill_scores) / len(skill_scores)) if skill_scores else 0
-
-            # Formula: 60% CGPA + 40% Avg Skill Score
-            employability_score = round((0.6 * cgpa_normalized) + (0.4 * avg_skill_score), 2)
+            employability_score = float(s.employability_score or 0)
 
             if employability_score < threshold:
                 result.append({
@@ -924,15 +1093,27 @@ def get_low_employability_students(college=None, threshold=50, limit=20, offset=
                     "department":          s.department,
                     "course":              s.course,
                     "academic_year":       s.academic_year,
-                    "cgpa":                cgpa,
-                    "cgpa_score":          round(cgpa_normalized, 2),
-                    "avg_skill_score":     round(avg_skill_score, 2),
-                    "total_skills":        len(skill_scores),
+                    "cgpa":                float(s.cgpa or 0),
                     "employability_score": employability_score
                 })
 
         result.sort(key=lambda x: x["employability_score"])
         paginated = result[offset: offset + limit]
+
+        # Enhance paginated students with detailed scores/counts
+        for p in paginated:
+            cgpa = p["cgpa"]
+            cgpa_score = (cgpa / 10.0) * 100
+            p["cgpa_score"] = round(cgpa_score, 2)
+            
+            es = p["employability_score"]
+            skills_score = (es - 0.3 * cgpa_score) / 0.7
+            p["avg_skill_score"] = max(0.0, round(skills_score, 2))
+            
+            p["total_skills"] = frappe.db.count("Student Skill", {
+                "student": p["name"],
+                "status": ["!=", "Rejected"]
+            })
 
         return {
             "status": 200,
@@ -942,10 +1123,61 @@ def get_low_employability_students(college=None, threshold=50, limit=20, offset=
                 "threshold":     threshold,
                 "limit":         limit,
                 "offset":        offset,
-                "score_formula": "60% CGPA (out of 10 normalized to 100) + 40% Avg Skill Score"
+                "score_formula": "30% CGPA (normalized to 100) + 70% Skill Fulfillment"
             }
         }
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_low_employability_students Error")
         return {"status": 500, "message": str(e)}
+
+import frappe
+from frappe.utils import now_datetime
+
+
+@frappe.whitelist(allow_guest=True)
+def apply_campus_drive(student, drive, remarks=None):
+    if not student:
+        frappe.throw("Student is required")
+
+    if not drive:
+        frappe.throw("Campus Drive is required")
+
+    if not frappe.db.exists("Student", student):
+        frappe.throw("Student not found", frappe.DoesNotExistError)
+
+    if not frappe.db.exists("College Campus Drives", drive):
+        frappe.throw("Campus Drive not found", frappe.DoesNotExistError)
+
+    drive_doc = frappe.get_doc("College Campus Drives", drive)
+
+    # block applying after the registration deadline has passed
+    if drive_doc.registeration_deadline and now_datetime() > drive_doc.registeration_deadline:
+        frappe.throw("Registration deadline for this drive has passed")
+
+    # prevent duplicate applications by the same student to the same drive
+    existing = frappe.db.exists(
+        "Campus Drive Application",
+        {"student": student, "drive": drive, "docstatus": ["!=", 2]}
+    )
+    if existing:
+        frappe.throw(f"You have already applied to this drive (Application: {existing})")
+
+    application = frappe.get_doc({
+        "doctype": "Campus Drive Application",
+        "student": student,
+        "drive": drive,
+        "application_date": frappe.utils.nowdate(),
+        "status": "Applied",
+        "remarks": remarks,
+    })
+
+    application.insert(ignore_permissions=True)
+    frappe.db.commit()
+
+    return {
+        "message": "Application submitted successfully",
+        "application_id": application.name,
+        "status": application.status,
+        "college": application.college,  # auto-fetched from drive.college
+    }

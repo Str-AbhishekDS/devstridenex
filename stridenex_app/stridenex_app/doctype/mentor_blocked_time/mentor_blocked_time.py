@@ -10,6 +10,15 @@ from frappe.utils import getdate, nowdate, get_time
 class MentorBlockedTime(Document):
 
     def validate(self):
+        if self.whole_day:
+            self.from_time = None
+            self.to_time = None
+        else:
+            if not self.from_time:
+                frappe.throw(_("From Time is required when Whole Day is not selected."))
+            if not self.to_time:
+                frappe.throw(_("To Time is required when Whole Day is not selected."))
+
         self.validate_date_not_past()
         self.validate_time_range()
         self.check_overlap_with_existing_blocks()
@@ -22,7 +31,7 @@ class MentorBlockedTime(Document):
 
     def validate_time_range(self):
         """Ensure from_time is strictly before to_time."""
-        if self.from_time and self.to_time:
+        if not self.whole_day and self.from_time and self.to_time:
             if self.from_time >= self.to_time:
                 frappe.throw(_("From Time must be earlier than To Time."))
                 
@@ -36,17 +45,30 @@ class MentorBlockedTime(Document):
                 "date": self.date,
                 "name": ["!=", self.name],
             },
-            fields=["name", "from_time", "to_time"],
+            fields=["name", "from_time", "to_time", "whole_day"],
         )
 
         for block in existing:
-            if _times_overlap(self.from_time, self.to_time, block.from_time, block.to_time):
-                frappe.throw(
-                    _(
-                        "An overlapping blocked time already exists for {0} on {1} "
-                        "({2} – {3})."
-                    ).format(self.mentor, self.date, block.from_time, block.to_time)
-                )
+            if self.whole_day or block.whole_day or _times_overlap(self.from_time, self.to_time, block.from_time, block.to_time):
+                if block.whole_day:
+                    frappe.throw(
+                        _(
+                            "A blocked time for the whole day already exists for {0} on {1}."
+                        ).format(self.mentor, self.date)
+                    )
+                elif self.whole_day:
+                    frappe.throw(
+                        _(
+                            "Cannot block whole day because an overlapping blocked time already exists for {0} on {1} ({2} – {3})."
+                        ).format(self.mentor, self.date, block.from_time, block.to_time)
+                    )
+                else:
+                    frappe.throw(
+                        _(
+                            "An overlapping blocked time already exists for {0} on {1} "
+                            "({2} – {3})."
+                        ).format(self.mentor, self.date, block.from_time, block.to_time)
+                    )
 
     
     def validate_no_booked_sessions(self):
@@ -65,30 +87,23 @@ class MentorBlockedTime(Document):
             fields=["name", "from_time", "to_time", "student"],
         )
 
-        conflicting_sessions = [
-            session
-            for session in booked_sessions
-            if _times_overlap(
-                self.from_time,
-                self.to_time,
-                session.from_time,
-                session.to_time,
-            )
-        ]
+        if self.whole_day:
+            conflicting_sessions = booked_sessions
+        else:
+            conflicting_sessions = [
+                session
+                for session in booked_sessions
+                if _times_overlap(
+                    self.from_time,
+                    self.to_time,
+                    session.from_time,
+                    session.to_time,
+                )
+            ]
 
         if conflicting_sessions:
-            session_names = ", ".join(
-                [session.name for session in conflicting_sessions]
-            )
-
             frappe.throw(
-                _(
-                    "Cannot create Block Time because the following session(s) "
-                    "are already booked during this period: <b>{0}</b>.<br><br>"
-                    "Please reschedule or cancel the session(s) first, "
-                    "then create the block time."
-                ).format(session_names),
-                title=_("Booked Session Exists"),
+                _("there is a session available so before block the time first reschdule the session and then block the time.")
             )
 
 
@@ -97,6 +112,8 @@ class MentorBlockedTime(Document):
 # ------------------------------------------------------------------
 
 def _times_overlap(start1, end1, start2, end2):
+    if not (start1 and end1 and start2 and end2):
+        return False
     start1 = get_time(start1)
     end1 = get_time(end1)
     start2 = get_time(start2)
@@ -155,7 +172,8 @@ def get_blocked_times(mentor, from_date, to_date):
             "date",
             "from_time",
             "to_time",
-            "reason"
+            "reason",
+            "whole_day"
         ],
         order_by="date asc, from_time asc",
     )
@@ -164,7 +182,7 @@ def get_blocked_times(mentor, from_date, to_date):
 
                     
 @frappe.whitelist(allow_guest=False)
-def block_time(mentor, date, from_time, to_time, reason=None):
+def block_time(mentor, date, from_time=None, to_time=None, reason=None, whole_day=0):
     """
     Programmatically create a Mentor Blocked Time entry.
     Useful for bulk operations or external integrations.
@@ -196,6 +214,7 @@ def block_time(mentor, date, from_time, to_time, reason=None):
         "from_time": from_time,
         "to_time": to_time,
         "reason": reason or "",
+        "whole_day": whole_day,
     })
 
     # Respects Role Permission Manager

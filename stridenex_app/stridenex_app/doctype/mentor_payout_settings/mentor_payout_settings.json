@@ -1,6 +1,6 @@
 {
  "actions": [],
- "creation": "2026-07-24 12:00:00.000000",
+ "creation": "2026-07-24 12:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -10,17 +10,21 @@
   "group_session_penalty",
   "async_review_penalty",
   "workshop_penalty",
+  "column_break_ljrd",
+  "tds_threshold",
+  "tds_rate",
+  "section_break_hhmv",
   "commission_tiers"
  ],
  "fields": [
   {
+   "default": "Monthly",
    "fieldname": "payout_cycle",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Payout Cycle",
    "options": "Weekly\n10 Days\n15 Days\n20 Days\nMonthly",
-   "reqd": 1,
-   "default": "Monthly"
+   "reqd": 1
   },
   {
    "fieldname": "last_payout_date",
@@ -30,28 +34,40 @@
    "reqd": 1
   },
   {
-   "default": 15.0,
+   "default": "15",
    "fieldname": "one_on_one_penalty",
    "fieldtype": "Percent",
    "label": "1:1 Mentorship Penalty Rate (%)"
   },
   {
-   "default": 15.0,
+   "default": "15",
    "fieldname": "group_session_penalty",
    "fieldtype": "Percent",
    "label": "Group Session Penalty Rate (%)"
   },
   {
-   "default": 15.0,
+   "default": "15",
    "fieldname": "async_review_penalty",
    "fieldtype": "Percent",
    "label": "Async Review Penalty Rate (%)"
   },
   {
-   "default": 15.0,
+   "default": "15",
    "fieldname": "workshop_penalty",
    "fieldtype": "Percent",
    "label": "Workshop Penalty Rate (%)"
+  },
+  {
+   "default": "50000",
+   "fieldname": "tds_threshold",
+   "fieldtype": "Currency",
+   "label": "TDS Threshold Amount (\u20b9)"
+  },
+  {
+   "default": "10",
+   "fieldname": "tds_rate",
+   "fieldtype": "Percent",
+   "label": "TDS Rate (%)"
   },
   {
    "fieldname": "commission_tiers",
@@ -59,13 +75,21 @@
    "label": "Commission Tiers",
    "options": "Mentor Commission Tier",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ljrd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_hhmv",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-24 12:00:00.000000",
+ "modified": "2026-07-28 12:45:55.020151",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Mentor Payout Settings",

@@ -22,8 +22,8 @@ class MentorOffering(Document):
             frappe.throw(_("Price per session must be greater than zero."))
 
     def validate_type_fields(self):
-        if self.offering_type == "Group Session" and not self.max_group_size:
-            frappe.throw(_("Max Group Size is required for Group Sessions."))
+        if self.offering_type in ("Group Session", "Workshop") and not self.max_group_size:
+            frappe.throw(_("Max Group Size is required for Group Sessions and Workshops."))
         if self.offering_type == "Async Review" and not self.turnaround_hours:
             frappe.throw(_("Turnaround Hours is required for Async Review."))
 
@@ -69,7 +69,7 @@ def get_mentor_offerings(mentor, status=None):
     if status:
         filters["status"] = status
 
-    return frappe.get_list(
+    offerings = frappe.get_list(
         "Mentor Offering",
         filters=filters,
         fields=[
@@ -82,13 +82,283 @@ def get_mentor_offerings(mentor, status=None):
             "status",
             "total_bookings",
             "average_rating",
-            "description"
+            "description",
+            "start_date",
+            "end_date",
+            "start_time",
+            "end_time"
         ],
         order_by="creation desc"
     )
 
+    from frappe.utils import getdate, nowdate
+    today = getdate(nowdate())
+
+    filtered = []
+    for o in offerings:
+        is_expired = False
+        if o.get("start_date") and getdate(o.start_date) < today:
+            is_expired = True
+        elif o.get("end_date") and getdate(o.end_date) < today:
+            is_expired = True
+        if not is_expired:
+            filtered.append(o)
+
+    return filtered
+
+@frappe.whitelist(allow_guest=True)
+def get_new_group_workshop_offerings(
+    mentor=None,
+    search=None,
+    offering_type=None,
+    limit=20,
+    offset=0
+):
+    """
+    Fetch newly created ACTIVE (Live, non-expired) Mentor Offerings
+    where offering_type is 'Group Session' or 'Workshop',
+    ordered by creation (newest first).
+
+    Automatically excludes:
+        - status: Draft / Paused / Archived  (only 'Live' returned)
+        - Offerings whose end_date has already passed today
+
+    Optional params:
+        mentor        - filter by a specific mentor email (exact)
+        search        - partial keyword matched against offering title
+                        OR mentor full name (first_name + last_name)
+        offering_type - narrow to a single type: 'Group Session' or 'Workshop'
+                        (omit to return both)
+        limit         - max records to return (default 20)
+        offset        - pagination offset (default 0)
+    """
+    from frappe.utils import nowdate
+
+    limit  = int(limit  or 20)
+    offset = int(offset or 0)
+    today  = nowdate()
+
+    # ----------------------------------------------------------
+    # Validate offering_type if provided
+    # ----------------------------------------------------------
+    VALID_TYPES = ("Group Session", "Workshop")
+    if offering_type and offering_type not in VALID_TYPES:
+        frappe.throw(
+            f"Invalid offering_type '{offering_type}'. Must be one of: {', '.join(VALID_TYPES)}"
+        )
+
+    # ----------------------------------------------------------
+    # Build WHERE clauses dynamically
+    # ----------------------------------------------------------
+    conditions = [
+        "mo.status = 'Live'",
+        "((mo.start_date IS NULL OR mo.start_date >= %(today)s) AND (mo.end_date IS NULL OR mo.end_date >= %(today)s))"
+    ]
+    values = {"today": today, "limit": limit, "offset": offset}
+
+    # Offering type filter — specific type or default to both
+    if offering_type:
+        conditions.append("mo.offering_type = %(offering_type)s")
+        values["offering_type"] = offering_type
+    else:
+        conditions.append("mo.offering_type IN ('Group Session', 'Workshop')")
+
+    # Filter by exact mentor email
+    if mentor:
+        conditions.append("mo.mentor = %(mentor)s")
+        values["mentor"] = mentor
+
+    # Search: partial match on title OR mentor full name
+    if search:
+        conditions.append(
+            """
+            (
+                mo.title LIKE %(search)s
+                OR CONCAT(COALESCE(m.first_name,''), ' ', COALESCE(m.last_name,'')) LIKE %(search)s
+                OR m.first_name LIKE %(search)s
+                OR m.last_name  LIKE %(search)s
+            )
+            """
+        )
+        values["search"] = f"%{search}%"
+
+    where_clause = " AND ".join(conditions)
+
+    # ----------------------------------------------------------
+    # Query — LEFT JOIN tabMentor to resolve full name & support
+    # search by mentor name without a second round-trip
+    # ----------------------------------------------------------
+    sql = """
+        SELECT
+            mo.name,
+            mo.mentor,
+            TRIM(CONCAT(
+                COALESCE(m.first_name, ''), ' ',
+                COALESCE(m.last_name,  '')
+            )) AS mentor_full_name,
+            mo.title,
+            mo.offering_type,
+            mo.category,
+            mo.status,
+            mo.price_per_session,
+            mo.max_group_size,
+            mo.duration_minutes,
+            mo.average_rating,
+            mo.total_bookings,
+            GREATEST(0, COALESCE(mo.max_group_size, 0) - COALESCE(mo.total_bookings, 0)) AS remaining_seats,
+            mo.lms_batch,
+            mo.start_date,
+            mo.end_date,
+            mo.start_time,
+            mo.end_time,
+            mo.description,
+            mo.creation
+        FROM `tabMentor Offering` mo
+        LEFT JOIN `tabMentor` m ON m.name = mo.mentor
+        WHERE {where}
+        ORDER BY mo.creation DESC
+        LIMIT %(limit)s OFFSET %(offset)s
+    """.format(where=where_clause)
+
+    offerings = frappe.db.sql(sql, values=values, as_dict=True)
+
+    for o in offerings:
+        active_bookings = frappe.db.count(
+            "Mentor Session Booking",
+            filters={
+                "offering": o.name,
+                "status": ["not in", ["Cancelled", "Rejected"]]
+            }
+        )
+        o["remaining_seats"] = max(0, (o.max_group_size or 0) - active_bookings)
+        o["seats_left"] = o["remaining_seats"]
+        o["seat_status"] = "full" if (o.max_group_size and active_bookings >= o.max_group_size) else "open"
+
+    return {
+        "count": len(offerings),
+        "data": offerings
+    }
+
+
+@frappe.whitelist(allow_guest=False)
+def get_mentor_offering_by_title(
+    title,
+    mentor=None,
+    offering_type=None,
+    status=None,
+    limit=20,
+    offset=0
+):
+    """
+    Search ACTIVE (Live, non-expired) Mentor Offerings by title
+    using a partial / case-insensitive LIKE match.
+
+    Automatically excludes:
+        - Offerings with status Draft / Paused / Archived
+        - Offerings whose end_date has already passed
+
+    Required params:
+        title         - search keyword(s) to match against the offering title
+
+    Optional params:
+        mentor        - narrow results to a specific mentor email
+        offering_type - e.g. 'Group Session', 'Workshop', '1:1 Mentorship'
+        status        - override; defaults to 'Live'
+        limit         - max records to return (default 20)
+        offset        - pagination offset (default 0)
+    """
+    from frappe.utils import nowdate
+
+    session_user = frappe.session.user
+
+    # ----------------------------------------------------------
+    # PERMISSION CHECK
+    # ----------------------------------------------------------
+    if not frappe.has_permission(
+        "Mentor Offering",
+        ptype="read",
+        user=session_user
+    ):
+        frappe.throw(
+            "You do not have permission to access Mentor Offerings.",
+            frappe.PermissionError
+        )
+
+    if not title:
+        frappe.throw("'title' search keyword is required.")
+
+    limit  = int(limit  or 20)
+    offset = int(offset or 0)
+    today  = nowdate()
+
+    # ----------------------------------------------------------
+    # Filters: title LIKE + Live + non-expired + optional narrowers
+    # ----------------------------------------------------------
+    active_status = status if status else "Live"
+
+    conditions = [
+        "mo.title LIKE %(title_pattern)s",
+        "mo.status = %(active_status)s",
+        "((mo.start_date IS NULL OR mo.start_date >= %(today)s) AND (mo.end_date IS NULL OR mo.end_date >= %(today)s))"
+    ]
+    values = {
+        "title_pattern": f"%{title}%",
+        "active_status": active_status,
+        "today":         today,
+        "limit":         limit,
+        "offset":        offset
+    }
+
+    if mentor:
+        conditions.append("mo.mentor = %(mentor)s")
+        values["mentor"] = mentor
+
+    if offering_type:
+        conditions.append("mo.offering_type = %(otype)s")
+        values["otype"] = offering_type
+
+    where_clause = " AND ".join(conditions)
+
+    sql = """
+        SELECT
+            mo.name,
+            mo.mentor,
+            TRIM(CONCAT(
+                COALESCE(m.first_name, ''), ' ',
+                COALESCE(m.last_name,  '')
+            )) AS mentor_full_name,
+            mo.title,
+            mo.offering_type,
+            mo.category,
+            mo.status,
+            mo.price_per_session,
+            mo.max_group_size,
+            mo.duration_minutes,
+            mo.average_rating,
+            mo.total_bookings,
+            mo.lms_batch,
+            mo.start_date,
+            mo.end_date,
+            mo.description,
+            mo.creation
+        FROM `tabMentor Offering` mo
+        LEFT JOIN `tabMentor` m ON m.name = mo.mentor
+        WHERE {where}
+        ORDER BY mo.creation DESC
+        LIMIT %(limit)s OFFSET %(offset)s
+    """.format(where=where_clause)
+
+    offerings = frappe.db.sql(sql, values=values, as_dict=True)
+
+    return {
+        "count": len(offerings),
+        "data": offerings
+    }
+
+
 @frappe.whitelist(allow_guest=False)
 def create_mentor_offering():
+
 
     # ----------------------------------------------------------
     # PERMISSION CHECK
@@ -255,6 +525,7 @@ def _assert_mentor_owns_offering(offering_doc):
 def create_lms_batch_for_offering(offering_name):
     """
     Create an LMS Batch linked to this offering.
+    Supports both Group Session and Workshop offering types.
     Only the owning mentor (or admin) can call this.
     """
     # ── Permission check on Mentor Offering ─────────────────────────
@@ -262,8 +533,8 @@ def create_lms_batch_for_offering(offering_name):
 
     offering = frappe.get_doc("Mentor Offering", offering_name)
 
-    if offering.offering_type != "Group Session":
-        frappe.throw(_("LMS Batch can only be created for Group Session offerings."))
+    if offering.offering_type not in ("Group Session", "Workshop"):
+        frappe.throw(_("LMS Batch can only be created for Group Session or Workshop offerings."))
 
     # ── Already has a batch → return it ─────────────────────────────
     if offering.lms_batch:
@@ -285,8 +556,6 @@ def create_lms_batch_for_offering(offering_name):
         "mentor": offering.mentor,
     }
 
-    # ── Verify the child table field name in your LMS Batch doctype ──
-    # Check via: frappe.get_meta("LMS Batch").get_field("batch_instructors")
     # Common field names: "batch_instructors" or "instructors"
     batch_data["instructors"] = [{"instructor": offering.mentor}]
 
@@ -330,8 +599,8 @@ def get_open_batches_for_offering(offering):
     # ── Ownership check (pass the dict, not the string) ───────────────
     _assert_mentor_owns_offering(offering_doc)
 
-    if offering_doc.offering_type != "Group Session":
-        frappe.throw(_("This offering is not a Group Session."))
+    if offering_doc.offering_type not in ("Group Session", "Workshop"):
+        frappe.throw(_("This offering is not a Group Session or Workshop."))
 
     if not offering_doc.lms_batch:
         frappe.throw(_("No LMS Batch linked to this offering yet. Ask your mentor to create one."))
@@ -628,7 +897,8 @@ def get_mentor_listings(
                 "last_name",
                 "total_sessions",
                 "total_hours",
-                "avg_rating"
+                "avg_rating",
+                "skill_highlights"
             ],
             as_dict=True
         ) or {}
@@ -693,6 +963,16 @@ def get_mentor_listings(
                 continue
 
         # -----------------------------------------------------
+        # Skill Highlights (pre-computed, stored on Mentor doc)
+        # -----------------------------------------------------
+        import json as _json
+        raw_highlights = mentor_profile.get("skill_highlights") or "[]"
+        try:
+            skill_highlights_list = _json.loads(raw_highlights)
+        except (ValueError, TypeError):
+            skill_highlights_list = []
+
+        # -----------------------------------------------------
         # Final Result
         # -----------------------------------------------------
         result.append({
@@ -702,6 +982,7 @@ def get_mentor_listings(
             "company": "",
             "profile_image": "",
             "tags": [t.skill for t in tags],
+            "skill_highlights": skill_highlights_list,
             "avg_rating": (
                 mentor_profile.get("avg_rating")
                 or o.average_rating

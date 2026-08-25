@@ -768,14 +768,14 @@ def get_student_Analytics_list(college=None, name=None, department=None,skill_ma
                     
         if risk_level and risk_level != "all risk levels":
             if risk_level == "low":
-                conditions.append("s.cgpa >= 8.0")
+                conditions.append("s.employability_score >= 70")
 
             elif risk_level == "medium":
-                conditions.append("s.cgpa >= 6.0")
-                conditions.append("s.cgpa < 8.0")
+                conditions.append("s.employability_score >= 40")
+                conditions.append("s.employability_score < 70")
 
             elif risk_level == "high":
-                conditions.append("s.cgpa < 6.0")  
+                conditions.append("s.employability_score < 40")
 
         where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""  
 
@@ -809,10 +809,10 @@ def get_student_Analytics_list(college=None, name=None, department=None,skill_ma
                     ORDER BY cda.creation DESC
                     LIMIT 1
                 ) AS placement_status,
-                LEAST(ROUND(s.cgpa * 10, 0), 100) AS employability_score,
+                COALESCE(s.employability_score, 0) AS employability_score,
                 CASE
-                    WHEN s.cgpa >= 8.0 THEN 'Low'
-                    WHEN s.cgpa >= 6.0 THEN 'Medium'
+                    WHEN COALESCE(s.employability_score, 0) >= 70 THEN 'Low'
+                    WHEN COALESCE(s.employability_score, 0) >= 40 THEN 'Medium'
                     ELSE 'High'
                 END AS risk_level,
                 (

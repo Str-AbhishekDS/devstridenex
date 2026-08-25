@@ -126,11 +126,24 @@ def is_student_in_batch(batch_name, student_email):
     )
 
 
-def add_student_to_batch(batch_name, student_email):
+def add_student_to_batch(batch_name, student_email, raise_if_duplicate=True):
     """
     Enroll student by creating an LMS Batch Enrollment record.
     LMS Batch Enrollment is a standalone doctype — NOT a child table.
     Fields: batch (Link→LMS Batch), member (Link→User).
+
+    Args:
+        raise_if_duplicate: If True (default), throws when already enrolled.
+                            Set to False for idempotent calls (e.g. from on_update)
+                            so re-saves don't swallow real errors.
+    Returns:
+        "enrolled"  — new enrollment created
+        "exists"    — already enrolled (only when raise_if_duplicate=False)
+
+    NOTE: The LMS app's LMSBatchEnrollment.validate() enforces that the inserting
+    user must be a Moderator/Admin OR the batch must allow self-enrollment.
+    Since we enroll from a server-side hook (not as the student), we temporarily
+    switch to Administrator so the LMS validation passes, then switch back.
     """
     info = get_batch_seat_info(batch_name)
 
@@ -138,16 +151,27 @@ def add_student_to_batch(batch_name, student_email):
         frappe.throw(_("This batch is full. No seats available."))
 
     if is_student_in_batch(batch_name, student_email):
-        frappe.throw(_("You are already enrolled in this batch."))
+        if raise_if_duplicate:
+            frappe.throw(_("You are already enrolled in this batch."))
+        return "exists"
 
-    # Create standalone LMS Batch Enrollment record
-    enrollment = frappe.get_doc({
-        "doctype": "LMS Batch Enrollment",
-        "batch":   batch_name,
-        "member":  student_email,
-    })
-    enrollment.insert(ignore_permissions=True)
-    frappe.db.commit()
+    # ── Insert as Administrator so LMS validate_owner / validate_self_enrollment pass ──
+    # The LMS app throws unless: owner==member OR inserting user is Moderator/Admin.
+    # We are inserting server-side on behalf of the student, so we run as Administrator.
+    prev_user = frappe.session.user
+    try:
+        frappe.set_user("Administrator")
+        enrollment = frappe.get_doc({
+            "doctype": "LMS Batch Enrollment",
+            "batch":   batch_name,
+            "member":  student_email,
+        })
+        enrollment.insert(ignore_permissions=True)
+        frappe.db.commit()
+    finally:
+        frappe.set_user(prev_user)
+
+    return "enrolled"
 
 
 def remove_student_from_batch(batch_name, student_email):

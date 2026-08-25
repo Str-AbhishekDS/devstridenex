@@ -3,13 +3,14 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.exceptions import DuplicateEntryError
 
 
 class EducationalShort(Document):
 	pass
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_recommendations(limit=5):
     user = frappe.session.user
     user == "Guest"
@@ -94,7 +95,7 @@ def get_recommendations(limit=5):
     }
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def save_short(short_name, user=None):
     try:
         user = user or frappe.session.user
@@ -122,7 +123,7 @@ def save_short(short_name, user=None):
 
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def unsave_short(short_name, user=None):
     try:
         user = user or frappe.session.user
@@ -158,7 +159,7 @@ def get_saved_shorts(user=None, limit=10):
         limit_page_length=int(limit)
     )
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_shorts_feed(user=None, limit=10, skill=None):
     user = user or frappe.session.user
     filters = {"status": "Published"}
@@ -195,7 +196,7 @@ def get_shorts_feed(user=None, limit=10, skill=None):
     return shorts
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def toggle_like(short):
     user = frappe.session.user
     if user == "Guest":
@@ -228,48 +229,3 @@ def toggle_like(short):
 
 
 
-
-@frappe.whitelist(allow_guest=True)
-def create_tag(title):
-    try:
-        # Check if tag already exists
-        existing = frappe.db.exists("Tag", {"title": title})
-        if existing:
-            return {
-                "status": "error",
-                "message": "Tag already exists",
-                "name": existing
-            }
-
-        doc = frappe.get_doc({
-            "doctype": "Stridenex Tag",
-            "title": title
-        })
-
-        doc.insert(ignore_permissions=True)
-        frappe.db.commit()
-
-        return {
-            "status": "success",
-            "message": "Tag created successfully",
-            "name": doc.name
-        }
-
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "Create Tag API")
-        frappe.throw("Unable to create tag.")
-
-
-@frappe.whitelist(allow_guest=True)
-def get_tags():
-    tags = frappe.get_all(
-        "Stridenex Tag",
-        fields=["name", "title"],
-        order_by="creation desc"
-    )
-   
-
-    return {
-        "status": "success",
-        "data": tags
-    }

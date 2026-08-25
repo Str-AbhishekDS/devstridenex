@@ -12,6 +12,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
     exception_handel,get_pagination_params,make_cache_key,make_pagination_meta
 )
 DEFAULT_PAGE_SIZE = 20
+
 class IndustryProject(Document):
 	pass
 
@@ -24,17 +25,17 @@ def create_project():
         # PERMISSION CHECK
         # Respects Role Permission Manager configuration
         # ----------------------------------------------------------
-        # session_user = frappe.session.user
+        session_user = frappe.session.user
 
-        # if not frappe.has_permission(
-        #     "Industry Project",
-        #     ptype="create",
-        #     user=session_user
-        # ):
-        #     frappe.throw(
-        #         "You do not have permission to create Industry Project.",
-        #         frappe.PermissionError
-        #     )
+        if not frappe.has_permission(
+            "Industry Project",
+            ptype="create",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to create Industry Project.",
+                frappe.PermissionError
+            )
 
         data = frappe.request.get_json()
 
@@ -96,12 +97,11 @@ def create_project():
 
         return exception_handel(e)
     
-    
 @frappe.whitelist(allow_guest=True)
 def get_project_list(
     industry=None,
     student=None,
-    status=None,
+    status="Active",
     course=None,
     department=None,
     current_year=None,
@@ -152,16 +152,6 @@ def get_project_list(
             )
             project_names = set(names) if project_names is None else project_names & set(names)
 
-        # Academic Year filter
-        # if academic_year is not None and academic_year != "":  # FIXED: was `if academic_year:`
-        #     names = frappe.get_all(
-        #         "Academic Year Table",
-        #         filters={"academic_year": academic_year},
-        #         pluck="parent"
-        #     )
-        #     project_names = set(names) if project_names is None else project_names & set(names)
-
-        # FIXED: distinguish None (no filters used) from empty set (filters matched nothing)
         if project_names is not None:
             if not project_names:
                 return gen_response(
@@ -200,45 +190,63 @@ def get_project_list(
             order_by="creation desc"
         )
 
+        # ----------------------------------------------------------
+        # STUDENT APPLICATIONS (unified doctype)
+        # ----------------------------------------------------------
         enrollment_map = {}
+        applications = []
 
-        if student:
-            enrollments = frappe.get_all(
-                "Student Project Enrollment",
-                filters={"student": student},
-                fields=["project", "status"]
-            )
-
-            enrollment_map = {
-                e["project"]: e["status"]
-                for e in enrollments
-            }
-
+        # ✅ initialize regardless of `student` so stats never raise NameError
         total_applied = 0
         total_completed = 0
         total_awarded = 0
 
         if student:
-            total_applied = len(enrollments)
+            applications = frappe.get_all(
+                "Student Applications",
+                filters={"student": student},
+                fields=[
+                    "name",
+                    "opportunity_type",
+                    "project",
+                    "internship",
+                    "job_profile",
+                    "industry",
+                    "status",
+                    "applied_on",
+                    "match_score"
+                ],
+                order_by="applied_on desc"
+            )
+
+            for app in applications:
+                if app.opportunity_type != "Project" or not app.project:
+                    continue
+
+                # ✅ status taken exactly as stored on Student Applications, no override
+                enrollment_map[app.project] = {
+                    "application_name": app.name,
+                    "status": app.status,
+                    "applied_on": app.applied_on,
+                    "match_score": app.match_score
+                }
+
+            project_applications = [
+                a for a in applications
+                if a.opportunity_type == "Project"
+            ]
+
+            total_applied = len(project_applications)
 
             total_completed = len([
-                e for e in enrollments
-                if e["status"] == "Completed"
+                a for a in project_applications
+                if a["status"] == "Completed"
             ])
 
             total_awarded = len([
-                e for e in enrollments
-                if e["status"] == "Awarded"
+                a for a in project_applications
+                if a["status"] == "Accepted"
             ])
-        
-        
-        all_enrollments = []
-
-        if not student:
-            all_enrollments = frappe.get_all(
-                "Student Project Enrollment",
-                fields=["project", "status"]
-            )
 
         for project in projects:
 
@@ -267,27 +275,14 @@ def get_project_list(
                 r.academic_year for r in doc.academic_year
             ]
 
-            project_key = f"{project['project_name']}-{project['project_code']}"
-
             if student:
-                project["applied_status"] = enrollment_map.get(
-                    project_key,
-                    "Not Applied"
-                )
+                application_info = enrollment_map.get(project["name"])
+                if application_info:
+                    project["applied_status"] = application_info["status"]
+                else:
+                    project["applied_status"] = "Not Applied"
             else:
                 project["applied_status"] = None
-
-            project_enrollments = [
-                e for e in all_enrollments
-                if e["project"] == project_key
-            ]
-
-            project["applied_count"] = len(project_enrollments)
-
-            project["shortlisted_count"] = len([
-                e for e in project_enrollments
-                if e["status"] == "Shortlisted"
-            ])
 
         return gen_response(
             status=200,
@@ -318,17 +313,17 @@ def get_project_by_id(project_name):
         # PERMISSION CHECK
         # Respects Role Permission Manager configuration
         # ----------------------------------------------------------
-        # session_user = frappe.session.user
+        session_user = frappe.session.user
 
-        # if not frappe.has_permission(
-        #     "Industry Project",
-        #     ptype="read",
-        #     user=session_user
-        # ):
-        #     frappe.throw(
-        #         "You do not have permission to access Industry Project.",
-        #         frappe.PermissionError
-        #     )
+        if not frappe.has_permission(
+            "Industry Project",
+            ptype="read",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to access Industry Project.",
+                frappe.PermissionError
+            )
 
         project = frappe.get_doc(
             "Industry Project",
@@ -351,17 +346,17 @@ def update_project(name):
         # PERMISSION CHECK
         # Respects Role Permission Manager configuration
         # ----------------------------------------------------------
-        # session_user = frappe.session.user
+        session_user = frappe.session.user
 
-        # if not frappe.has_permission(
-        #     "Industry Project",
-        #     ptype="write",
-        #     user=session_user
-        # ):
-        #     frappe.throw(
-        #         "You do not have permission to update Industry Project.",
-        #         frappe.PermissionError
-        #     )
+        if not frappe.has_permission(
+            "Industry Project",
+            ptype="write",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to update Industry Project.",
+                frappe.PermissionError
+            )
 
         data = frappe.request.get_json()
 
@@ -456,17 +451,17 @@ def inactive_project(project_name):
         # PERMISSION CHECK
         # Respects Role Permission Manager configuration
         # # ----------------------------------------------------------
-        # session_user = frappe.session.user
+        session_user = frappe.session.user
 
-        # if not frappe.has_permission(
-        #     "Industry Project",
-        #     ptype="write",
-        #     user=session_user
-        # ):
-        #     frappe.throw(
-        #         "You do not have permission to update Industry Project.",
-        #         frappe.PermissionError
-        #     )
+        if not frappe.has_permission(
+            "Industry Project",
+            ptype="write",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to update Industry Project.",
+                frappe.PermissionError
+            )
 
         if not frappe.db.exists(
             "Industry Project",

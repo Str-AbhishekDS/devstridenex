@@ -31,6 +31,30 @@ class MentorSessionBooking(Document):
         self.name = make_autoname("MSB-.YYYY.-.#####")
 
     def validate(self):
+        # Resolve offering type if not set yet (fetch_from isn't always set before validation)
+        if self.offering and not self.offering_type:
+            self.offering_type = frappe.db.get_value("Mentor Offering", self.offering, "offering_type")
+
+        # Resolve lms_batch from offering if not set
+        if self.offering and not self.get("lms_batch"):
+            self.lms_batch = frappe.db.get_value("Mentor Offering", self.offering, "lms_batch")
+
+        # Automatically schedule bookings if the offering type is other than "1:1 Mentorship"
+        if self.status not in ("Payment Pending", "Cancelled", "Completed", "Rejected"):
+            if self.offering_type and self.offering_type != "1:1 Mentorship":
+                self.status = "Scheduled"
+                self.mentor_request_status = "Accepted"
+
+        # Auto-fill session_date, from_time, to_time for Group Sessions / Workshops from Offering if not set
+        if self.offering and self.offering_type in ("Group Session", "Workshop"):
+            off_date, off_from, off_to = frappe.db.get_value("Mentor Offering", self.offering, ["start_date", "start_time", "end_time"])
+            if off_date and not self.session_date:
+                self.session_date = off_date
+            if off_from and not self.from_time:
+                self.from_time = off_from
+            if off_to and not self.to_time:
+                self.to_time = off_to
+
         self.fetch_mentor_from_offering()
         self.fetch_amount_from_offering()
         self.validate_not_self_booking()
@@ -57,56 +81,118 @@ class MentorSessionBooking(Document):
             self.validate_mentor_not_blocked()
             self.check_double_booking()
 
-    def on_submit(self):
-        if self.status == "Scheduled":
-            self.db_set("status", "Scheduled")
-        if self.offering:
-            self.update_offering_aggregates()
-        self._refresh_seat_count()
+    def on_update(self):
+        if self.status not in ("Payment Pending",):
+            if self.offering:
+                self.update_offering_aggregates()
+            self._refresh_seat_count()
 
-        if self.offering_type == "Group Session" and self.lms_batch and self.student:
-            lms_course = frappe.db.get_value(
-                "Mentor Offering", self.offering, "lms_course"
-            )
-            if lms_course:
+        if self.status in ("Scheduled", "Accepted", "Completed", "Pending"):
+            if self.lms_batch and self.student:
                 from stridenex_app.api_stridenex_app.app_utils import (
                     get_or_create_course_enrollment,
+                    is_student_in_batch,
+                    add_student_to_batch,
                 )
-                enrollment_name = get_or_create_course_enrollment(
-                    lms_course, self.student, batch=self.lms_batch
-                )
-                self.db_set("lms_enrollment", enrollment_name)
 
-    def on_cancel(self):
-        self.db_set("status", "Cancelled")
-        if self.offering:
-            self.update_offering_aggregates()
-        self._refresh_seat_count()
-
-        if self.offering_type == "Group Session" and self.lms_batch and self.student:
-            try:
-                enrollment = frappe.db.get_value(
-                    "LMS Batch Enrollment",
-                    {"batch": self.lms_batch, "member": self.student},
-                    "name"
+                # 1. LMS Course Enrollment (optional, only if course is linked)
+                lms_course = frappe.db.get_value(
+                    "Mentor Offering", self.offering, "lms_course"
                 )
-                if enrollment:
-                    frappe.delete_doc(
+                if lms_course:
+                    enrollment_name = get_or_create_course_enrollment(
+                        lms_course, self.student, batch=self.lms_batch
+                    )
+                    if self.lms_enrollment != enrollment_name:
+                        self.db_set("lms_enrollment", enrollment_name)
+
+                # 2. LMS Batch Enrollment
+                # raise_if_duplicate=False: idempotent on re-saves (status updates, etc.)
+                # Batch-full still throws and is caught below to log + not crash.
+                try:
+                    add_student_to_batch(
+                        self.lms_batch,
+                        self.student,
+                        raise_if_duplicate=False,
+                    )
+                except Exception as e:
+                    # Log real errors (e.g. batch full) without crashing the save
+                    frappe.logger().error(
+                        f"[MSB] Failed to enroll {self.student} in batch "
+                        f"{self.lms_batch} for booking {self.name}: {e}"
+                    )
+
+        elif self.status in ("Cancelled", "Rejected", "Declined"):
+            if self.lms_batch and self.student:
+                try:
+                    enrollment = frappe.db.get_value(
                         "LMS Batch Enrollment",
-                        enrollment,
+                        {"batch": self.lms_batch, "member": self.student},
+                        "name"
+                    )
+                    if enrollment:
+                        frappe.delete_doc(
+                            "LMS Batch Enrollment",
+                            enrollment,
+                            ignore_permissions=True
+                        )
+                        frappe.db.commit()
+                except Exception:
+                    pass
+
+        # Send confirmation/request notification if not already sent
+        if self.status in ("Scheduled", "Pending"):
+            notification_subject = "Booking Confirmed" if self.status == "Scheduled" else "New Session Booking Request"
+            
+            # Check if this notification has already been sent for this booking
+            already_sent = frappe.db.exists("Notification Log", {
+                "document_type": "Mentor Session Booking",
+                "document_name": self.name,
+                "subject": notification_subject
+            })
+            
+            if not already_sent:
+                student_email = frappe.db.get_value("Student", self.student, "email_id") or self.student
+                mentor_email = frappe.db.get_value("Mentor", self.mentor, "email_id") or self.mentor
+                
+                user_to_notify = student_email if self.status == "Scheduled" else mentor_email
+                resolved_user = frappe.db.get_value("User", {"email": user_to_notify}, "name") or frappe.db.get_value("User", user_to_notify, "name")
+                
+                if resolved_user:
+                    if self.status == "Scheduled":
+                        message = f"""
+                            Your booking has been confirmed.
+
+                            Offering: {self.get("offering_type") or "Mentor Session"}
+                            Mentor: {self.mentor}
+                            Date: {self.session_date}
+                            Time: {self.from_time} - {self.to_time}
+                            Topic: {self.get("topic") or "General"}
+                        """
+                    else:
+                        message = f"""
+                            A new mentor session request has been submitted.
+
+                            Student: {self.student}
+                            Date: {self.session_date}
+                            Time: {self.from_time} - {self.to_time}
+                            Topic: {self.get("topic") or "General"}
+                        """
+                    
+                    create_notification(
+                        user=resolved_user,
+                        subject=notification_subject,
+                        message=message,
+                        document_type="Mentor Session Booking",
+                        document_name=self.name,
                         ignore_permissions=True
                     )
-                    frappe.db.commit()
-            except Exception:
-                pass
-
-        _update_mentor_stats(self.mentor)
 
     def _refresh_seat_count(self):
-        if self.offering_type == "Group Session" and self.group_slot:
+        if self.offering_type == "Group Session" and self.get("group_slot"):
             slot = frappe.get_doc("Group Session Slot", self.group_slot)
             slot.update_seat_count()
-        elif self.offering_type == "Workshop" and self.workshop:
+        elif self.offering_type == "Workshop" and self.get("workshop"):
             ws = frappe.get_doc("Workshop", self.workshop)
             ws.update_seat_count()
 
@@ -115,6 +201,9 @@ class MentorSessionBooking(Document):
             cat = frappe.db.get_value("Mentor Offering", self.offering, "category")
             if cat:
                 self.session_type = cat
+
+        if self.offering and not self.offering_type:
+            self.offering_type = frappe.db.get_value("Mentor Offering", self.offering, "offering_type")
 
     def fetch_mentor_from_offering(self):
         if self.offering and not self.mentor:
@@ -144,7 +233,7 @@ class MentorSessionBooking(Document):
             "Mentor Offering", self.offering, "offering_type"
         ) if self.offering else None
 
-        if offering_type != "1:1 Session":
+        if offering_type != "1:1 Mentorship":
             return
 
         if self.from_time and self.to_time:
@@ -165,7 +254,7 @@ class MentorSessionBooking(Document):
             "Mentor Offering", self.offering, "offering_type"
         )
 
-        if offering_type != "1:1 Session":
+        if offering_type != "1:1 Mentorship":
             return
 
         day_name  = getdate(self.session_date).strftime("%A").lower()
@@ -210,15 +299,22 @@ class MentorSessionBooking(Document):
         blocked = frappe.get_all(
             "Mentor Blocked Time",
             filters={"mentor": self.mentor, "date": self.session_date},
-            fields=["from_time", "to_time", "reason"],
+            fields=["from_time", "to_time", "reason", "whole_day"],
         )
         for block in blocked:
-            if _times_overlap(self.from_time, self.to_time, block.from_time, block.to_time):
-                frappe.throw(
-                    _("Mentor has blocked this time ({0}–{1}). Reason: {2}").format(
-                        block.from_time, block.to_time, block.reason or "N/A"
+            if block.whole_day or _times_overlap(self.from_time, self.to_time, block.from_time, block.to_time):
+                if block.whole_day:
+                    frappe.throw(
+                        _("Mentor has blocked the whole day.{0}").format(
+                            f" Reason: {block.reason}" if block.reason else ""
+                        )
                     )
-                )
+                else:
+                    frappe.throw(
+                        _("Mentor has blocked this time ({0}–{1}). Reason: {2}").format(
+                            block.from_time, block.to_time, block.reason or "N/A"
+                        )
+                    )
 
     def check_double_booking(self):
         existing = frappe.get_all(
@@ -245,7 +341,7 @@ class MentorSessionBooking(Document):
 # ------------------------------------------------------------------
 
 @frappe.whitelist(allow_guest=False)
-def create_notification(user, subject, message, document_type=None, document_name=None):
+def create_notification(user, subject, message, document_type=None, document_name=None, ignore_permissions=False):
     """
     Permission: Caller must have READ on 'Notification Log'.
     Internal callers (accept_request, reschedule_session, etc.) already
@@ -255,13 +351,14 @@ def create_notification(user, subject, message, document_type=None, document_nam
     # ----------------------------------------------------------
     # PERMISSION CHECK
     # ----------------------------------------------------------
-    session_user = frappe.session.user
+    if not ignore_permissions:
+        session_user = frappe.session.user
 
-    if not frappe.has_permission("Notification Log", ptype="read", user=session_user):
-        frappe.throw(
-            _("You do not have permission to create notifications."),
-            frappe.PermissionError
-        )
+        if not frappe.has_permission("Notification Log", ptype="read", user=session_user):
+            frappe.throw(
+                _("You do not have permission to create notifications."),
+                frappe.PermissionError
+            )
 
     # ----------------------------------------------------------
     # Resolve User — unchanged logic
@@ -334,6 +431,8 @@ def create_notification(user, subject, message, document_type=None, document_nam
 # ------------------------------------------------------------------
 
 def _times_overlap(start1, end1, start2, end2):
+    if not (start1 and end1 and start2 and end2):
+        return False
     start1 = get_time(start1)
     end1   = get_time(end1)
     start2 = get_time(start2)
@@ -351,312 +450,6 @@ def _time_to_str(t):
         s = total % 60
         return f"{h:02}:{m:02}:{s:02}"
     return str(t)
-
-
-# ------------------------------------------------------------------
-# Slot Calendar API
-# ------------------------------------------------------------------
-
-# @frappe.whitelist(allow_guest=False)
-# def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
-#     """
-#     Permission: READ on 'Mentor Session Booking'.
-#     Any role granted READ in Role Permission Manager can call this.
-#     """
-#     # ----------------------------------------------------------
-#     # PERMISSION CHECK
-#     # ----------------------------------------------------------
-#     session_user = frappe.session.user
-
-#     if not frappe.has_permission("Mentor Session Booking", ptype="read", user=session_user):
-#         frappe.throw(
-#             _("You do not have permission to view the session calendar."),
-#             frappe.PermissionError
-#         )
-
-#     # ----------------------------------------------------------
-#     # Unchanged logic below
-#     # ----------------------------------------------------------
-#     if not from_date and not to_date:
-#         from_date = nowdate()
-#         to_date   = add_days(from_date, 6)
-
-#     if not mentor or not from_date or not to_date:
-#         frappe.throw(_("mentor, from_date, and to_date are required"))
-
-#     duration_minutes = 60
-#     if offering:
-#         mins = frappe.db.get_value("Mentor Offering", offering, "duration_minutes")
-#         if mins:
-#             duration_minutes = int(mins)
-
-#     start = getdate(from_date)
-#     end   = getdate(to_date)
-
-#     avail_by_day = {}
-#     for avail in frappe.get_all(
-#         "Mentor Availability",
-#         filters={"mentor": mentor, "is_available": 1},
-#         fields=["name", "schedule_type"]
-#     ):
-#         doc = frappe.get_doc("Mentor Availability", avail.name)
-#         if avail.schedule_type == "Each Day Same Schedule":
-#             for row in (doc.days_multi or []):
-#                 key = (row.day or "").strip().lower()
-#                 avail_by_day.setdefault(key, []).append({
-#                     "from_time": _time_to_str(doc.from_time),
-#                     "to_time":   _time_to_str(doc.to_time),
-#                 })
-#         else:
-#             for row in (doc.daily_schedule or []):
-#                 key = (row.day or "").strip().lower()
-#                 avail_by_day.setdefault(key, []).append({
-#                     "from_time": _time_to_str(row.from_time),
-#                     "to_time":   _time_to_str(row.to_time),
-#                 })
-
-#     blocked_by_date = {}
-#     for b in frappe.get_all(
-#         "Mentor Blocked Time",
-#         filters={"mentor": mentor, "date": ["between", [from_date, to_date]]},
-#         fields=["date", "from_time", "to_time", "reason"]
-#     ):
-#         blocked_by_date.setdefault(str(b.date), []).append({
-#             "from_time": _time_to_str(b.from_time),
-#             "to_time":   _time_to_str(b.to_time),
-#             "reason":    b.reason or ""
-#         })
-
-#     booked_by_date = {}
-#     for b in frappe.get_all(
-#         "Mentor Session Booking",
-#         filters={
-#             "mentor":       mentor,
-#             "session_date": ["between", [from_date, to_date]],
-#             "status":       ["in", ["Scheduled", "Completed"]],
-#         },
-#         fields=["session_date", "from_time", "to_time", "student", "name", "topic"]
-#     ):
-#         booked_by_date.setdefault(str(b.session_date), []).append({
-#             "from_time":    _time_to_str(b.from_time),
-#             "to_time":      _time_to_str(b.to_time),
-#             "session_name": b.name,
-#             "student":      b.student,
-#             "topic":        b.topic,
-#         })
-
-#     cal      = {}
-#     current  = start
-
-#     while current <= end:
-#         date_str     = str(current)
-#         day_key      = current.strftime("%A").lower()
-#         raw_windows  = avail_by_day.get(day_key, [])
-#         day_bookings = booked_by_date.get(date_str, [])
-#         day_blocks   = blocked_by_date.get(date_str, [])
-
-#         occupied_intervals = (
-#             [(b["from_time"], b["to_time"]) for b in day_bookings] +
-#             [(b["from_time"], b["to_time"]) for b in day_blocks]
-#         )
-
-#         day_result = []
-
-#         for window in raw_windows:
-#             win_from_min = _to_minutes(window["from_time"])
-#             win_to_min   = _to_minutes(window["to_time"])
-
-#             occupied_chips = []
-
-#             for bk in day_bookings:
-#                 bk_from = _to_minutes(bk["from_time"])
-#                 bk_to   = _to_minutes(bk["to_time"])
-#                 if bk_from < win_to_min and bk_to > win_from_min:
-#                     chip_from = max(bk_from, win_from_min)
-#                     chip_to   = min(bk_to,   win_to_min)
-#                     occupied_chips.append({
-#                         "from_time":    _from_minutes(chip_from),
-#                         "to_time":      _from_minutes(chip_to),
-#                         "status":       "booked",
-#                         "session_name": bk["session_name"],
-#                         "student":      bk["student"],
-#                         "topic":        bk["topic"],
-#                         "reason":       "",
-#                     })
-
-#             for bl in day_blocks:
-#                 bl_from = _to_minutes(bl["from_time"])
-#                 bl_to   = _to_minutes(bl["to_time"])
-#                 if bl_from < win_to_min and bl_to > win_from_min:
-#                     chip_from = max(bl_from, win_from_min)
-#                     chip_to   = min(bl_to,   win_to_min)
-#                     occupied_chips.append({
-#                         "from_time":    _from_minutes(chip_from),
-#                         "to_time":      _from_minutes(chip_to),
-#                         "status":       "blocked",
-#                         "session_name": None,
-#                         "student":      None,
-#                         "topic":        None,
-#                         "reason":       bl["reason"],
-#                     })
-
-#             free_slots = split_into_duration_slots(
-#                 window["from_time"],
-#                 window["to_time"],
-#                 duration_minutes=duration_minutes,
-#                 booked_intervals=occupied_intervals,
-#             )
-#             for slot in free_slots:
-#                 slot["status"]       = "available"
-#                 slot["session_name"] = None
-#                 slot["student"]      = None
-#                 slot["topic"]        = None
-#                 slot["reason"]       = ""
-
-#             all_chips = free_slots + occupied_chips
-#             all_chips.sort(key=lambda s: _to_minutes(s["from_time"]))
-#             day_result.extend(all_chips)
-
-#         cal[date_str] = day_result
-#         current += datetime.timedelta(days=1)
-
-#     return cal
-
-
-# # @frappe.whitelist(allow_guest=False)
-# # import frappe
-# # from frappe import _
-# # from frappe.utils import get_time, getdate
-
-
-# @frappe.whitelist(allow_guest=False)
-# def book_slot(mentor, student, session_date, from_time, to_time, topic, offering=None):
-#     """
-#     Permission: CREATE on 'Mentor Session Booking'.
-#     Configured via Role Permission Manager — no hardcoded roles.
-#     """
-#     # ----------------------------------------------------------
-#     # PERMISSION CHECK
-#     # ----------------------------------------------------------
-#     session_user = frappe.session.user
-
-#     if not frappe.has_permission("Mentor Session Booking", ptype="create", user=session_user):
-#         frappe.throw(
-#             _("You do not have permission to book a session."),
-#             frappe.PermissionError
-#         )
-
-#     # ----------------------------------------------------------
-#     # BASIC INPUT VALIDATION
-#     # ----------------------------------------------------------
-#     if not (mentor and student and session_date and from_time and to_time):
-#         frappe.throw(_("Mentor, student, session date, from time and to time are all required."))
-
-#     session_date = getdate(session_date)
-#     new_from = get_time(from_time)
-#     new_to = get_time(to_time)
-
-#     if new_from >= new_to:
-#         frappe.throw(_("'From Time' must be earlier than 'To Time'."))
-
-#     # ----------------------------------------------------------
-#     # SLOT OVERLAP VALIDATION
-#     # Block if the SAME MENTOR already has ANY booking (with ANY
-#     # student) on the SAME DATE whose time range overlaps the
-#     # requested range. This blocks the slot for other users too.
-#     # ----------------------------------------------------------
-#     # Statuses that should NOT block a new booking (adjust to your workflow)
-#     non_blocking_statuses = ["Cancelled", "Rejected"]
-
-#     existing_bookings = frappe.get_all(
-#         "Mentor Session Booking",
-#         filters={
-#             "mentor": mentor,
-#             "session_date": session_date,
-#             "status": ["not in", non_blocking_statuses],
-#         },
-#         fields=["name", "from_time", "to_time", "student", "status"],
-#     )
-
-#     for booking in existing_bookings:
-#         existing_from = get_time(booking.from_time)
-#         existing_to = get_time(booking.to_time)
-
-#         # Standard interval overlap check:
-#         # overlap exists if new_from < existing_to AND new_to > existing_from
-#         if new_from < existing_to and new_to > existing_from:
-#             frappe.throw(
-#                 _(
-#                     "This time slot ({0} - {1}) on {2} is already booked "
-#                     "for mentor {3} (Booking: {4}). Please choose a different "
-#                     "date or time."
-#                 ).format(
-#                     from_time, to_time, session_date, mentor, booking.name
-#                 ),
-#                 frappe.ValidationError,
-#             )
-
-#     # ----------------------------------------------------------
-#     # (Optional) Also prevent the SAME student from double-booking
-#     # themselves into overlapping slots with any mentor.
-#     # ----------------------------------------------------------
-#     student_bookings = frappe.get_all(
-#         "Mentor Session Booking",
-#         filters={
-#             "student": student,
-#             "session_date": session_date,
-#             "status": ["not in", non_blocking_statuses],
-#         },
-#         fields=["name", "from_time", "to_time"],
-#     )
-
-#     for booking in student_bookings:
-#         existing_from = get_time(booking.from_time)
-#         existing_to = get_time(booking.to_time)
-
-#         if new_from < existing_to and new_to > existing_from:
-#             frappe.throw(
-#                 _(
-#                     "You already have another session booked during "
-#                     "{0} - {1} on {2} (Booking: {3})."
-#                 ).format(from_time, to_time, session_date, booking.name),
-#                 frappe.ValidationError,
-#             )
-
-#     # ----------------------------------------------------------
-#     # Unchanged logic below
-#     # ----------------------------------------------------------
-#     doc = frappe.get_doc({
-#         "doctype":      "Mentor Session Booking",
-#         "offering":     offering,
-#         "mentor":       mentor,
-#         "student":      student,
-#         "session_date": session_date,
-#         "from_time":    from_time,
-#         "to_time":      to_time,
-#         "topic":        topic,
-#         "status":       "Pending",
-#     })
-
-#     doc.insert(ignore_permissions=False)
-#     frappe.db.commit()
-
-#     create_notification(
-#         user=mentor,
-#         subject="New Session Booking",
-#         message=f"""
-#             A new mentor session has been booked.
-
-#             Student: {student}
-#             Date: {session_date}
-#             Time: {from_time} - {to_time}
-#             Topic: {topic}
-#         """,
-#         document_type="Mentor Session Booking",
-#         document_name=doc.name
-#     )
-
-#     return {"session_name": doc.name}
 
 import datetime
 
@@ -721,9 +514,10 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
     offering_doc = _get_offering_doc(offering)
 
     # ------------------------------------------------------------
-    # GROUP SESSION -> return offering details, not a calendar
+    # GROUP SESSION or WORKSHOP -> return offering details card,
+    # not a day-by-day calendar (both types have fixed date/time)
     # ------------------------------------------------------------
-    if _is_group(offering_doc):
+    if offering_doc and offering_doc.get(OFFERING_TYPE_FIELD) in ("Group Session", "Workshop"):
         return _get_group_session_details(offering_doc, mentor)
 
     # ------------------------------------------------------------
@@ -769,23 +563,27 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
     for b in frappe.get_all(
         "Mentor Blocked Time",
         filters={"mentor": mentor, "date": ["between", [from_date, to_date]]},
-        fields=["date", "from_time", "to_time", "reason"]
+        fields=["date", "from_time", "to_time", "reason", "whole_day"]
     ):
         blocked_by_date.setdefault(str(b.date), []).append({
-            "from_time": _time_to_str(b.from_time),
-            "to_time": _time_to_str(b.to_time),
-            "reason": b.reason or ""
+            "from_time": _time_to_str(b.from_time) if not b.whole_day else None,
+            "to_time": _time_to_str(b.to_time) if not b.whole_day else None,
+            "reason": b.reason or "",
+            "whole_day": b.whole_day,
         })
 
     booked_by_date = {}
+
+    # ── 1:1 bookings: one chip per booking ───────────────────────────────────
     for b in frappe.get_all(
         "Mentor Session Booking",
         filters={
             "mentor": mentor,
             "session_date": ["between", [from_date, to_date]],
-            "status": ["in", ["Scheduled", "Completed"]],
+            "status": ["not in", NON_BLOCKING_STATUSES],
+            "offering_type": ["in", ["1:1 Mentorship", "", None]],
         },
-        fields=["session_date", "from_time", "to_time", "student", "name", "topic"]
+        fields=["session_date", "from_time", "to_time", "student", "name", "topic", "offering_type"]
     ):
         booked_by_date.setdefault(str(b.session_date), []).append({
             "from_time": _time_to_str(b.from_time),
@@ -793,7 +591,46 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
             "session_name": b.name,
             "student": b.student,
             "topic": b.topic,
+            "offering_type": b.offering_type,
+            "participant_count": 1,
         })
+
+    # ── Group Session / Workshop bookings: collapse per offering ─────────────
+    # Many students may book the same offering — we show ONE chip per offering,
+    # not one chip per student, so the calendar doesn't explode with duplicates.
+    group_raw = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "mentor": mentor,
+            "session_date": ["between", [from_date, to_date]],
+            "status": ["not in", NON_BLOCKING_STATUSES],
+            "offering_type": ["in", ["Group Session", "Workshop"]],
+        },
+        fields=["session_date", "from_time", "to_time", "student", "name",
+                "topic", "offering", "offering_type"]
+    )
+
+    # Key: (date_str, offering) — collapse to one chip per session
+    group_chips = {}
+    for b in group_raw:
+        date_str = str(b.session_date)
+        key = (date_str, b.offering or b.name)
+        if key not in group_chips:
+            group_chips[key] = {
+                "from_time": _time_to_str(b.from_time),
+                "to_time": _time_to_str(b.to_time),
+                "session_name": b.name,          # representative booking name
+                "student": None,                  # no single student — it's a group
+                "topic": b.topic,
+                "offering": b.offering,
+                "offering_type": b.offering_type,
+                "participant_count": 1,
+            }
+        else:
+            group_chips[key]["participant_count"] += 1
+
+    for (date_str, _key), chip in group_chips.items():
+        booked_by_date.setdefault(date_str, []).append(chip)
 
     cal = {}
     current = start
@@ -807,8 +644,10 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
 
         occupied_intervals = (
             [(b["from_time"], b["to_time"]) for b in day_bookings] +
-            [(b["from_time"], b["to_time"]) for b in day_blocks]
+            [(b["from_time"], b["to_time"]) for b in day_blocks if not b.get("whole_day")]
         )
+
+        is_whole_day_blocked = any(b.get("whole_day") for b in day_blocks)
 
         day_result = []
 
@@ -817,6 +656,27 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
             win_to_min = _to_minutes(window["to_time"])
 
             occupied_chips = []
+
+            if is_whole_day_blocked:
+                reason = ""
+                for bl in day_blocks:
+                    if bl.get("whole_day"):
+                        reason = bl["reason"]
+                        break
+                occupied_chips.append({
+                    "from_time": window["from_time"],
+                    "to_time": window["to_time"],
+                    "status": "blocked",
+                    "session_name": None,
+                    "student": None,
+                    "topic": None,
+                    "offering": None,
+                    "offering_type": None,
+                    "participant_count": 0,
+                    "reason": reason,
+                })
+                day_result.extend(occupied_chips)
+                continue
 
             for bk in day_bookings:
                 bk_from = _to_minutes(bk["from_time"])
@@ -829,8 +689,11 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
                         "to_time": _from_minutes(chip_to),
                         "status": "booked",
                         "session_name": bk["session_name"],
-                        "student": bk["student"],
+                        "student": bk.get("student"),
                         "topic": bk["topic"],
+                        "offering": bk.get("offering"),
+                        "offering_type": bk.get("offering_type"),
+                        "participant_count": bk.get("participant_count", 1),
                         "reason": "",
                     })
 
@@ -847,6 +710,9 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
                         "session_name": None,
                         "student": None,
                         "topic": None,
+                        "offering": None,
+                        "offering_type": None,
+                        "participant_count": 0,
                         "reason": bl["reason"],
                     })
 
@@ -861,6 +727,9 @@ def get_slot_calendar(mentor, from_date=None, to_date=None, offering=None):
                 slot["session_name"] = None
                 slot["student"] = None
                 slot["topic"] = None
+                slot["offering"] = None
+                slot["offering_type"] = None
+                slot["participant_count"] = 0
                 slot["reason"] = ""
 
             all_chips = free_slots + occupied_chips
@@ -949,9 +818,16 @@ def book_slot(mentor, student, session_date, from_time, to_time, topic, offering
     offering_doc = _get_offering_doc(offering)
     is_group = _is_group(offering_doc)
 
-    if is_group:
+    # Determine if this offering is a Group Session or Workshop — both are
+    # directly scheduled without requiring mentor acceptance.
+    offering_type_value = offering_doc.get(OFFERING_TYPE_FIELD) if offering_doc else None
+    is_auto_schedule = offering_type_value in ("Group Session", "Workshop")
+
+    # Group Sessions AND Workshops both have fixed date/time on the offering.
+    # Pull those values directly so every participant lands on the exact same slot.
+    if is_auto_schedule:
         if not offering_doc.get("start_date") or not offering_doc.get("start_time") or not offering_doc.get("end_time"):
-            frappe.throw(_("This group offering is missing date/time details. Contact the mentor."))
+            frappe.throw(_("This {0} offering is missing date/time details. Contact the mentor.").format(offering_type_value))
 
         session_date = getdate(offering_doc["start_date"])
         from_time = offering_doc["start_time"]
@@ -967,13 +843,22 @@ def book_slot(mentor, student, session_date, from_time, to_time, topic, offering
     if new_from >= new_to:
         frappe.throw(_("'From Time' must be earlier than 'To Time'."))
 
-    if is_group:
-        _validate_group_booking(mentor, session_date, from_time, to_time, offering, offering_doc)
+    if is_auto_schedule:
+        _validate_group_booking(mentor, student, session_date, from_time, to_time, offering, offering_doc)
     else:
         _validate_1on1_booking(mentor, session_date, new_from, new_to, from_time, to_time)
 
     # Student can't be double-booked at the same time, group or 1:1.
     _validate_student_conflict(student, session_date, new_from, new_to, from_time, to_time)
+
+    # If the offering type is other than "1:1 Mentorship", the status is directly Scheduled.
+    # 1:1 Mentorship (and bookings without an offering) go through the Pending flow.
+    if offering_doc and offering_type_value != "1:1 Mentorship":
+        booking_status = "Scheduled"
+        mentor_request_status = "Accepted"
+    else:
+        booking_status = "Pending"
+        mentor_request_status = "Pending"
 
     doc = frappe.get_doc({
         "doctype": "Mentor Session Booking",
@@ -984,28 +869,48 @@ def book_slot(mentor, student, session_date, from_time, to_time, topic, offering
         "from_time": from_time,
         "to_time": to_time,
         "topic": topic,
-        "status": "Pending",
+        "status": booking_status,
+        "mentor_request_status": mentor_request_status,
     })
 
     doc.insert(ignore_permissions=False)
     frappe.db.commit()
 
-    create_notification(
-        user=mentor,
-        subject="New Session Booking",
-        message=f"""
-            A new mentor session has been booked.
+    if booking_status == "Scheduled":
+        # Notify the student that their seat is confirmed immediately.
+        create_notification(
+            user=student,
+            subject="Booking Confirmed",
+            message=f"""
+                Your booking has been confirmed.
 
-            Student: {student}
-            Date: {session_date}
-            Time: {from_time} - {to_time}
-            Topic: {topic}
-        """,
-        document_type="Mentor Session Booking",
-        document_name=doc.name
-    )
+                Offering: {offering_type_value}
+                Mentor: {mentor}
+                Date: {session_date}
+                Time: {from_time} - {to_time}
+                Topic: {topic}
+            """,
+            document_type="Mentor Session Booking",
+            document_name=doc.name
+        )
+    else:
+        # Notify the mentor about the new pending session request.
+        create_notification(
+            user=mentor,
+            subject="New Session Booking Request",
+            message=f"""
+                A new mentor session request has been submitted.
 
-    return {"session_name": doc.name}
+                Student: {student}
+                Date: {session_date}
+                Time: {from_time} - {to_time}
+                Topic: {topic}
+            """,
+            document_type="Mentor Session Booking",
+            document_name=doc.name
+        )
+
+    return {"session_name": doc.name, "status": booking_status}
 
 
 def _validate_1on1_booking(mentor, session_date, new_from, new_to, from_time, to_time):
@@ -1035,12 +940,35 @@ def _validate_1on1_booking(mentor, session_date, new_from, new_to, from_time, to
             )
 
 
-def _validate_group_booking(mentor, session_date, from_time, to_time, offering, offering_doc):
+def _validate_group_booking(mentor, student, session_date, from_time, to_time, offering, offering_doc):
     """
     Since date/time are fixed and derived directly from the offering, we
-    only need to check capacity for THIS offering, and that the student
-    isn't already registered for it.
+    check:
+      1. The student hasn't already booked this same offering.
+      2. The offering hasn't exceeded max capacity.
     """
+    # ── Duplicate student check ──────────────────────────────────────────
+    already_booked = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "student": student,
+            "offering": offering,
+            "status": ["not in", NON_BLOCKING_STATUSES],
+        },
+        fields=["name"],
+        limit=1,
+    )
+
+    if already_booked:
+        frappe.throw(
+            _(
+                "You are already registered for '{0}'. "
+                "You cannot book the same session more than once."
+            ).format(offering_doc.get("title") or offering),
+            frappe.ValidationError,
+        )
+
+    # ── Capacity check ───────────────────────────────────────────────────
     max_group_size = offering_doc.get(CAPACITY_FIELD) or 0
 
     existing = frappe.get_all(
@@ -1056,7 +984,7 @@ def _validate_group_booking(mentor, session_date, from_time, to_time, offering, 
     if max_group_size and len(existing) >= max_group_size:
         frappe.throw(
             _(
-                "This group session ({0}) on {1} is already full ({2}/{3} seats)."
+                "This session '{0}' on {1} is already full ({2}/{3} seats)."
             ).format(offering_doc.get("title") or offering, session_date, len(existing), max_group_size),
             frappe.ValidationError,
         )
@@ -1173,13 +1101,24 @@ def _validate_student_conflict(student, session_date, new_from, new_to, from_tim
 
 
 @frappe.whitelist(allow_guest=False)
-def reschedule_session(session_name, mentor, student, new_date, new_from_time, new_to_time):
+def reschedule_session(session_name, mentor, student, new_date, new_from_time, new_to_time, reason=None):
     """
     Permission: WRITE on 'Mentor Session Booking'.
     Configured via Role Permission Manager — no hardcoded roles.
+    reason: Optional text explaining why the session is being rescheduled.
+
+    Validates (in order) BEFORE saving:
+      1. WRITE permission
+      2. Session exists and is in 'Scheduled' status
+      3. new_from_time < new_to_time
+      4. new_date is not in the past
+      5. Mentor has no blocked time overlapping the new slot (whole-day or partial)
+      6. Mentor has no other session overlapping the new slot (excludes this booking)
+      7. Student has no other session overlapping the new slot (excludes this booking)
+    Only after all validations pass does it save and send a notification.
     """
     # ----------------------------------------------------------
-    # PERMISSION CHECK
+    # 1. PERMISSION CHECK
     # ----------------------------------------------------------
     session_user = frappe.session.user
 
@@ -1190,13 +1129,113 @@ def reschedule_session(session_name, mentor, student, new_date, new_from_time, n
         )
 
     # ----------------------------------------------------------
-    # Unchanged logic below
+    # 2. Load document and validate current status
     # ----------------------------------------------------------
     doc = frappe.get_doc("Mentor Session Booking", session_name)
 
     if doc.status != "Scheduled":
         frappe.throw(_("Only Scheduled sessions can be rescheduled."))
 
+    # Fall back to values on the document when caller omits them
+    if not mentor:
+        mentor = doc.mentor
+    if not student:
+        student = doc.student
+
+    # ----------------------------------------------------------
+    # 3. Required fields + time range check
+    # ----------------------------------------------------------
+    if not (new_date and new_from_time and new_to_time):
+        frappe.throw(_("New date, from time, and to time are required."))
+
+    new_from = get_time(new_from_time)
+    new_to   = get_time(new_to_time)
+
+    if new_from >= new_to:
+        frappe.throw(_("'From Time' must be earlier than 'To Time'."))
+
+    # ----------------------------------------------------------
+    # 4. Validate new_date is not in the past
+    # ----------------------------------------------------------
+    if getdate(new_date) < getdate(nowdate()):
+        frappe.throw(_("Rescheduled session date cannot be in the past."))
+
+    # ----------------------------------------------------------
+    # 5. Check mentor blocked time on new_date
+    # ----------------------------------------------------------
+    blocked_times = frappe.get_all(
+        "Mentor Blocked Time",
+        filters={"mentor": mentor, "date": new_date},
+        fields=["from_time", "to_time", "reason", "whole_day"],
+    )
+    for block in blocked_times:
+        if block.whole_day:
+            frappe.throw(
+                _("Mentor has blocked the entire day on {0}.{1}").format(
+                    new_date,
+                    f" Reason: {block.reason}" if block.reason else ""
+                ),
+                frappe.ValidationError
+            )
+        if _times_overlap(new_from_time, new_to_time, block.from_time, block.to_time):
+            frappe.throw(
+                _("Mentor has a blocked slot from {0}–{1} on {2}. Reason: {3}").format(
+                    block.from_time, block.to_time, new_date, block.reason or "N/A"
+                ),
+                frappe.ValidationError
+            )
+
+    # ----------------------------------------------------------
+    # 6. Check mentor has no other overlapping session on new_date
+    #    (exclude the current session being rescheduled)
+    # ----------------------------------------------------------
+    mentor_sessions = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "mentor":       mentor,
+            "session_date": new_date,
+            "status":       ["not in", NON_BLOCKING_STATUSES],
+            "name":         ["!=", session_name],
+        },
+        fields=["name", "from_time", "to_time"],
+    )
+    for s in mentor_sessions:
+        if _times_overlap(new_from_time, new_to_time, s.from_time, s.to_time):
+            frappe.throw(
+                _(
+                    "Mentor already has a session ({0}) from {1}–{2} on {3}. "
+                    "Please choose a different time slot."
+                ).format(s.name, s.from_time, s.to_time, new_date),
+                frappe.ValidationError
+            )
+
+    # ----------------------------------------------------------
+    # 7. Check student has no other overlapping session on new_date
+    #    (exclude the current session being rescheduled)
+    # ----------------------------------------------------------
+    student_sessions = frappe.get_all(
+        "Mentor Session Booking",
+        filters={
+            "student":      student,
+            "session_date": new_date,
+            "status":       ["not in", NON_BLOCKING_STATUSES],
+            "name":         ["!=", session_name],
+        },
+        fields=["name", "from_time", "to_time"],
+    )
+    for s in student_sessions:
+        if _times_overlap(new_from_time, new_to_time, s.from_time, s.to_time):
+            frappe.throw(
+                _(
+                    "Student already has another session ({0}) from {1}–{2} on {3}. "
+                    "Please choose a different time slot."
+                ).format(s.name, s.from_time, s.to_time, new_date),
+                frappe.ValidationError
+            )
+
+    # ----------------------------------------------------------
+    # All validations passed — snapshot old slot, apply changes, save
+    # ----------------------------------------------------------
     old_date = doc.session_date
     old_from = doc.from_time
     old_to   = doc.to_time
@@ -1205,79 +1244,60 @@ def reschedule_session(session_name, mentor, student, new_date, new_from_time, n
     doc.from_time             = new_from_time
     doc.to_time               = new_to_time
     doc.mentor_request_status = "Accepted"
+    if reason:
+        doc.reschedule_reason = reason
 
     doc.save(ignore_permissions=True)
+    frappe.db.commit()
 
+    # ----------------------------------------------------------
+    # Resolve student email and send notification
+    # ----------------------------------------------------------
     student_email = frappe.db.get_value("Student", student, "email_id")
 
     if not student_email:
-        frappe.throw(_("Student email not found."))
+        frappe.log_error(
+            f"reschedule_session: no email_id on Student '{student}' for booking {session_name}",
+            "Reschedule Notification Warning"
+        )
+    else:
+        reason_text = f"\nReason: {reason}" if reason else ""
 
-    frappe.errprint(f"Student DocType: {student}")
-    frappe.errprint(f"Student Email: {student_email}")
-
-    session_link = get_url_to_form("Mentor Session Booking", doc.name)
-
-    message = f"""
-        <p>Hello Student,</p>
-        <p>Your mentor session has been rescheduled.</p>
-        <h4>Old Slot</h4>
-        <p>{old_date}<br>{old_from} - {old_to}</p>
-        <h4>New Slot</h4>
-        <p>{new_date}<br>{new_from_time} - {new_to_time}</p>
-        <p>Mentor: {mentor}</p>
-        <p><a href="{session_link}">View Session</a></p>
-        <p>Thank You</p>
-    """
-
-    create_notification(
-        user=student_email,
-        subject="Session Rescheduled",
-        message=f"""
-            Your mentor session has been rescheduled.
-
-            New Slot:
-            {new_date}
-            {new_from_time} - {new_to_time}
-        """,
-        document_type="Mentor Session Booking",
-        document_name=doc.name
-    )
-
-    if frappe.db.exists("User", student_email):
-        notification = frappe.get_doc({
-            "doctype":       "Notification Log",
-            "subject":       "Session Rescheduled",
-            "for_user":      student_email,
-            "type":          "Alert",
-            "document_type": "Mentor Session Booking",
-            "document_name": doc.name,
-            "email_content": f"""
+        create_notification(
+            user=student_email,
+            subject="Session Rescheduled",
+            message=f"""
                 Your mentor session has been rescheduled.
+                {reason_text}
 
-                New Slot:
-                {new_date}
-                {new_from_time} - {new_to_time}
-            """
-        })
-        notification.insert(ignore_permissions=True)
+                Old Slot: {old_date}  {old_from} – {old_to}
+                New Slot: {new_date}  {new_from_time} – {new_to_time}
+
+                Mentor: {mentor}
+            """,
+            document_type="Mentor Session Booking",
+            document_name=doc.name
+        )
 
         frappe.publish_realtime(
             event="msgprint",
             message={
                 "title":     "Session Rescheduled",
-                "message":   f"Your session moved to {new_date} {new_from_time} - {new_to_time}",
+                "message":   f"Your session has been moved to {new_date} {new_from_time} – {new_to_time}",
                 "indicator": "green"
             },
             user=student_email
         )
 
-    frappe.db.commit()
-
     return {
-        "status":        "success",
-        "message":       "Session rescheduled successfully",
-        "student_email": student_email
+        "status":    "success",
+        "message":   "Session rescheduled successfully",
+        "old_date":  str(old_date),
+        "old_from":  str(old_from),
+        "old_to":    str(old_to),
+        "new_date":  str(new_date),
+        "new_from":  str(new_from_time),
+        "new_to":    str(new_to_time),
     }
 
 
@@ -1286,6 +1306,10 @@ def mark_session_completed(session_name):
     """
     Permission: WRITE on 'Mentor Session Booking'.
     Configured via Role Permission Manager — no hardcoded roles.
+
+    Marks the session as Completed and sends a system notification + email
+    to every enrolled student (1 for 1:1, all enrolled for Group/Workshop)
+    inviting them to leave a review and rating.
     """
     # ----------------------------------------------------------
     # PERMISSION CHECK
@@ -1299,7 +1323,7 @@ def mark_session_completed(session_name):
         )
 
     # ----------------------------------------------------------
-    # Unchanged logic below
+    # Load and transition the booking
     # ----------------------------------------------------------
     doc = frappe.get_doc("Mentor Session Booking", session_name)
 
@@ -1307,20 +1331,135 @@ def mark_session_completed(session_name):
         frappe.throw(_("Only Scheduled sessions can be marked as Completed."))
 
     doc.status = "Completed"
-    doc.save()
+    doc.mentor_request_status = "Completed"
+    doc.save(ignore_permissions=True)
     frappe.db.commit()
 
-    _update_mentor_stats(doc.mentor)
+    # Update mentor stats — wrapped so a permission error doesn't block notifications
+    try:
+        _update_mentor_stats(doc.mentor)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "mark_session_completed: _update_mentor_stats failed")
+
+    # ----------------------------------------------------------
+    # Notify student(s) using the same create_notification pattern
+    # as accept_request — the proven working approach
+    # ----------------------------------------------------------
+    try:
+        _send_session_completed_notifications(doc)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "mark_session_completed: notification failed")
 
     return _("Session {0} marked as Completed.").format(session_name)
 
 
-@frappe.whitelist(allow_guest=False)
-def submit_review(booking_name, rating, review, reviewed_by=frappe.session.user):
+def _send_session_completed_notifications(doc):
     """
+    Notify every student enrolled in the completed session using the same
+    create_notification() call that accept_request uses — this is the proven
+    working pattern in this codebase.
+
+    - 1:1 Mentorship  → single student on doc.student
+    - Group Session / Workshop → all students with a Completed booking for
+      the same offering
+    """
+    # Resolve offering type
+    offering_type = doc.get("offering_type")
+    if not offering_type and doc.get("offering"):
+        offering_type = frappe.db.get_value(
+            "Mentor Offering", doc.offering, "offering_type"
+        )
+
+    # Resolve mentor display name
+    mentor_display = (
+        frappe.db.get_value("User", doc.mentor, "full_name")
+        or doc.mentor
+    )
+
+    # Resolve session label
+    session_label = (
+        doc.get("topic")
+        or (frappe.db.get_value("Mentor Offering", doc.offering, "title") if doc.get("offering") else None)
+        or "Mentor Session"
+    )
+
+    notification_message = f"""
+Your session "{session_label}" with mentor {mentor_display} has been marked as Completed.
+
+We'd love to hear how it went! Please take a moment to add a review and rating for your mentor so other students can benefit from your experience.
+
+Thank you for learning with us!
+— The StridenEx Team
+    """.strip()
+
+    # Build the list of students to notify
+    students_to_notify = []  # list of {student, booking_name}
+
+    if offering_type in ("Group Session", "Workshop") and doc.get("offering"):
+        # All students enrolled in this offering
+        group_bookings = frappe.get_all(
+            "Mentor Session Booking",
+            filters={
+                "offering": doc.offering,
+                "status":   "Completed",
+                "student":  ["is", "set"],
+            },
+            fields=["name", "student"],
+            ignore_permissions=True,
+        )
+        seen = set()
+        for bk in group_bookings:
+            if bk.student and bk.student not in seen:
+                seen.add(bk.student)
+                students_to_notify.append({"student": bk.student, "booking_name": bk.name})
+    else:
+        # 1:1 — single student
+        if doc.student:
+            students_to_notify.append({"student": doc.student, "booking_name": doc.name})
+
+    frappe.log_error(
+        f"[SessionCompleted] booking={doc.name} offering_type={offering_type} "
+        f"students={[e['student'] for e in students_to_notify]}",
+        "Session Completed Debug"
+    )
+
+    for entry in students_to_notify:
+        # Resolve the student's email — create_notification expects the user's
+        # email (it resolves it to a User record internally)
+        student_id = entry["student"]
+        student_email = (
+            frappe.db.get_value("Student", student_id, "email_id")
+            or student_id
+        )
+
+        create_notification(
+            user=student_email,
+            subject="Your session is completed — add a review for your mentor!",
+            message=notification_message,
+            document_type="Mentor Session Booking",
+            document_name=entry["booking_name"],
+            ignore_permissions=True,
+        )
+
+
+
+@frappe.whitelist(allow_guest=False)
+def submit_review(booking_name, rating, review, skill_highlights=None):
+    """
+    Submit a student review and rating for a completed session.
+    
+    Parameters:
+        booking_name    - The Mentor Session Booking name (required)
+        rating          - Numeric rating 1-5 (required)
+        review          - Text review (required)
+        skill_highlights - Optional. Comma-separated string OR JSON list of skills
+                           the student found best (e.g. "Communication,Explanation with Examples")
+    
     Permission: WRITE on 'Mentor Session Booking'.
     Configured via Role Permission Manager — no hardcoded roles.
     """
+    import json
+
     # ----------------------------------------------------------
     # PERMISSION CHECK
     # ----------------------------------------------------------
@@ -1333,7 +1472,7 @@ def submit_review(booking_name, rating, review, reviewed_by=frappe.session.user)
         )
 
     # ----------------------------------------------------------
-    # Unchanged logic below
+    # Validate booking
     # ----------------------------------------------------------
     if not frappe.db.exists("Mentor Session Booking", booking_name):
         frappe.throw(_("Invalid Booking"))
@@ -1343,12 +1482,57 @@ def submit_review(booking_name, rating, review, reviewed_by=frappe.session.user)
     if booking.status != "Completed":
         frappe.throw(_("Only completed sessions can be reviewed."))
 
+    # Resolve student name from session user
+    student_name = frappe.db.get_value(
+        "Student",
+        {"email_id": frappe.session.user},
+        "name"
+    )
+
+    # ----------------------------------------------------------
+    # Prevent duplicate reviews: one review per student per booking
+    # ----------------------------------------------------------
+    if student_name:
+        already_reviewed = any(
+            row.reviewed_by == student_name
+            for row in (booking.review or [])
+        )
+        if already_reviewed:
+            frappe.throw(_("You have already submitted a review for this session."))
+
+    # ----------------------------------------------------------
+    # Normalise skill_highlights — accept str OR list OR None
+    # ----------------------------------------------------------
+    normalized_skills = []
+    if skill_highlights:
+        if isinstance(skill_highlights, list):
+            normalized_skills = [s.strip() for s in skill_highlights if s.strip()]
+        elif isinstance(skill_highlights, str):
+            # Try JSON first, fall back to comma-separated
+            try:
+                parsed = json.loads(skill_highlights)
+                if isinstance(parsed, list):
+                    normalized_skills = [s.strip() for s in parsed if str(s).strip()]
+                else:
+                    normalized_skills = [s.strip() for s in str(parsed).split(",") if s.strip()]
+            except (json.JSONDecodeError, ValueError):
+                normalized_skills = [s.strip() for s in skill_highlights.split(",") if s.strip()]
+
+    skills_str = ",".join(normalized_skills) if normalized_skills else None
+
+    # ----------------------------------------------------------
+    # Append review row to child table
+    # ----------------------------------------------------------
     booking.append("review", {
-        "rating":      float(rating),
-        "review_text": review,
-        "reviewed_by": reviewed_by,
-        "reviewed_on": now_datetime()
+        "rating":           float(rating),
+        "review_text":      review,
+        "skill_highlights": skills_str,
+        "reviewed_by":      student_name,
+        "reviewed_on":      now_datetime()
     })
+
+    # Set rating on the parent booking record as well
+    booking.rating = float(rating)
 
     booking.save(ignore_permissions=True)
     frappe.db.commit()
@@ -1357,7 +1541,99 @@ def submit_review(booking_name, rating, review, reviewed_by=frappe.session.user)
         offering = frappe.get_doc("Mentor Offering", booking.offering)
         offering.update_aggregates()
 
-    return {"success": True}
+    # Also update the mentor's stats (includes skill highlights recomputation)
+    _update_mentor_stats(booking.mentor)
+
+    return {
+        "success":          True,
+        "skill_highlights": normalized_skills
+    }
+
+
+@frappe.whitelist(allow_guest=False)
+def get_review_status(booking_name):
+    """
+    Returns whether the currently logged-in student has already reviewed
+    the given booking, plus existing reviews (without PII) for display.
+
+    Permission: READ on 'Mentor Session Booking'.
+    """
+    session_user = frappe.session.user
+
+    if not frappe.has_permission("Mentor Session Booking", ptype="read", user=session_user):
+        frappe.throw(
+            _("You do not have permission to check review status."),
+            frappe.PermissionError
+        )
+
+    if not frappe.db.exists("Mentor Session Booking", booking_name):
+        frappe.throw(_("Invalid Booking"))
+
+    booking = frappe.get_doc("Mentor Session Booking", booking_name)
+
+    # Resolve student name for current user
+    student_name = frappe.db.get_value(
+        "Student",
+        {"email_id": session_user},
+        "name"
+    )
+
+    already_reviewed = False
+    student_review = None
+
+    reviews_out = []
+    for row in (booking.review or []):
+        import json as _json
+        highlights = []
+        if row.skill_highlights:
+            highlights = [s.strip() for s in row.skill_highlights.split(",") if s.strip()]
+
+        entry = {
+            "rating":           row.rating,
+            "review_text":      row.review_text,
+            "skill_highlights": highlights,
+            "reviewed_on":      str(row.reviewed_on) if row.reviewed_on else None,
+        }
+        reviews_out.append(entry)
+
+        if student_name and row.reviewed_by == student_name:
+            already_reviewed = True
+            student_review = entry
+
+    return {
+        "booking_name":    booking_name,
+        "status":          booking.status,
+        "already_reviewed": already_reviewed,
+        "student_review":   student_review,
+        "total_reviews":   len(reviews_out),
+        "reviews":         reviews_out,
+    }
+
+
+def _get_student_full_name(student_email):
+    if not student_email:
+        return ""
+    # Try Student doctype first
+    student_profile = frappe.db.get_value(
+        "Student",
+        {"email_id": student_email},
+        ["first_name", "last_name"],
+        as_dict=True,
+    )
+    if student_profile:
+        full_name = " ".join(
+            filter(None, [student_profile.get("first_name"),
+                           student_profile.get("last_name")])
+        ).strip()
+        if full_name:
+            return full_name
+
+    # Try User doctype next
+    user_full_name = frappe.db.get_value("User", student_email, "full_name")
+    if user_full_name:
+        return user_full_name
+
+    return student_email
 
 
 @frappe.whitelist(allow_guest=False)
@@ -1386,7 +1662,8 @@ def get_upcoming_sessions(mentor, limit=20):
         mentor_linked_to_user = frappe.db.get_value(
             "Mentor",
             {"email_id": session_user},
-            "name"
+            ["name", "email_id"],
+            as_dict=True,
         )
 
         if not mentor_linked_to_user:
@@ -1395,7 +1672,16 @@ def get_upcoming_sessions(mentor, limit=20):
                 frappe.PermissionError
             )
 
-        if mentor_linked_to_user != mentor:
+        # The `mentor` param from the frontend can be either the doc name (email)
+        # or the email_id. Compare case-insensitively against both to handle
+        # newly onboarded mentors and any capitalisation differences.
+        mentor_param_lower = (mentor or "").strip().lower()
+        allowed = (
+            mentor_param_lower == mentor_linked_to_user.name.lower()
+            or mentor_param_lower == mentor_linked_to_user.email_id.lower()
+        )
+
+        if not allowed:
             frappe.throw(
                 _("You are not permitted to view another mentor's sessions."),
                 frappe.PermissionError
@@ -1411,8 +1697,7 @@ def get_upcoming_sessions(mentor, limit=20):
             "mentor": mentor,
             "status": ["in", ["Scheduled", "Accepted"]],
             "mentor_request_status": ["in", ["Accepted", "Pending"]],
-            "session_date": [">=", today()],  
-            # "session_time":[">=", nowtime()]
+            "session_date": [">=", today()],
         },
         fields=[
             "name", "mentor", "student", "topic", "session_date",
@@ -1423,21 +1708,55 @@ def get_upcoming_sessions(mentor, limit=20):
         limit_page_length=int(limit),
     )
 
+    # ── Collapse Group Session / Workshop rows into one entry per offering ────
+    # For 1:1 sessions, each booking is its own row (as before).
+    # For Group/Workshop, N student bookings share the same slot → collapse to 1.
+    collapsed = {}
     for s in sessions:
-        student_profile = frappe.db.get_value(
-            "Student",
-            {"email_id": s.student},
-            ["first_name", "last_name"],
-            as_dict=True,
-        ) or {}
+        if s.offering_type in ("Group Session", "Workshop"):
+            key = (s.offering or s.name, str(s.session_date),
+                   str(s.from_time), str(s.to_time))
+            if key not in collapsed:
+                entry = dict(s)
+                entry["participant_count"] = 1
+                entry["participants"] = [s.student]
+                entry["student"] = None          # no single student for group
+                entry["student_full_name"] = None
+                collapsed[key] = entry
+            else:
+                collapsed[key]["participant_count"] += 1
+                collapsed[key]["participants"].append(s.student)
+        else:
+            # 1:1 — resolve student name as before
+            entry = dict(s)
+            entry["student_full_name"] = _get_student_full_name(s.student)
+            entry["participant_count"] = 1
+            entry["participants"] = [s.student]
+            collapsed[s.name] = entry
 
-        full_name = " ".join(
-            filter(None, [student_profile.get("first_name"), student_profile.get("last_name")])
-        ).strip()
+    # Resolve group session student names now that we have unique participants
+    result = []
+    for entry in collapsed.values():
+        if entry.get("offering_type") in ("Group Session", "Workshop"):
+            # Build offering title for display
+            if entry.get("offering"):
+                entry["offering_title"] = frappe.db.get_value(
+                    "Mentor Offering", entry["offering"], "title"
+                ) or ""
+            else:
+                entry["offering_title"] = entry.get("topic") or ""
 
-        s["student_full_name"] = full_name or s.student
+            # Resolve participant names and join them for student_full_name
+            participant_names = []
+            for p in entry.get("participants", []):
+                name = _get_student_full_name(p)
+                if name:
+                    participant_names.append(name)
+            entry["student_full_name"] = ", ".join(participant_names) if participant_names else "No participants"
 
-    return sessions
+        result.append(entry)
+
+    return result
 
 
 @frappe.whitelist(allow_guest=False)
@@ -1505,20 +1824,54 @@ def get_weekly_booked_sessions(mentor, week_start_date=None):
         filters={
             "mentor":       mentor,
             "session_date": ["between", [str(monday), str(sunday)]],
-            "status":       ["in", ["Scheduled", "Completed"]],
+            "status":       "Scheduled",
         },
         fields=[
             "name", "student", "topic", "session_date",
             "from_time", "to_time", "duration", "status",
-            "meeting_link", "offering"
+            "meeting_link", "offering", "offering_type"
         ],
         order_by="session_date asc, from_time asc",
     )
 
+    # ── Collapse Group Session / Workshop rows into one entry per offering ────
+    collapsed = {}
     for s in sessions:
-        s["student_full_name"] = frappe.db.get_value("User", s.student, "full_name") or s.student
+        if s.offering_type in ("Group Session", "Workshop"):
+            key = (s.offering or s.name, str(s.session_date),
+                   str(s.from_time), str(s.to_time))
+            if key not in collapsed:
+                entry = dict(s)
+                entry["participant_count"] = 1
+                entry["participants"] = [s.student]
+                entry["student"] = None
+                entry["student_full_name"] = None
+                if entry.get("offering"):
+                    entry["offering_title"] = frappe.db.get_value(
+                        "Mentor Offering", entry["offering"], "title"
+                    ) or ""
+                collapsed[key] = entry
+            else:
+                collapsed[key]["participant_count"] += 1
+                collapsed[key]["participants"].append(s.student)
+        else:
+            entry = dict(s)
+            entry["student_full_name"] = _get_student_full_name(s.student)
+            entry["participant_count"] = 1
+            entry["participants"] = [s.student]
+            collapsed[s.name] = entry
 
-    return sessions
+    # Resolve group session student names now that we have unique participants
+    for entry in collapsed.values():
+        if entry.get("offering_type") in ("Group Session", "Workshop"):
+            participant_names = []
+            for p in entry.get("participants", []):
+                name = _get_student_full_name(p)
+                if name:
+                    participant_names.append(name)
+            entry["student_full_name"] = ", ".join(participant_names) if participant_names else "No participants"
+
+    return list(collapsed.values())
 
 
 @frappe.whitelist(allow_guest=False)
@@ -1565,9 +1918,7 @@ def get_monthly_booked_sessions(mentor, month_date=None):
     )
 
     for s in sessions:
-        s["student_full_name"] = (
-            frappe.db.get_value("User", s.student, "full_name") or s.student
-        )
+        s["student_full_name"] = _get_student_full_name(s.student)
 
     return sessions
 
@@ -1597,6 +1948,11 @@ def get_mentor_dashboard_stats(mentor=None):
     if not mentor:
         return {"success": False, "message": "Mentor is required"}
 
+    # Resolve the mentor ID from email/user session
+    resolved_mentor = frappe.db.get_value("Mentor", {"email_id": mentor}, "name") or frappe.db.get_value("Mentor", mentor, "name")
+    if resolved_mentor:
+        mentor = resolved_mentor
+
     today     = getdate(nowdate())
     first_day = get_first_day(today)
     last_day  = get_last_day(today)
@@ -1605,43 +1961,40 @@ def get_mentor_dashboard_stats(mentor=None):
         SELECT COUNT(DISTINCT student) AS total_students
         FROM `tabMentor Session Booking`
         WHERE mentor = %(mentor)s
-        AND mentor_request_status = 'Completed'
+        AND status = 'Completed'
     """, {"mentor": mentor}, as_dict=True)[0].total_students or 0
 
     this_month_students = frappe.db.sql("""
         SELECT COUNT(DISTINCT student) AS total_students
         FROM `tabMentor Session Booking`
         WHERE mentor = %(mentor)s
-        AND mentor_request_status = 'Completed'
-        AND session_date BETWEEN %(first_day)s AND %(last_day)s
+        AND status = 'Completed'
+        AND COALESCE(session_date, DATE(creation)) BETWEEN %(first_day)s AND %(last_day)s
     """, {"mentor": mentor, "first_day": first_day, "last_day": last_day}, as_dict=True)[0].total_students or 0
 
-    sessions_this_month = frappe.db.count(
-        "Mentor Session Booking",
-        filters={
-            "mentor":                mentor,
-            "mentor_request_status": ["in", ["Scheduled", "Completed"]],
-            "session_date":          ["between", [first_day, last_day]]
-        }
-    )
+    sessions_this_month = frappe.db.sql("""
+        SELECT COUNT(*) AS count
+        FROM `tabMentor Session Booking`
+        WHERE mentor = %(mentor)s
+        AND status IN ('Scheduled', 'Completed')
+        AND COALESCE(session_date, DATE(creation)) BETWEEN %(first_day)s AND %(last_day)s
+    """, {"mentor": mentor, "first_day": first_day, "last_day": last_day}, as_dict=True)[0].count or 0
 
-    sessions_completed = frappe.db.count(
-        "Mentor Session Booking",
-        filters={
-            "mentor":                mentor,
-            "mentor_request_status": "Completed",
-            "session_date":          ["between", [first_day, last_day]]
-        }
-    )
+    sessions_completed = frappe.db.sql("""
+        SELECT COUNT(*) AS count
+        FROM `tabMentor Session Booking`
+        WHERE mentor = %(mentor)s
+        AND status = 'Completed'
+        AND COALESCE(session_date, DATE(creation)) BETWEEN %(first_day)s AND %(last_day)s
+    """, {"mentor": mentor, "first_day": first_day, "last_day": last_day}, as_dict=True)[0].count or 0
 
-    upcoming_sessions = frappe.db.count(
-        "Mentor Session Booking",
-        filters={
-            "mentor":                mentor,
-            "mentor_request_status": "Accepted",
-            "session_date":          [">=", today]
-        }
-    )
+    upcoming_sessions = frappe.db.sql("""
+        SELECT COUNT(*) AS count
+        FROM `tabMentor Session Booking`
+        WHERE mentor = %(mentor)s
+        AND status = 'Scheduled'
+        AND COALESCE(session_date, DATE(creation)) >= %(today)s
+    """, {"mentor": mentor, "today": today}, as_dict=True)[0].count or 0
 
     five_star_reviews = frappe.db.sql("""
         SELECT COUNT(mor.name) AS total_reviews
@@ -1649,7 +2002,7 @@ def get_mentor_dashboard_stats(mentor=None):
         INNER JOIN `tabMentor Session Booking` msb ON msb.name = mor.parent
         WHERE msb.mentor = %(mentor)s
         AND mor.rating = 5
-        AND msb.session_date BETWEEN %(first_day)s AND %(last_day)s
+        AND COALESCE(msb.session_date, DATE(msb.creation)) BETWEEN %(first_day)s AND %(last_day)s
     """, {"mentor": mentor, "first_day": first_day, "last_day": last_day}, as_dict=True)[0].total_reviews or 0
 
     skills_verified = frappe.db.count(
@@ -1661,26 +2014,78 @@ def get_mentor_dashboard_stats(mentor=None):
         }
     )
 
-    session_rows  = frappe.get_all(
-        "Mentor Session Booking",
-        filters={
-            "mentor":                mentor,
-            "mentor_request_status": "Completed",
-            "session_date":          ["between", [first_day, last_day]]
-        },
-        fields=["from_time", "to_time"]
-    )
+    session_rows = frappe.db.sql("""
+        SELECT offering, offering_type, COALESCE(session_date, DATE(creation)) AS resolved_date, from_time, to_time
+        FROM `tabMentor Session Booking`
+        WHERE mentor = %(mentor)s
+        AND status = 'Completed'
+        AND COALESCE(session_date, DATE(creation)) BETWEEN %(first_day)s AND %(last_day)s
+    """, {"mentor": mentor, "first_day": first_day, "last_day": last_day}, as_dict=True)
 
     total_seconds = 0
+    seen_group_slots = set()
 
     for row in session_rows:
         if row.from_time and row.to_time:
-            total_seconds += max(
-                time_diff_in_seconds(row.to_time, row.from_time),
-                0
-            )
+            duration = max(time_diff_in_seconds(row.to_time, row.from_time), 0)
+            if row.offering_type in ("Group Session", "Workshop"):
+                slot_key = (row.offering, row.resolved_date, str(row.from_time), str(row.to_time))
+                if slot_key not in seen_group_slots:
+                    seen_group_slots.add(slot_key)
+                    total_seconds += duration
+            else:
+                total_seconds += duration
 
     total_hours = round(total_seconds / 3600, 1)
+
+    # ── Rating summary from child table reviews (Mentor Offering Review) ────────
+    # All-time: avg rating + total review count across all completed sessions
+    all_time_rating_row = frappe.db.sql("""
+        SELECT
+            ROUND(AVG(mor.rating), 1) AS avg_rating,
+            COUNT(mor.name)           AS total_reviews
+        FROM `tabMentor Offering Review` mor
+        INNER JOIN `tabMentor Session Booking` msb ON msb.name = mor.parent
+        WHERE msb.mentor  = %(mentor)s
+        AND   msb.status  = 'Completed'
+        AND   mor.rating IS NOT NULL
+    """, {"mentor": mentor}, as_dict=True)
+
+    all_time_avg_rating  = float(all_time_rating_row[0].avg_rating or 0) if all_time_rating_row else 0.0
+    total_reviews_count  = int(all_time_rating_row[0].total_reviews or 0) if all_time_rating_row else 0
+
+    # This-month avg rating
+    month_rating_row = frappe.db.sql("""
+        SELECT ROUND(AVG(mor.rating), 1) AS avg_rating
+        FROM `tabMentor Offering Review` mor
+        INNER JOIN `tabMentor Session Booking` msb ON msb.name = mor.parent
+        WHERE msb.mentor  = %(mentor)s
+        AND   msb.status  = 'Completed'
+        AND   mor.rating IS NOT NULL
+        AND   COALESCE(msb.session_date, DATE(msb.creation)) BETWEEN %(first_day)s AND %(last_day)s
+    """, {"mentor": mentor, "first_day": first_day, "last_day": last_day}, as_dict=True)
+
+    month_avg_rating = float(month_rating_row[0].avg_rating or 0) if month_rating_row else 0.0
+
+    # 1–5 star distribution (all-time)
+    star_dist_rows = frappe.db.sql("""
+        SELECT
+            FLOOR(mor.rating) AS star,
+            COUNT(mor.name)   AS count
+        FROM `tabMentor Offering Review` mor
+        INNER JOIN `tabMentor Session Booking` msb ON msb.name = mor.parent
+        WHERE msb.mentor  = %(mentor)s
+        AND   msb.status  = 'Completed'
+        AND   mor.rating IS NOT NULL
+        GROUP BY FLOOR(mor.rating)
+    """, {"mentor": mentor}, as_dict=True)
+
+    rating_distribution = {str(i): 0 for i in range(1, 6)}
+    for r in star_dist_rows:
+        key = str(int(r.star or 0))
+        if key in rating_distribution:
+            rating_distribution[key] = int(r.count)
+    # ────────────────────────────────────────────────────────────────────────────
 
     return {
         "success":                    True,
@@ -1691,9 +2096,15 @@ def get_mentor_dashboard_stats(mentor=None):
         "upcoming_sessions":          upcoming_sessions,
         "month_start":                str(first_day),
         "month_end":                  str(last_day),
+        # ── Rating summary (sourced from Mentor Offering Review child table) ──
+        "avg_rating":           all_time_avg_rating,
+        "total_reviews":        total_reviews_count,
+        "rating_distribution":  rating_distribution,
+        # ─────────────────────────────────────────────────────────────────────
         "this_month": {
             "sessions_completed": sessions_completed,
             "five_star_reviews":  five_star_reviews,
+            "avg_rating":         month_avg_rating,
             "skills_verified":    skills_verified,
             "hours_mentored":     f"{total_hours}h",
         }
@@ -1773,11 +2184,11 @@ def get_booked_sessions(student_email=None):
         "Mentor Session Booking",
         filters={
             "student":               student_email,
-            "status":                ["in", ["Pending", "Scheduled", "Accepted"]],
+            "status":                ["not in", ["Cancelled", "Rejected"]],
             "mentor_request_status": ["not in", ["Declined"]]
         },
         fields=[
-            "name", "mentor", "offering_type", "session_date",
+            "name", "mentor", "offering", "offering_type", "session_date",
             "session_type", "status", "priority", "topic",
             "from_time", "to_time", "duration"
         ]
@@ -2170,8 +2581,142 @@ def student_confirm_alt_time(booking_name):
     return {"status": "Pending"}
 
 
+# ------------------------------------------------------------------
+# Skill Highlight Aggregation Helpers
+# ------------------------------------------------------------------
+
+def _compute_mentor_skill_highlights(mentor, top_n=10):
+    """
+    Aggregate skill_highlights across ALL completed session reviews for a mentor.
+    Returns a JSON-encoded list of {skill, count} dicts sorted by count desc,
+    limited to top_n skills.
+
+    Example output (stored on Mentor.skill_highlights):
+        '[{"skill": "Communication", "count": 14}, {"skill": "Explanation with Examples", "count": 9}]'
+    """
+    import json
+    from collections import Counter
+
+    # Pull all skill_highlights values for this mentor's completed sessions
+    rows = frappe.db.sql("""
+        SELECT mor.skill_highlights
+        FROM `tabMentor Offering Review` mor
+        INNER JOIN `tabMentor Session Booking` msb ON msb.name = mor.parent
+        WHERE msb.mentor = %(mentor)s
+          AND msb.status = 'Completed'
+          AND mor.skill_highlights IS NOT NULL
+          AND mor.skill_highlights != ''
+    """, {"mentor": mentor}, as_dict=True)
+
+    counter = Counter()
+    for row in rows:
+        skills_raw = row.get("skill_highlights") or ""
+        for skill in skills_raw.split(","):
+            skill = skill.strip()
+            if skill:
+                counter[skill] += 1
+
+    top_skills = [
+        {"skill": skill, "count": cnt}
+        for skill, cnt in counter.most_common(top_n)
+    ]
+
+    return json.dumps(top_skills, ensure_ascii=False)
+
+
+@frappe.whitelist(allow_guest=False)
+def get_mentor_skill_highlights(mentor, top_n=10):
+    """
+    Returns the top skill highlights for a mentor based on aggregated
+    student reviews. Used to display skill badges on mentor cards.
+
+    Parameters:
+        mentor  - Mentor email / document name (required)
+        top_n   - Maximum number of skills to return (default 10)
+
+    Permission: READ on 'Mentor Session Booking'.
+
+    Response:
+        {
+            "mentor": "...",
+            "skill_highlights": [
+                {"skill": "Communication", "count": 14},
+                {"skill": "Explanation with Examples", "count": 9},
+                ...
+            ]
+        }
+    """
+    import json
+    from collections import Counter
+
+    session_user = frappe.session.user
+    if not frappe.has_permission("Mentor Session Booking", ptype="read", user=session_user):
+        frappe.throw(
+            _("You do not have permission to view mentor highlights."),
+            frappe.PermissionError
+        )
+
+    if not mentor:
+        frappe.throw(_("Mentor is required."))
+
+    top_n = int(top_n or 10)
+
+    # First try reading from cached value on Mentor doctype (fast path)
+    cached_json = frappe.db.get_value("Mentor", mentor, "skill_highlights")
+    if cached_json:
+        try:
+            highlights = json.loads(cached_json)
+            return {
+                "mentor":           mentor,
+                "skill_highlights": highlights[:top_n],
+                "source":           "cache",
+            }
+        except (json.JSONDecodeError, ValueError):
+            pass  # Fall through to live computation
+
+    # Live computation (slow path — also refreshes cache)
+    rows = frappe.db.sql("""
+        SELECT mor.skill_highlights
+        FROM `tabMentor Offering Review` mor
+        INNER JOIN `tabMentor Session Booking` msb ON msb.name = mor.parent
+        WHERE msb.mentor = %(mentor)s
+          AND msb.status = 'Completed'
+          AND mor.skill_highlights IS NOT NULL
+          AND mor.skill_highlights != ''
+    """, {"mentor": mentor}, as_dict=True)
+
+    counter = Counter()
+    for row in rows:
+        skills_raw = row.get("skill_highlights") or ""
+        for skill in skills_raw.split(","):
+            skill = skill.strip()
+            if skill:
+                counter[skill] += 1
+
+    highlights = [
+        {"skill": skill, "count": cnt}
+        for skill, cnt in counter.most_common(top_n)
+    ]
+
+    # Persist to cache on Mentor doc
+    try:
+        frappe.db.set_value("Mentor", mentor, "skill_highlights",
+                            json.dumps(highlights, ensure_ascii=False),
+                            update_modified=False)
+        frappe.db.commit()
+    except Exception:
+        pass  # Non-critical; just return the live data
+
+    return {
+        "mentor":           mentor,
+        "skill_highlights": highlights,
+        "source":           "live",
+    }
+
+
 @frappe.whitelist(allow_guest=False)
 def _update_mentor_stats(mentor):
+
     """
     Permission: WRITE on 'Mentor'.
     Configured via Role Permission Manager — no hardcoded roles.
@@ -2204,22 +2749,44 @@ def _update_mentor_stats(mentor):
     else:
         mentor_doc_name = mentor
 
-    result = frappe.db.sql("""
-        SELECT
-            COUNT(*)                            AS total_sessions,
-            COALESCE(SUM(duration), 0)          AS total_minutes,
-            COALESCE(SUM(amount_paid), 0)       AS total_earnings,
-            COALESCE(AVG(NULLIF(rating, 0)), 0) AS avg_rating
+    session_rows = frappe.db.sql("""
+        SELECT offering, offering_type, COALESCE(session_date, DATE(creation)) AS resolved_date, from_time, to_time, amount_paid
         FROM `tabMentor Session Booking`
         WHERE mentor = %(mentor)s
         AND status = 'Completed'
     """, {"mentor": mentor}, as_dict=True)
 
-    row            = result[0]
-    total_sessions = int(row.total_sessions or 0)
-    total_hours    = round(float(row.total_minutes or 0) / 60, 2)
-    total_earnings = float(row.total_earnings or 0)
-    avg_rating     = round(float(row.avg_rating or 0), 1)
+    total_sessions = len(session_rows)
+    total_earnings = sum(float(r.amount_paid or 0) for r in session_rows)
+
+    # Calculate avg rating from the child table (Mentor Offering Review) —
+    # the parent booking's `rating` field is unreliable; child reviews are
+    # the actual student-submitted ratings.
+    rating_agg = frappe.db.sql("""
+        SELECT ROUND(AVG(mor.rating), 1) AS avg_rating
+        FROM `tabMentor Offering Review` mor
+        INNER JOIN `tabMentor Session Booking` msb ON msb.name = mor.parent
+        WHERE msb.mentor = %(mentor)s
+        AND   msb.status = 'Completed'
+        AND   mor.rating IS NOT NULL
+    """, {"mentor": mentor}, as_dict=True)
+    avg_rating = float(rating_agg[0].avg_rating or 0) if rating_agg else 0.0
+
+    total_seconds = 0
+    seen_group_slots = set()
+
+    for row in session_rows:
+        if row.from_time and row.to_time:
+            duration = max(time_diff_in_seconds(row.to_time, row.from_time), 0)
+            if row.offering_type in ("Group Session", "Workshop"):
+                slot_key = (row.offering, row.resolved_date, str(row.from_time), str(row.to_time))
+                if slot_key not in seen_group_slots:
+                    seen_group_slots.add(slot_key)
+                    total_seconds += duration
+            else:
+                total_seconds += duration
+
+    total_hours = round(total_seconds / 3600, 2)
 
     frappe.db.set_value(
         MENTOR_DOCTYPE,
@@ -2229,6 +2796,7 @@ def _update_mentor_stats(mentor):
             "total_hours":    total_hours,
             "total_earnings": total_earnings,
             "avg_rating":     avg_rating,
+            "skill_highlights": _compute_mentor_skill_highlights(mentor),
         },
         # update_modified=False
     )

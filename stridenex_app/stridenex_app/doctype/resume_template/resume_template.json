@@ -1,0 +1,108 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "autoincrement",
+ "creation": "2026-08-06 09:17:26.997295",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_venu",
+  "template_name",
+  "description",
+  "is_active",
+  "column_break_1",
+  "preview_image",
+  "layout_type",
+  "section_break_1",
+  "html_template",
+  "css_style"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_venu",
+   "fieldtype": "Section Break",
+   "label": "Template Details"
+  },
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Template Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "preview_image",
+   "fieldtype": "Attach Image",
+   "label": "Preview Image"
+  },
+  {
+   "fieldname": "layout_type",
+   "fieldtype": "Select",
+   "label": "Layout Type",
+   "options": "Single Column\nTwo Column\nSidebar"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "Template Body"
+  },
+  {
+   "fieldname": "html_template",
+   "fieldtype": "Code",
+   "label": "HTML Template",
+   "options": "HTML",
+   "reqd": 1
+  },
+  {
+   "fieldname": "css_style",
+   "fieldtype": "Code",
+   "label": "CSS",
+   "options": "CSS"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-06 09:24:56.912210",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Resume Template",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,7 +1,6 @@
 # Copyright (c) 2026, QTPL and contributors
 # For license information, please see license.txt
 
-# import frappe
 from frappe.model.document import Document
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
@@ -9,8 +8,12 @@ from stridenex_app.api_stridenex_app.app_utils import (
 )
 
 import frappe
+from frappe.utils import now_datetime
+
+
 class StudentProjectEnrollment(Document):
-	pass
+
+    pass
 
 @frappe.whitelist(allow_guest=True)
 def create_student_project_enrollment():
@@ -116,3 +119,45 @@ def get_application_count_by_industry(
     except Exception as e:
         return exception_handel(e)
     
+@frappe.whitelist(allow_guest=True)
+def update_student_project_enrollment():
+    try:
+        data = frappe.request.get_json()
+
+        enrollment_id = data.get("name")
+        industry = data.get("industry")
+        status = data.get("status")
+
+        # ✅ Validation
+        if not enrollment_id:
+            return gen_response(400, "Enrollment ID (name) is required")
+
+        # ✅ Fetch document
+        doc = frappe.get_doc("Student Project Enrollment", enrollment_id)
+
+        # ✅ Update industry (if provided)
+        if industry:
+            doc.industry = industry
+
+        # ✅ Update status ONLY if not empty
+        if status:
+            doc.status = status
+
+            # Optional date logic
+            if status.lower() == "approved":
+                doc.approved_on = frappe.utils.nowdate()
+
+            if status.lower() == "completed":
+                doc.completed_on = frappe.utils.nowdate()
+
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        return gen_response(
+            200,
+            "Enrollment updated successfully",
+            doc
+        )
+
+    except Exception as e:
+        return exception_handel(e)

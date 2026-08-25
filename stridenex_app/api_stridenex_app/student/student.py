@@ -6,6 +6,9 @@ from stridenex_app.api_stridenex_app.app_utils import (
 
 import frappe
 import time
+import frappe
+from frappe.utils.pdf import get_pdf
+from frappe import _
 
 
 @frappe.whitelist(allow_guest=True)
@@ -148,7 +151,14 @@ def _do_create_student():
         })
 
     # ── STEP 3: Single insert ─────────────────────────────────────────────────
-    student.insert(ignore_permissions=True)
+    try:
+        student.insert(ignore_permissions=True)
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Student Creation Error"
+        )
+        raise
 
     # ── STEP 4: File upload ───────────────────────────────────────────────────
     if "resume" in frappe.request.files:
@@ -222,6 +232,9 @@ def get_student(name=None, first_name=None, last_name=None, email_id=None, colle
     
 
 
+import frappe
+from frappe.utils import get_url
+
 @frappe.whitelist(allow_guest=True)
 def get_student_by_email(email_id):
     try:
@@ -232,20 +245,38 @@ def get_student_by_email(email_id):
                 "data": {}
             }
 
-        # Fetch record using email
-        data = frappe.db.get_value(
-            "Student",  
-            {"email_id": email_id},
-            ["*"],
-            as_dict=True
-        )
+        name = frappe.db.get_value("Student", {"email_id": email_id}, "name")
 
-        if not data:
+        if not name:
             return {
                 "status": 404,
                 "message": "No record found",
                 "data": {}
             }
+
+        doc = frappe.get_doc("Student", name)
+        data = doc.as_dict()
+
+        # Parent-level image/attach fields — update these fieldnames to match your Student doctype
+        parent_image_fields = ["student_image", "profile_picture"]
+        for f in parent_image_fields:
+            if data.get(f):
+                data[f] = get_url(data.get(f))
+
+        # Child table image/attach fields — update fieldnames to match your child doctypes
+        child_image_fields = {
+            "certificates": ["certificate_name","certificate_file"],
+            "resume_details": [],  
+            "internship": [],
+            "project": [],
+        }
+
+        for child_fieldname, attach_fields in child_image_fields.items():
+            rows = data.get(child_fieldname) or []
+            for row in rows:
+                for af in attach_fields:
+                    if row.get(af):
+                        row[af] = get_url(row.get(af))
 
         return {
             "status": 200,
@@ -260,30 +291,75 @@ def get_student_by_email(email_id):
             "message": str(e),
             "data": {}
         }
+ 
 @frappe.whitelist(allow_guest=True)
-def update_student(name=None):
+def update_student(name=None, email_id=None):
     try:
         data = frappe.request.get_json()
 
+        if not name and not email_id:
+            return {"status": 400, "message": "Student name or email_id is required"}
+
         if not name:
-            return {"status": 400, "message": "Student name (ID) is required"}
+            name = frappe.db.get_value("Student", {"email_id": email_id}, "name")
+            if not name:
+                return {"status": 404, "message": "No student found for this email"}
 
         doc = frappe.get_doc("Student", name)
 
-        # Update only fields that are provided
+        # ---- Simple parent fields ----
         fields = [
             "first_name", "middle_name", "last_name",
             "email_id", "mobile_no", "college",
             "department", "course", "semester",
-            "academic_year", "date_of_birth","current_year",
-            "stream", "linkedin", "github", "gender","cgpa"
+            "academic_year", "date_of_birth", "current_year",
+            "stream", "linkedin", "github", "gender", "cgpa", "backlog"
         ]
 
         for field in fields:
             if field in data:
                 doc.set(field, data.get(field))
 
+        # ---- Parent-level image/attach field ----
+        if "resume" in data:
+            doc.set("resume", data.get("resume"))
+
+        # ---- Child tables (verified against actual GET response) ----
+        child_tables = {
+            "table_apwt": [
+                "education_level", "institution_name", "board_university",
+                "specialization", "passing_year", "percentage_cgpa", "grade",
+                "education_certificate"
+            ],
+            "certificates": [
+                "certificate_name", "issuing_organization",
+                "issue_date", "expiry_date", "credential_id",
+                "credential_url", "certificate_file"
+            ],
+            "internship": [
+                "company_name", "job_title", "employment_type",
+                "location", "start_date", "end_date", "currently_working",
+                "duration", "mentor_name", "technologies", "description",
+                "internship_certificate"
+            ],
+            "project": [
+                "project_name", "company_name",
+                "start_date", "end_date", "project_description"
+            ],
+            "courses_type": ["course_type"],
+            "skill": ["skill", "level"],
+            "career_interest": ["career_interest"],
+        }
+
+        for table_fieldname, row_fields in child_tables.items():
+            if table_fieldname in data:
+                doc.set(table_fieldname, [])
+                for row in data.get(table_fieldname) or []:
+                    row_data = {f: row.get(f) for f in row_fields if f in row}
+                    doc.append(table_fieldname, row_data)
+
         doc.save(ignore_permissions=True)
+        frappe.db.commit()
 
         return {
             "status": 200,
@@ -292,4 +368,39 @@ def update_student(name=None):
         }
 
     except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Update Student Error")
         return {"status": 500, "message": str(e)}
+
+
+
+
+
+@frappe.whitelist(allow_guest=True)
+def get_student_resume(student, template):
+
+    if not student:
+        frappe.throw("Student is required")
+
+    if not template:
+        frappe.throw("Template is required")
+
+    if not frappe.db.exists("Student", student):
+        frappe.throw("Student not found", frappe.DoesNotExistError)
+
+    doc = frappe.get_doc("Student", student)
+
+    template_path = f"stridenex_app/templates/{template}.html"
+
+    html = frappe.render_template(
+        template_path,
+        {"doc": doc}
+    )
+
+    pdf = get_pdf(html)
+
+    frappe.local.response.filename = (
+        f"{doc.first_name}_{doc.last_name}_Resume.pdf"
+    )
+    frappe.local.response.filecontent = pdf
+    frappe.local.response.type = "download"
+

@@ -11,6 +11,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
     exception_handel
 )
+from frappe.exceptions import ValidationError
 
 class IndustrySkillDomain(Document):
 	pass
@@ -131,11 +132,22 @@ def create_skill_domain():
     try:
         data = frappe.request.get_json()
         domain = frappe.new_doc("Industry Skill Domain")
+        industry = (data.get("industry") or "").strip()
+        domain_name = (data.get("domain") or "").strip()
+        if frappe.db.exists(
+            "Industry Skill Domain",
+            {
+                "industry": industry,
+                "domain": domain_name
+            }
+        ):
+            frappe.throw(f"'{domain_name}' already exists for '{industry}'")
 
         domain.industry = data.get("industry")
         domain.skill_domain = data.get("skill_domain")
         domain.domain = data.get("domain")              # ✅ ADD THIS
         domain.sub_domain = data.get("sub_domain") 
+        
 
         # 🔄 TRY THESE ONE BY ONE:
         if "skills" in data:
@@ -158,6 +170,9 @@ def create_skill_domain():
         frappe.db.commit()
         return gen_response(status=200, message="Success", data={"name": domain.name})
 
+    except ValidationError:
+            # Re-raise so Frappe returns its standard ValidationError response
+            raise
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "create_skill_domain")
         return {"status": 500, "message": str(e), "data": []}

@@ -13,6 +13,10 @@
   "penalty_amount",
   "commission_rate",
   "commission_amount",
+  "earned_amount",
+  "refund_amount",
+  "tds_rate",
+  "tds_amount",
   "net_payout",
   "status"
  ],
@@ -61,6 +65,30 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Commission Amount"
+  },
+  {
+   "fieldname": "earned_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Earned Amount"
+  },
+  {
+   "fieldname": "refund_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Refund Amount"
+  },
+  {
+   "fieldname": "tds_rate",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "TDS Rate (%)"
+  },
+  {
+   "fieldname": "tds_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "TDS Amount"
   },
   {
    "fieldname": "net_payout",

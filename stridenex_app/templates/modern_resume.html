@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            color: #24262b;
+            font-size: 12.5px;
+            line-height: 1.55;
+        }
+
+        .resume {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .side {
+            width: 34%;
+            background: #20262e;
+            color: #e9e7e1;
+            padding: 34px 22px;
+        }
+
+        .side .name {
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .side .title {
+            font-size: 11.5px;
+            color: #7fa37f;
+            font-weight: 600;
+            margin: 4px 0 20px;
+        }
+
+        .side h3 {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #7fa37f;
+            font-weight: 700;
+            margin: 18px 0 8px;
+        }
+
+        .side .c-row {
+            font-size: 11px;
+            color: #c9c6bf;
+            margin-bottom: 5px;
+            word-break: break-word;
+        }
+
+        .chip {
+            display: inline-block;
+            font-size: 10px;
+            background: rgba(127, 163, 127, .18);
+            color: #bcd7bc;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin: 0 4px 5px 0;
+        }
+
+        .side .edu-item {
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+
+        .side .edu-item .deg {
+            font-weight: 700;
+            color: #e9e7e1;
+        }
+
+        .main {
+            flex: 1;
+            padding: 34px 30px;
+        }
+
+        .main .summary {
+            font-size: 12.5px;
+            margin-bottom: 20px;
+        }
+
+        .main h2 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: #20262e;
+            border-bottom: 2px solid #e4e2dd;
+            padding-bottom: 5px;
+            margin: 0 0 12px;
+        }
+
+        .section {
+            margin-bottom: 18px;
+        }
+
+        .item {
+            margin-bottom: 13px;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .item-title {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .item-sub {
+            color: #7fa37f;
+            font-weight: 600;
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+
+        .desc {
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="resume">
+        <div class="side">
+            <div class="name">{{ doc.first_name }}<br>{{ doc.last_name }}</div>
+            <div class="title">{{ doc.course }} Student</div>
+
+            <h3>Contact</h3>
+            <div class="c-row">{{ doc.mobile_no }}</div>
+            <div class="c-row">{{ doc.email_id }}</div>
+            {% if doc.linkedin %}<div class="c-row">{{ doc.linkedin }}</div>{% endif %}
+            {% if doc.github %}<div class="c-row">{{ doc.github }}</div>{% endif %}
+
+            {% if doc.skill %}
+            <h3>Skills</h3>
+            {% for row in doc.skill %}
+            <span class="chip">{{ row.skill }}{% if row.level %} · {{ row.level }}{% endif %}</span>
+            {% endfor %}
+            {% endif %}
+
+            {% if doc.table_apwt %}
+            <h3>Education</h3>
+            {% for row in doc.table_apwt %}
+            <div class="edu-item">
+                <div class="deg">{{ row.education_level }}</div>
+                {{ row.institution_name }}<br>
+                {{ row.passing_year }} · CGPA {{ row.percentage_cgpa }}
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            {% if doc.certificates %}
+            <h3>Certifications</h3>
+            {% for row in doc.certificates %}
+            <div class="c-row">{{ row.certificate_name }} — {{ row.issuing_organization }}</div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="main">
+            <div class="summary">
+                Motivated and detail-oriented student pursuing <strong>{{ doc.course }}</strong> at
+                <strong>{{ doc.college }}</strong>. Committed to academic growth, practical skill-building,
+                and continuous learning in the field of {{ doc.course }}.
+            </div>
+
+            {% if doc.internship %}
+            <div class="section">
+                <h2>Experience</h2>
+                {% for row in doc.internship %}
+                <div class="item">
+                    <div class="item-row">
+                        <span class="item-title">{{ row.job_title }}</span>
+                        <span class="item-sub">{{ row.start_date }}{% if row.end_date %} - {{ row.end_date }}{% endif
+                            %}</span>
+                    </div>
+                    <div class="item-sub">{{ row.company_name }}</div>
+                    <div class="desc">{{ row.description }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if doc.project %}
+            <div class="section">
+                <h2>Projects</h2>
+                {% for row in doc.project %}
+                <div class="item">
+                    <div class="item-row">
+                        <span class="item-title">{{ row.project_name }}</span>
+                        {% if row.company_name %}<span class="item-sub">{{ row.company_name }}</span>{% endif %}
+                    </div>
+                    <div class="desc">{{ row.project_description }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</body>
+
+</html>

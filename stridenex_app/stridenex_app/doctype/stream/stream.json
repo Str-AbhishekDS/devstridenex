@@ -1,12 +1,14 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:stream_name",
  "creation": "2026-02-17 10:42:59.145664",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "stream_name"
+  "stream_name",
+  "amended_from"
  ],
  "fields": [
   {
@@ -16,12 +18,23 @@
    "label": "Stream Name",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Stream",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-02-17 17:44:30.116340",
+ "modified": "2026-08-24 09:26:15.789662",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Stream",

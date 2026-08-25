@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+
+    <style>
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            margin: 44px;
+            color: #221f1f;
+            font-size: 13px;
+            line-height: 1.6;
+            background: #fbf9f5;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .name {
+            font-size: 27px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .title {
+            font-size: 12.5px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #7a2e2e;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .contact {
+            font-size: 12px;
+            color: #4a4440;
+            margin-top: 8px;
+        }
+
+        .contact span:not(:last-child)::after {
+            content: " | ";
+            color: #b8ada2;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #7a2e2e;
+            margin: 16px 0;
+        }
+
+        .section {
+            margin-top: 18px;
+        }
+
+        .section h2 {
+            font-size: 13px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #7a2e2e;
+            margin: 0 0 8px;
+        }
+
+        .summary {
+            text-align: justify;
+        }
+
+        .item {
+            margin-bottom: 12px;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .item-title {
+            font-weight: 700;
+            font-size: 13.5px;
+        }
+
+        .item-sub {
+            font-style: italic;
+            color: #5a5450;
+            font-size: 12px;
+        }
+
+        .desc {
+            font-size: 12.5px;
+            margin-top: 3px;
+        }
+
+        .skills-line {
+            font-size: 12.5px;
+        }
+
+        .skills-line span:not(:last-child)::after {
+            content: " · ";
+            color: #b8ada2;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="name">{{ doc.first_name }} {{ doc.last_name }}</div>
+        <div class="title">{{ doc.course }} Student</div>
+        <div class="contact">
+            <span>{{ doc.mobile_no }}</span>
+            <span>{{ doc.email_id }}</span>
+            {% if doc.linkedin %}<span>{{ doc.linkedin }}</span>{% endif %}
+            {% if doc.github %}<span>{{ doc.github }}</span>{% endif %}
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="section">
+        <h2>Profile</h2>
+        <div class="summary">
+            Motivated and detail-oriented student pursuing <strong>{{ doc.course }}</strong> at
+            <strong>{{ doc.college }}</strong>. Committed to academic growth, practical skill-building,
+            and continuous learning in the field of {{ doc.course }}.
+        </div>
+    </div>
+
+    {% if doc.table_apwt %}
+    <div class="section">
+        <h2>Education</h2>
+        {% for row in doc.table_apwt %}
+        <div class="item">
+            <div class="item-row">
+                <span class="item-title">{{ row.education_level }}{% if row.specialization %}, {{ row.specialization
+                    }}{% endif %}</span>
+                <span class="item-sub">{{ row.passing_year }}</span>
+            </div>
+            <div class="item-sub">{{ row.institution_name }}</div>
+            <div class="desc">CGPA / Percentage: {{ row.percentage_cgpa }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if doc.internship %}
+    <div class="section">
+        <h2>Work Experience</h2>
+        {% for row in doc.internship %}
+        <div class="item">
+            <div class="item-row">
+                <span class="item-title">{{ row.job_title }}</span>
+                <span class="item-sub">{{ row.start_date }}{% if row.end_date %} - {{ row.end_date }}{% endif %}</span>
+            </div>
+            <div class="item-sub">{{ row.company_name }}</div>
+            <div class="desc">{{ row.description }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if doc.project %}
+    <div class="section">
+        <h2>Projects</h2>
+        {% for row in doc.project %}
+        <div class="item">
+            <div class="item-title">{{ row.project_name }}</div>
+            {% if row.company_name %}<div class="item-sub">{{ row.company_name }}</div>{% endif %}
+            <div class="desc">{{ row.project_description }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if doc.skill %}
+    <div class="section">
+        <h2>Skills</h2>
+        <div class="skills-line">
+            {% for row in doc.skill %}
+            <span>{{ row.skill }}{% if row.level %} ({{ row.level }}){% endif %}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if doc.certificates %}
+    <div class="section">
+        <h2>Certifications</h2>
+        {% for row in doc.certificates %}
+        <div class="item">
+            <div class="item-title">{{ row.certificate_name }}</div>
+            <div class="item-sub">{{ row.issuing_organization }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</body>
+
+</html>

@@ -35,28 +35,28 @@ frappe.ui.form.on('Mentor Payout Sheet', {
 	session_type_filter(frm) {
 		filter_sessions_table(frm);
 	},
-	penalty_mentor_filter(frm) {
+	penalty_mentor_filter(frm) {   
 		filter_penalties_table(frm);
 	}
-});
+}); 
 
 function filter_sessions_table(frm) {
-	let mentor = frm.doc.session_mentor_filter;
+	let mentor = frm.doc.session_mentor_filter; 
 	let session_type = frm.doc.session_type_filter;
-	
+
 	if (frm.fields_dict.sessions && frm.fields_dict.sessions.grid) {
 		frm.fields_dict.sessions.grid.filter_rows(row => {
 			let match = true;
 			if (mentor && row.mentor !== mentor) match = false;
-			if (session_type && row.offering_type !== session_type) match = false;
+			if (session_type && row.offering_type !== session_type) match = false;   
 			return match;
-		});
-	}
-}
-
+		});   
+	}                         
+} 
+  
 function filter_penalties_table(frm) {
 	let mentor = frm.doc.penalty_mentor_filter;
-	
+
 	if (frm.fields_dict.penalties && frm.fields_dict.penalties.grid) {
 		frm.fields_dict.penalties.grid.filter_rows(row => {
 			let match = true;
@@ -65,3 +65,41 @@ function filter_penalties_table(frm) {
 		});
 	}
 }
+
+frappe.ui.form.on('Mentor Payout Sheet Row', {
+	released(frm, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		let target_value = row.released;
+		let mentor = row.mentor;
+		
+		let updated = false;
+		(frm.doc.summary || []).forEach(s_row => {
+			if (s_row.mentor === mentor && s_row.released !== target_value) {
+				s_row.released = target_value;
+				updated = true;
+			}
+		});
+		if (updated) {
+			frm.refresh_field('summary');
+		}
+	}
+});
+
+frappe.ui.form.on('Mentor Payout Sheet Summary Row', {
+	released(frm, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		let target_value = row.released;
+		let mentor = row.mentor;
+		
+		let updated = false;
+		(frm.doc.mentors || []).forEach(m_row => {
+			if (m_row.mentor === mentor && m_row.released !== target_value) {
+				m_row.released = target_value;
+				updated = true;
+			}
+		});
+		if (updated) {
+			frm.refresh_field('mentors');
+		}
+	}
+});

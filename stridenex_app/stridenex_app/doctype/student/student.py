@@ -7,10 +7,11 @@ import math
 
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
-    exception_handel,get_pagination_params,make_cache_key,make_pagination_meta
+    exception_handel,make_cache_key,make_pagination_meta
 )
 import frappe
 from frappe.model.document import Document
+from frappe.utils import getdate, today
 CACHE_TTL   = 300 
 
 class Student(Document):
@@ -18,6 +19,19 @@ class Student(Document):
     
         self.validate_resume()
         self.validate_social_links()
+        self.validate_date_of_birth()
+
+    def validate_date_of_birth(self):
+        if self.date_of_birth:
+            dob = getdate(self.date_of_birth)
+            current_date = getdate(today())
+            if dob >= current_date:
+                frappe.throw("Date of Birth cannot be today or in the future.")
+            
+            # Age check: must be at least 15 years old
+            age = current_date.year - dob.year - ((current_date.month, current_date.day) < (dob.month, dob.day))
+            if age < 15:
+                frappe.throw("Student must be at least 15 years old. Please enter a valid Date of Birth.")
 
     def validate_resume(self):
         if self.resume:
@@ -113,10 +127,15 @@ def get_dashboard_stats(student=None):
 
     s = frappe.get_doc("Student", student)
 
+    total_skills = frappe.db.count("Student Skill", {
+        "student": student,
+        "status": ["!=", "Rejected"]
+    })
+
     return {
         "employability_score": s.employability_score,
         
-        "total_skills": len(s.get("skill") or []),
+        "total_skills": total_skills,
         "cgpa": s.cgpa,
         "backlog": s.get("backlog") or 0,
        
@@ -128,67 +147,6 @@ def get_profile_completeness(student_doc):
                         "college", "course", "resume", "cgpa", "date_of_birth"]
     filled = sum(1 for f in required_fields if student_doc.get(f))
     return round((filled / len(required_fields)) * 100)
-
-# DEFAULT_PAGE_SIZE = 20
-# @frappe.whitelist(allow_guest=True)
-# def get_student_list(college=None, page=1, page_size=DEFAULT_PAGE_SIZE):
-#     try:
-#         page, page_size, limit, offset = get_pagination_params(page, page_size)
-
-#         filters = {}
-#         if college:
-#             filters["college"] = college
-
-#         # ── Cache key unique to every (college, page, page_size) combo ──────
-#         cache_key = make_cache_key("student_list", college=college, page=page, page_size=page_size)
-
-#         cached = frappe.cache().get_value(cache_key)
-#         if cached:
-#             return cached                         # ← cache HIT, return immediately
-
-#         # ── Total count (for pagination meta) ───────────────────ps aux | grep gunicorn────────────
-#         total = frappe.db.count("Student", filters=filters)
-
-#         # ── Paginated fetch ─────────────────────────────────────────────────
-#         students = frappe.get_all(
-#             "Student",
-#             filters=filters,
-#             fields=["*"],
-#             order_by="creation desc",
-#             limit=limit,
-#             start=offset,
-#         )
-
-#         # ── Enrich with child table in one DB round-trip ─────────────────────
-#         if students:
-#             parent_names = [s["name"] for s in students]
-#             all_skills = frappe.get_all(
-#                 "Student Skill Table",
-#                 filters=[["parent", "in", parent_names]],
-#                 fields=["parent", "skill"],
-#             )
-#             # Group skills by parent
-#             skills_map = {}
-#             for sk in all_skills:
-#                 skills_map.setdefault(sk["parent"], []).append({"skill": sk["skill"]})
-#             for student in students:
-#                 student["skills"] = skills_map.get(student["name"], [])
-
-#         # ── Build response ───────────────────────────────────────────────────
-#         result = gen_response(
-#             status=200,
-#             message="Student list fetched successfully",
-#             data={
-#                 "students":   students,
-#                 "pagination": make_pagination_meta(total, page, page_size),
-#             }
-#         )
-
-#         frappe.cache().set_value(cache_key, result, expires_in_sec=CACHE_TTL)
-#         return result
-
-#     except Exception as e:
-#         return exception_handel(e)
     
 DEFAULT_PAGE_SIZE = 20
 
@@ -432,3 +390,208 @@ def create_skill():
             "status": "error",
             "message": str(e)
         }
+    
+
+import frappe
+from frappe.utils import getdate, nowdate, add_days, cint
+
+MINUTES_PER_LESSON = 20  # tune this, or replace with a real duration lookup
+
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_member(student=None):
+    """
+    Resolve the LMS `member` (a User docname/email) for a given Student
+    record or the logged-in user. Returns the email/User-name string.
+    """
+    if student:
+        email = frappe.db.get_value("Student", student, "email_id")
+        if email:
+            return email
+        # allow passing the email/User name directly
+        if frappe.db.exists("User", student):
+            return student
+        frappe.throw(frappe._("Student not found: {0}").format(student))
+
+    # default to the logged-in user
+    if frappe.db.exists("Student", {"email_id": frappe.session.user}):
+        return frappe.session.user
+    frappe.throw(frappe._("No Student record linked to the current user."))
+
+
+def _activity_level(lessons, problems, study_minutes):
+    """Bucket a day's activity into a 0-4 heatmap intensity, low -> high."""
+    score = lessons + problems + (study_minutes / 30.0)
+    if score <= 0:
+        return 0
+    if score < 2:
+        return 1
+    if score < 4:
+        return 2
+    if score < 7:
+        return 3
+    return 4
+
+
+def _estimate_minutes(lessons_completed):
+    """See ASSUMPTION note at top of file."""
+    return lessons_completed * MINUTES_PER_LESSON
+
+
+# ---------------------------------------------------------------------------
+# main endpoint
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+def get_learning_activity(student=None, weeks=7):
+    """
+    Returns the heatmap grid (oldest -> newest, 7-day rows) plus the three
+    stat tiles: total Lessons, total Problems, total Study Time.
+
+    Response shape:
+    {
+      "weeks": [
+        {"week_start": "2026-06-14", "days": [
+            {"date": "2026-06-14", "level": 2, "lessons": 1,
+             "problems": 3, "study_minutes": 20}, ...
+        ]}, ...
+      ],
+      "totals": {"lessons": 42, "problems": 87, "study_hours": 68.0}
+    }
+    """
+    weeks = cint(weeks) or 7
+    member = _resolve_member(student)
+
+    end_date = getdate(nowdate())
+    start_date = add_days(end_date, -(weeks * 7 - 1))
+
+    # --- lessons completed per day, from LMS Course Progress ---------------
+    lesson_rows = frappe.db.sql(
+        """
+        select date(creation) as day, count(*) as lessons
+        from `tabLMS Course Progress`
+        where member = %(member)s
+          and status = 'Complete'
+          and date(creation) between %(start)s and %(end)s
+        group by date(creation)
+        """,
+        {"member": member, "start": start_date, "end": end_date},
+        as_dict=True,
+    )
+    lessons_by_day = {str(r.day): cint(r.lessons) for r in lesson_rows}
+
+    # --- problems (correctly answered quiz questions) per day --------------
+    problem_rows = frappe.db.sql(
+        """
+        select date(sub.creation) as day, count(*) as problems
+        from `tabLMS Quiz Submission` sub
+        inner join `tabLMS Quiz Result` res
+            on res.parent = sub.name and res.parenttype = 'LMS Quiz Submission'
+        where sub.member = %(member)s
+          and res.is_correct = 1
+          and date(sub.creation) between %(start)s and %(end)s
+        group by date(sub.creation)
+        """,
+        {"member": member, "start": start_date, "end": end_date},
+        as_dict=True,
+    )
+    problems_by_day = {str(r.day): cint(r.problems) for r in problem_rows}
+
+    # --- assemble day-by-day, then chunk into weeks -------------------------
+    days = []
+    cursor = start_date
+    while cursor <= end_date:
+        key = str(cursor)
+        lessons = lessons_by_day.get(key, 0)
+        problems = problems_by_day.get(key, 0)
+        minutes = _estimate_minutes(lessons)
+        days.append({
+            "date": key,
+            "level": _activity_level(lessons, problems, minutes),
+            "lessons": lessons,
+            "problems": problems,
+            "study_minutes": minutes,
+        })
+        cursor = add_days(cursor, 1)
+
+    grid = []
+    for i in range(0, len(days), 7):
+        chunk = days[i:i + 7]
+        if chunk:
+            grid.append({"week_start": chunk[0]["date"], "days": chunk})
+
+    total_lessons = sum(d["lessons"] for d in days)
+    total_problems = sum(d["problems"] for d in days)
+    total_minutes = sum(d["study_minutes"] for d in days)
+
+    return {
+        "weeks": grid,
+        "totals": {
+            "lessons": total_lessons,
+            "problems": total_problems,
+            "study_hours": round(total_minutes / 60.0, 1),
+        },
+    }
+
+
+
+@frappe.whitelist(allow_guest=False)
+def get_todays_opportunity_alerts():
+    try:
+        from frappe.utils import add_days, today
+
+        from_date = add_days(today(), -5)
+
+        # ---------------- Internships ----------------
+        internships = frappe.get_all(
+            "Internship",
+            filters={"creation": [">=", from_date]},
+            fields=["name", "title", "creation"],
+            order_by="creation desc"
+        )
+
+        internship_data = [
+            {
+                "name": i["name"],
+                "title": i.get("title"),
+                "date": i["creation"].strftime("%Y-%m-%d")
+            }
+            for i in internships
+        ]
+
+        # ---------------- Industry Projects ----------------
+        projects = frappe.get_all(
+            "Industry Project",
+            filters={"creation": [">=", from_date]},
+            fields=["name", "project_name", "creation"],
+            order_by="creation desc"
+        )
+
+        project_data = [
+            {
+                "name": p["name"],
+                "project_name": p.get("project_name"),
+                "date": p["creation"].strftime("%Y-%m-%d")
+            }
+            for p in projects
+        ]
+
+        return gen_response(
+            status=200,
+            message="Recent internships and projects fetched successfully",
+            data={
+                "internships": internship_data,
+                "projects": project_data,
+                "total_internships": len(internship_data),
+                "total_projects": len(project_data)
+            }
+        )
+
+    except Exception as e:
+        return exception_handel(e)
+
+
+

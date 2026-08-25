@@ -30,8 +30,7 @@
   "is_active",
   "section_break_ffoy",
   "contact_details",
-  "amended_from",
-  "courses"
+  "amended_from"
  ],
  "fields": [
   {
@@ -146,12 +145,6 @@
    "options": "Tahsil"
   },
   {
-   "fieldname": "courses",
-   "fieldtype": "Table",
-   "label": "Courses",
-   "options": "College Courses Table"
-  },
-  {
    "allow_on_submit": 1,
    "fieldname": "email",
    "fieldtype": "Data",
@@ -191,8 +184,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-12 13:46:48.864578",
- "modified_by": "abhisheksadale96@gmail.com",
+ "modified": "2026-08-24 09:16:24.330867",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College",
  "naming_rule": "By fieldname",

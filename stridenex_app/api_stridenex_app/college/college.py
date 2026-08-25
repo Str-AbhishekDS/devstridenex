@@ -277,12 +277,19 @@ STUDENT_LIST_FIELDS = [
 ]
 
 
-# ---------------------------------------------------------------------
-# INTERNAL HELPERS
-# ---------------------------------------------------------------------
+def resolve_college_name(college):
+    if not college:
+        return college
+    if "@" in college:
+        resolved = frappe.db.get_value("College", {"email": college}, "name")
+        if resolved:
+            return resolved
+    return college
+
 
 def _get_students_in_range(category: str, college: str = None):
     """Returns student rows strictly within the category's score range."""
+    college = resolve_college_name(college)
     low, high = THRESHOLDS[category]
 
     conditions = [f"`{SCORE_FIELD}` >= %(low)s"]
@@ -411,6 +418,7 @@ def get_college_employability_summary(college: str = None):
         }
     }
     """
+    college = resolve_college_name(college)
     if college:
         return _summary_for_college(college)
 

@@ -13,9 +13,9 @@ IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
 
 
-class IntegrationTestStridenexTag(IntegrationTestCase):
+class IntegrationTestPlaylistShorts(IntegrationTestCase):
 	"""
-	Integration tests for StridenexTag.
+	Integration tests for PlaylistShorts.
 	Use this class for testing interactions between multiple components.
 	"""
 

@@ -2,18 +2,14 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.model.document import Document
-from stridenex_app.api_stridenex_app.app_utils import (
-    gen_response,
-    exception_handel,get_pagination_params,make_cache_key,make_pagination_meta
-)
-
-
-import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import get_url, format_date, getdate
-from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
+from frappe.utils import get_url, format_date, getdate, today
+from frappe.desk.doctype.notification_log.notification_log import make_notification_logs
+from stridenex_app.api_stridenex_app.app_utils import (
+    gen_response,
+    exception_handel, get_pagination_params, make_cache_key, make_pagination_meta
+)
 
 
 class CollegeEvent(Document):
@@ -34,8 +30,19 @@ class CollegeEvent(Document):
             else:
                 self.name = base_name
 
-    def on_submit(self):
-        self.notify_students()
+    def after_insert(self):
+        """
+        Triggered when college SAVES (creates) a new event.
+        Enqueues bulk notification so the save returns instantly.
+        """
+        if not frappe.flags.in_test:
+            frappe.enqueue(
+                method="stridenex_app.stridenex_app.doctype.college_event.college_event.notify_students_background",
+                queue="long",
+                timeout=1800,
+                event_name=self.name,
+                enqueue_after_commit=True,
+            )
 
     def notify_students(self):
         students = self.get_matching_students()
@@ -46,158 +53,75 @@ class CollegeEvent(Document):
             )
             return
 
+        sent = 0
+        errors = 0
         for student in students:
-            self.send_event_email(student)
-            if student.get("user"):
-                self.send_event_notification(student.get("user"))
+            try:
+                user_id = student.get("email_id")
+                if user_id and frappe.db.exists("User", user_id):
+                    self.send_event_notification(user_id)
+                    sent += 1
+
+                # Commit periodically to keep database connection healthy
+                if sent % 50 == 0:
+                    frappe.db.commit()
+
+            except Exception:
+                errors += 1
+                frappe.log_error(
+                    title=f"College Event Notify Error — {student.get('email_id')}",
+                    message=frappe.get_traceback(),
+                )
+                continue
+
+        frappe.db.commit()
+        frappe.logger().info(
+            f"College Event {self.name}: system notifications sent to {sent} students, {errors} errors"
+        )
 
     def get_matching_students(self):
-        """Fetch students based on participation scope - Intra (same college) or Inter (same university)."""
+        """
+        Fetch students based on participation scope:
+          - Intra College: all students of the same college.
+          - Inter College: students of all colleges under the same university who have the same stream.
+        """
         if self.participation_scope == "Inter College":
-            colleges = self.get_colleges_under_same_university()
-        else:
-            colleges = [self.college]
+            # 1. Get university of the event's college
+            university = frappe.db.get_value("College", self.college, "university")
+            if not university:
+                return []
 
-        filters = {"college": ["in", colleges]}
+            # 2. Get all colleges under the same university
+            colleges = frappe.get_all(
+                "College",
+                filters={"university": university},
+                pluck="name"
+            )
+            if not colleges:
+                return []
+
+            # 3. Get streams of the event's college
+            streams = frappe.get_all(
+                "College Courses Table",
+                filters={"parent": self.college},
+                pluck="stream"
+            )
+            if not streams:
+                return []
+
+            # 4. Filter students of those colleges with those streams
+            filters = {
+                "college": ["in", colleges],
+                "stream": ["in", streams]
+            }
+        else:
+            # Intra College — all students of the same college
+            filters = {"college": self.college}
 
         return frappe.get_all(
             "Student",
             filters=filters,
-            fields=["name", "first_name", "email_id"],
-        )
-
-    def get_colleges_under_same_university(self):
-        """Return all colleges sharing the same university as this event's college."""
-        university = frappe.db.get_value("College", self.college, "university")
-        if not university:
-            return [self.college]
-
-        return frappe.get_all(
-            "College",
-            filters={"university": university},
-            pluck="name",
-        )
-
-    def send_event_email(self, student):
-        if not student.get("email_id"):
-            frappe.log_error(
-                title="College Event Mail",
-                message=f"No email found for student {student.get('name')} (Event: {self.name})"
-            )
-            return
-
-        record_url = get_url(f"/app/college-event/{self.name}")
-
-        subject = _("New {0}: {1}").format(self.event_type or "Event", self.event)
-
-        message = f"""
-        <div style="margin:0;padding:0;background:#f6f6f8;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f6f8;padding:30px 15px;">
-                <tr>
-                    <td align="center">
-
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-                            style="max-width:650px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
-
-                            <!-- Header -->
-                            <tr>
-                                <td style="background:#0f0fbd;padding:30px;text-align:center;">
-                                    <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">
-                                        🎉 New {self.event_type or 'Event'} Announced
-                                    </h1>
-                                    <p style="margin:8px 0 0;color:#dbeafe;font-size:14px;">
-                                        {self.participation_scope or 'Intra College'} Participation
-                                    </p>
-                                </td>
-                            </tr>
-
-                            <!-- Body -->
-                            <tr>
-                                <td style="padding:32px;">
-
-                                    <p style="margin:0 0 20px;color:#1E293B;font-size:16px;line-height:1.8;">
-                                        Dear <strong>{student.get('first_name') or 'Student'}</strong>,
-                                    </p>
-
-                                    <p style="margin:0 0 24px;color:#1E293B;font-size:15px;line-height:1.8;">
-                                        A new {self.event_type or 'event'} has been announced. Check the details below and register before it starts.
-                                    </p>
-
-                                    <!-- Event Highlight -->
-                                    <div style="background:#eef2ff;border-left:4px solid #0f0fbd;padding:18px;border-radius:8px;margin-bottom:24px;">
-                                        <p style="margin:0;color:#1E293B;font-size:15px;line-height:1.8;">
-                                            <strong>🎯 Event:</strong> {self.event}<br>
-                                            <strong>🏷️ Type:</strong> {self.event_type}<br>
-                                            <strong>🌐 Scope:</strong> {self.participation_scope or 'Intra College'}
-                                        </p>
-                                    </div>
-
-                                    <!-- Details -->
-                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:18px;border-radius:8px;margin-bottom:24px;">
-                                        <h3 style="margin:0 0 12px;color:#0f0fbd;font-size:16px;">
-                                            Event Details
-                                        </h3>
-
-                                        <p style="margin:0;color:#1E293B;font-size:14px;line-height:1.9;">
-                                            <strong>📅 Start Date:</strong> {format_date(self.start_date) if self.start_date else 'N/A'}<br>
-                                            <strong>📅 End Date:</strong> {format_date(self.end_date) if self.end_date else 'N/A'}<br>
-                                            <strong>💰 Price:</strong> {self.price or 'Free'}
-                                        </p>
-                                    </div>
-
-                                    <!-- CTA -->
-                                    <div style="text-align:center;margin:30px 0;">
-                                        <a href="{record_url}"
-                                        style="background:#ff6b00;color:#ffffff;text-decoration:none;
-                                                padding:14px 30px;border-radius:8px;
-                                                font-size:15px;font-weight:600;display:inline-block;">
-                                            View Event Details →
-                                        </a>
-                                    </div>
-
-                                    <!-- Note -->
-                                    <div style="background:#fff7ed;border-left:4px solid #ff6b00;padding:16px 18px;border-radius:8px;">
-                                        <p style="margin:0;color:#9a3412;font-size:14px;line-height:1.8;">
-                                            Don't miss this opportunity. Register early to secure your spot.
-                                        </p>
-                                    </div>
-
-                                </td>
-                            </tr>
-
-                            <!-- Footer -->
-                            <tr>
-                                <td style="background:#0F172A;padding:24px;text-align:center;">
-                                    <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;">
-                                        StrideNex Events Team
-                                    </p>
-
-                                    <p style="margin:10px 0 0;color:#94a3b8;font-size:13px;">
-                                        Bringing Opportunities Closer to You
-                                    </p>
-
-                                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #334155;">
-                                        <p style="margin:0;color:#94a3b8;font-size:12px;">
-                                            This notification was sent automatically by StrideNex.
-                                        </p>
-                                    </div>
-                                </td>
-                            </tr>
-
-                        </table>
-
-                    </td>
-                </tr>
-            </table>
-        </div>
-        """
-
-        frappe.sendmail(
-            recipients=[student["email_id"]],
-            subject=subject,
-            message=message,
-            reference_doctype=self.doctype,
-            reference_name=self.name,
+            fields=["name", "first_name", "email_id", "stream"],
         )
 
     def send_event_notification(self, student_user):
@@ -206,67 +130,126 @@ class CollegeEvent(Document):
             "document_type": self.doctype,
             "document_name": self.name,
             "subject": _("New {0}: {1}").format(self.event_type or "Event", self.event),
-            "from_user": frappe.session.user,
+            "from_user": frappe.session.user or "Administrator",
             "email_content": _("Starts on: {0}").format(
                 format_date(self.start_date) if self.start_date else "N/A"
             ),
         })
-        enqueue_create_notification([student_user], notification_doc)
+        # Direct DB insert for in-app alerts
+        make_notification_logs(notification_doc, [student_user])
+
+
+
+def notify_students_background(event_name):
+    """
+    Background job called by frappe.enqueue from CollegeEvent.on_submit.
+    Sends email + in-app notification to every matching student.
+    """
+    import time
+    # Force a database rollback to discard any cached transaction states and start a fresh transaction
+    frappe.db.rollback()
+
+    doc = None
+    # Retry loop with rollback to safely handle database transaction synchronization or replica lag
+    for attempt in range(5):
+        try:
+            doc = frappe.get_doc("College Event", event_name)
+            break
+        except frappe.DoesNotExistError:
+            if attempt < 4:
+                time.sleep(0.5)
+                frappe.db.rollback()
+            else:
+                raise
+
+    try:
+        doc.notify_students()
+        frappe.db.commit()
+    except Exception:
+        frappe.db.rollback()
+        frappe.log_error(
+            title=f"College Event Bulk Notification Failed: {event_name}",
+            message=frappe.get_traceback(),
+        )
+
+
 
 DEFAULT_PAGE_SIZE = 20
 
 @frappe.whitelist(allow_guest=True)
-def get_college_event_list(college=None, student=None, page=1, page_size=DEFAULT_PAGE_SIZE):
+def get_college_event_list(college=None, student=None, page=1, page_size=DEFAULT_PAGE_SIZE, filter="upcoming"):
+    """
+    Fetch college events with optional date-based filtering.
+
+    Args:
+        college  : College name to scope results.
+        student  : Student email/name for registration status lookup.
+        page     : Page number (default 1).
+        page_size: Items per page (default 20).
+        filter   : Date scope filter.
+                   - "upcoming" (default) — events whose end_date >= today.
+                   - "past"               — events whose end_date < today.
+                   - "all"                — no date restriction.
+    """
     try:
         page, page_size, limit, offset = get_pagination_params(page, page_size)
 
-        filters = {}
+        # ── Base scope filter (Intra-College OR matching college) ──────────────
+        scope_filters = [
+            [
+                "College Event",
+                "participation_scope",
+                "=",
+                "Intra College"
+            ],
+            "or",
+            [
+                "College Event",
+                "college",
+                "=",
+                college
+            ]
+        ]
 
-        # Optional filter
-        if college:
-            filters["college"] = college
+        # ── Date filter ────────────────────────────────────────────────────────
+        today_date = today()  # returns "YYYY-MM-DD" string
 
-        # Get paginated events
+        if filter == "upcoming":
+            # Show events that have not yet ended (end_date >= today)
+            date_filters = [
+                ["College Event", "end_date", ">=", today_date]
+            ]
+        elif filter == "past":
+            # Show only events that have already ended (end_date < today)
+            date_filters = [
+                ["College Event", "end_date", "<", today_date]
+            ]
+        else:
+            # filter == "all" — no date restriction
+            date_filters = []
+
+        # Combine scope + date filters
+        combined_filters = scope_filters + (["and"] + date_filters if date_filters else [])
+
+        # ── Determine sort order ───────────────────────────────────────────────
+        if filter == "past":
+            order_by = "end_date desc"   # most recently ended first
+        else:
+            order_by = "start_date asc"  # soonest upcoming first
+
+        # ── Fetch paginated events ─────────────────────────────────────────────
         events = frappe.get_all(
             "College Event",
-            filters=[
-                [
-                    "College Event",
-                    "participation_scope",
-                    "=",
-                    "Intra College"
-                ],
-                "or",
-                [
-                    "College Event",
-                    "college",
-                    "=",
-                    college
-                ]
-            ],
+            filters=combined_filters,
             fields=["*"],
-            order_by="creation desc",
+            order_by=order_by,
             limit_page_length=limit,
             limit_start=offset
         )
 
-        total = frappe.db.count("College Event", filters=[
-                [
-                    "College Event",
-                    "participation_scope",
-                    "=",
-                    "Intra College"
-                ],
-                "or",
-                [
-                    "College Event",
-                    "college",
-                    "=",
-                    college
-                ]
-            ],)
+        total = frappe.db.count("College Event", filters=combined_filters)
 
-        # Get registration status (if student provided)
+        # ── Registration status lookup ─────────────────────────────────────────
         registration_map = {}
 
         if student:
@@ -275,13 +258,12 @@ def get_college_event_list(college=None, student=None, page=1, page_size=DEFAULT
                 filters={"student": student},
                 fields=["event", "status"]
             )
-
             registration_map = {
                 r["event"]: r["status"]
                 for r in registrations
             }
 
-        # Attach registration status
+        # Attach registration status to every event
         for event in events:
             event["registration_status"] = (
                 registration_map.get(event["name"], "Not Registered")
@@ -294,6 +276,7 @@ def get_college_event_list(college=None, student=None, page=1, page_size=DEFAULT
             message="College event list fetched successfully",
             data={
                 "events": events,
+                "filter": filter,
                 "pagination": make_pagination_meta(
                     total,
                     page,

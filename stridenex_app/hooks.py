@@ -156,7 +156,7 @@ on_session_creation = [
 
 doc_events = {
     "Student": {
-        "on_update": "stridenex_app.employability.update_score_from_student",
+        "before_save": "stridenex_app.employability.update_score_from_student",
     },
     "Student Skill": {
         "after_insert": "stridenex_app.employability.update_score_from_skill",
@@ -173,12 +173,26 @@ doc_events = {
         "on_update": "stridenex_app.employability.update_score_from_project",
         "on_trash": "stridenex_app.employability.update_score_from_project",
     },
-    "Student Project Enrollment": {
+    "Student Path Enrollment": {
+        "after_insert": "stridenex_app.employability.update_score_from_enrollment",
+        "on_update": "stridenex_app.employability.update_score_from_enrollment",
+        "on_trash": "stridenex_app.employability.update_score_from_enrollment",
+    },
+    "Student Applications": {
         "on_update": "stridenex_app.api_stridenex_app.notification.project_status_change",
     },
-    "Internship Application": {
-        "on_update": "stridenex_app.api_stridenex_app.notification.internship_status_change"
+    "Industry Project": {
+        "on_submit": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
     },
+    "Internship": {
+        "on_submit": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
+    },
+    "Industry Job Profile": {
+        "on_submit": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
+    },
+    # "Internship Application": {
+    #     "on_update": "stridenex_app.api_stridenex_app.notification.internship_status_change"
+    # },
     # "User": {
     #     "on_update": "stridenex_app.api_stridenex_app.notification.send_onboarding_email"
     # },

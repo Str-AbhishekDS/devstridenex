@@ -1,0 +1,151 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{student}-{opportunity_type}-{####}",
+ "creation": "2026-08-07 23:42:09.946615",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "student",
+  "opportunity_type",
+  "project",
+  "internship",
+  "job_profile",
+  "industry",
+  "status",
+  "applied_on",
+  "resume",
+  "expected_salary",
+  "match_score",
+  "notes",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "opportunity_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Project\nInternship\nJob",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.opportunity_type=='Project'",
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "mandatory_depends_on": "eval:doc.opportunity_type=='Project'",
+   "options": "Industry Project"
+  },
+  {
+   "depends_on": "eval:doc.opportunity_type=='Internship'",
+   "fieldname": "internship",
+   "fieldtype": "Link",
+   "label": "Internship",
+   "mandatory_depends_on": "eval:doc.opportunity_type=='Internship'",
+   "options": "Internship"
+  },
+  {
+   "depends_on": "eval:doc.opportunity_type=='Job'",
+   "fieldname": "job_profile",
+   "fieldtype": "Link",
+   "label": "Job Profile",
+   "mandatory_depends_on": "eval:doc.opportunity_type=='Job'",
+   "options": "Industry Job Profile"
+  },
+  {
+   "fieldname": "industry",
+   "fieldtype": "Link",
+   "label": "Industry",
+   "options": "Industry list",
+   "read_only": 1
+  },
+  {
+   "default": "Applied",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Applied\nShortlisted\nTech Interview\nHR\nSelected\nRejected\nWithdrawn\nAccepted"
+  },
+  {
+   "default": "Now",
+   "fieldname": "applied_on",
+   "fieldtype": "Datetime",
+   "label": "Applied On"
+  },
+  {
+   "fieldname": "resume",
+   "fieldtype": "Attach",
+   "label": "Resume"
+  },
+  {
+   "fieldname": "match_score",
+   "fieldtype": "Percent",
+   "label": "Match Score"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Student Applications",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "expected_salary",
+   "fieldtype": "Data",
+   "label": "Expected Salary"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-08-11 12:54:30.543841",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Student Applications",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Student"
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

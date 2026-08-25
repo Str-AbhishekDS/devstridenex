@@ -369,6 +369,7 @@ from frappe.utils import today
 def update_last_activity(login_manager):
     """
     Update last activity date whenever a user logs in.
+    Also triggers the base package welcome email on first login.
     """
 
     user = frappe.session.user
@@ -385,8 +386,232 @@ def update_last_activity(login_manager):
     )
 
     frappe.db.commit()
-    
-    
+
+    # Send base-package welcome email only on the very first login
+    send_first_login_package_email(user)
+
+
+def send_first_login_package_email(user_email):
+    """
+    Fires ONCE on the user's very first login.
+    Detects the first login by checking whether `User.last_login` is NULL
+    (Frappe sets last_login AFTER the session-creation hook fires, so the
+    field is still NULL during the very first login call).
+
+    Looks up the user's active package from `Active Package Details`.
+    If no active package is found, falls back to any base Billing Package
+    whose billing_role matches one of the user's Frappe roles.
+    """
+    # Frappe updates last_login AFTER on_session_creation, so NULL == first login
+    last_login = frappe.db.get_value("User", user_email, "last_login")
+    if last_login:
+        return  # Not the first login — do nothing
+
+    user_doc = frappe.get_doc("User", user_email)
+    user_roles = [r.role for r in (user_doc.get("roles") or [])]
+
+    # ── 1. Try to find the active package for this user ──────────────────────
+    active_pkg = frappe.db.get_value(
+        "Active Package Details",
+        {"user": user_email},
+        ["billing_package", "from_date", "to_date", "no_of_days", "role"],
+        as_dict=True,
+        order_by="creation desc",
+    )
+
+    if active_pkg and active_pkg.billing_package:
+        pkg_record = frappe.db.get_value(
+            "Billing Package",
+            active_pkg.billing_package,
+            ["package_name", "no_of_days", "target_account_type"],
+            as_dict=True,
+        )
+        package_name = pkg_record.package_name if pkg_record else active_pkg.billing_package
+        # Prefer the ledger's own no_of_days; fallback to the package master
+        duration_days = (
+            active_pkg.no_of_days
+            or (pkg_record.no_of_days if pkg_record else 0)
+        )
+    else:
+        # ── 2. Fallback: find a base Billing Package matching the user's roles ─
+        billing_role_names = frappe.get_all(
+            "Billing Role",
+            filters={"role": ["in", user_roles]},
+            pluck="name",
+        )
+        base_pkg = None
+        if billing_role_names:
+            base_pkg = frappe.db.get_value(
+                "Billing Package",
+                {
+                    "is_base_package": 1,
+                    "is_active": 1,
+                    "billing_role": ["in", billing_role_names],
+                },
+                ["package_name", "no_of_days", "target_account_type"],
+                as_dict=True,
+            )
+        if not base_pkg:
+            # Nothing found — skip the email silently
+            return
+        package_name = base_pkg.package_name
+        duration_days = base_pkg.no_of_days or 0
+
+    # ── 3. Send the welcome email ─────────────────────────────────────────────
+    user_name = user_doc.full_name or user_doc.first_name or user_email
+    subject = f"🎉 Welcome to StrideNex – Your {package_name} is Active!"
+    message = frappe.render_template(
+        FIRST_LOGIN_PACKAGE_EMAIL_TEMPLATE,
+        {
+            "user_name": user_name,
+            "package_name": package_name,
+            "duration_days": duration_days,
+        },
+    )
+    frappe.sendmail(
+        recipients=[user_email],
+        subject=subject,
+        message=message,
+        now=True,
+    )
+
+
+FIRST_LOGIN_PACKAGE_EMAIL_TEMPLATE = """
+<div style="margin:0;padding:0;background:#f6f6f8;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f6f8;padding:30px 15px;">
+    <tr>
+      <td align="center">
+
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+          style="max-width:650px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#0f0fbd;padding:32px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;">
+                🎉 Welcome to StrideNex
+              </h1>
+              <p style="margin:10px 0 0;color:#dbeafe;font-size:15px;">
+                Your account is active and your package has started
+              </p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+
+              <p style="margin:0 0 20px;color:#1E293B;font-size:16px;line-height:1.8;">
+                Hi <strong>{{ user_name }}</strong>,
+              </p>
+
+              <p style="margin:0 0 24px;color:#1E293B;font-size:15px;line-height:1.8;">
+                Welcome aboard! You have successfully logged in to StrideNex for the first time.
+                Here is a quick overview of your active package and what you can do.
+              </p>
+
+              <!-- Package Activation Banner -->
+              <div style="background:#eef2ff;border-left:4px solid #0f0fbd;padding:18px;border-radius:8px;margin-bottom:24px;">
+                <h3 style="margin:0 0 10px;color:#0f0fbd;font-size:16px;">
+                  📦 {{ package_name }} — Activated
+                </h3>
+                <p style="margin:0;color:#1E293B;font-size:14px;line-height:1.8;">
+                  Your <strong>{{ package_name }}</strong> is now active and gives you
+                  access for the next <strong>{{ duration_days }} days</strong>.
+                </p>
+                <p style="margin:10px 0 0;color:#64748B;font-size:13px;line-height:1.8;">
+                  Make the most of every day — explore features, build skills, and accelerate your career.
+                </p>
+              </div>
+
+              <!-- Features List -->
+              <h3 style="margin:0 0 16px;color:#0f0fbd;font-size:18px;">
+                🚀 What You Can Do Now
+              </h3>
+
+              <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
+                <tr>
+                  <td style="padding:10px 0;color:#1E293B;">
+                    ✅ <strong>Add &amp; Verify Skills using AI</strong><br>
+                    <span style="color:#64748B;">Validate your skills and strengthen your profile.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;color:#1E293B;">
+                    🎯 <strong>Choose Your Career Path</strong><br>
+                    <span style="color:#64748B;">Follow a structured roadmap toward your dream career.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;color:#1E293B;">
+                    📚 <strong>Watch Study Shorts</strong><br>
+                    <span style="color:#64748B;">Learn quickly through bite-sized educational content.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;color:#1E293B;">
+                    📈 <strong>Track Daily Habits</strong><br>
+                    <span style="color:#64748B;">Build consistency with habit tracking and progress monitoring.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;color:#1E293B;">
+                    👨‍🏫 <strong>Connect with Mentors</strong><br>
+                    <span style="color:#64748B;">Get guidance from experienced professionals.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;color:#1E293B;">
+                    🎪 <strong>Discover College Events</strong><br>
+                    <span style="color:#64748B;">Stay informed about opportunities around your campus.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;color:#1E293B;">
+                    🌟 <strong>Read &amp; Share Success Stories</strong><br>
+                    <span style="color:#64748B;">Get inspired by achievements from the StrideNex community.</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Call to action note -->
+              <div style="background:#fff7ed;border-left:4px solid #ff6b00;padding:18px;border-radius:8px;">
+                <p style="margin:0;color:#9a3412;font-size:14px;line-height:1.8;">
+                  Start exploring today and make the most of your <strong>{{ package_name }}</strong> benefits.
+                  Your journey toward career success begins now!
+                </p>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#0F172A;padding:24px;text-align:center;">
+              <p style="margin:0;color:#ffffff;font-size:16px;font-weight:600;">
+                Welcome to the StrideNex Community
+              </p>
+              <p style="margin:10px 0 0;color:#94a3b8;font-size:13px;">
+                Empowering Skills • Building Careers • Creating Opportunities
+              </p>
+              <div style="margin-top:16px;padding-top:16px;border-top:1px solid #334155;">
+                <p style="margin:0;color:#94a3b8;font-size:12px;">
+                  Best Regards,<br>
+                  <span style="color:#ffffff;font-weight:600;">StrideNex Team</span>
+                </p>
+              </div>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</div>
+"""
+
+
     
 import frappe
 from frappe.utils import get_url
@@ -402,23 +627,23 @@ PROJECT_STATUS_CONFIG = {
         "message": "Great news! You have been shortlisted for the project. Please keep an eye on your dashboard for the next steps.",
         "note": "Stay tuned — the next update could be an interview invite.",
     },
-    "Interview Scheduled": {
+    "Tech Interview": {
         "accent": "#7c3aed",
         "badge_color": "#7c3aed",
         "badge_bg": "#f3e8ff",
-        "subject": "Your Interview Has Been Scheduled",
-        "heading": "Interview Scheduled 📅",
-        "message": "Your interview for the project has been scheduled. Please check your dashboard for the date, time, and further details.",
-        "note": "Make sure to prepare well and join on time.",
+        "subject": "Technical Interview Scheduled",
+        "heading": "Tech Interview Scheduled 💻",
+        "message": "Your technical interview round has been scheduled for this project. Please check your dashboard for the date, time, and details.",
+        "note": "Brush up on your technical fundamentals and be ready ahead of time.",
     },
-    "Rejected": {
-        "accent": "#dc2626",
-        "badge_color": "#dc2626",
-        "badge_bg": "#fee2e2",
-        "subject": "Update on Your Project Application",
-        "heading": "Application Update",
-        "message": "Thank you for applying. After careful review, we regret to inform you that your application was not selected for this project this time.",
-        "note": "Don't be discouraged — new opportunities are added regularly. Keep applying!",
+    "HR": {
+        "accent": "#9333ea",
+        "badge_color": "#9333ea",
+        "badge_bg": "#f3e8ff",
+        "subject": "HR Round Scheduled",
+        "heading": "HR Interview Scheduled 🗣️",
+        "message": "You've moved to the HR interview round for this project. Please check your dashboard for the schedule and details.",
+        "note": "This is often the final step before a decision — good luck!",
     },
     "Selected": {
         "accent": "#10b981",
@@ -429,6 +654,24 @@ PROJECT_STATUS_CONFIG = {
         "message": "Congratulations! You have been selected for the project. Please check your dashboard for onboarding details and next steps.",
         "note": "Welcome aboard — we're excited to have you on this project.",
     },
+    "Accepted": {
+        "accent": "#10b981",
+        "badge_color": "#10b981",
+        "badge_bg": "#d1fae5",
+        "subject": "Congratulations! You've Been Selected",
+        "heading": "You're Selected ✅",
+        "message": "Congratulations! You have been selected for the project. Please check your dashboard for onboarding details and next steps.",
+        "note": "Welcome aboard — we're excited to have you on this project.",
+    },
+    "Rejected": {
+        "accent": "#dc2626",
+        "badge_color": "#dc2626",
+        "badge_bg": "#fee2e2",
+        "subject": "Update on Your Project Application",
+        "heading": "Application Update",
+        "message": "Thank you for applying. After careful review, we regret to inform you that your application was not selected for this project this time.",
+        "note": "Don't be discouraged — new opportunities are added regularly. Keep applying!",
+    },
     "Completed": {
         "accent": "#0891b2",
         "badge_color": "#0891b2",
@@ -438,39 +681,271 @@ PROJECT_STATUS_CONFIG = {
         "message": "Your project has been marked as completed. Great work! Your performance and output are being reviewed by the team.",
         "note": "Check your dashboard for feedback and any certificates or awards.",
     },
-    "Awarded": {
-        "accent": "#ff6b00",
-        "badge_color": "#ff6b00",
-        "badge_bg": "#ffedd5",
-        "subject": "You've Been Awarded!",
-        "heading": "Congratulations, You're Awarded 🏆",
-        "message": "Outstanding work! You have been awarded for your performance on this project. This achievement has been added to your profile.",
-        "note": "Check your dashboard to view your award details.",
+}
+
+INTERNSHIP_STATUS_CONFIG = {
+    "Shortlisted": {
+        "accent": "#0f0fbd",
+        "badge_color": "#0f0fbd",
+        "badge_bg": "#eef2ff",
+        "subject": "You've Been Shortlisted!",
+        "heading": "You're Shortlisted 🎉",
+        "message": "Great news! You have been shortlisted for this internship. Please keep an eye on your dashboard for the next steps.",
+        "note": "Stay tuned — the next update could be an interview invite.",
     },
+    "Tech Interview": {
+        "accent": "#7c3aed",
+        "badge_color": "#7c3aed",
+        "badge_bg": "#f3e8ff",
+        "subject": "Technical Interview Scheduled",
+        "heading": "Tech Interview Scheduled 💻",
+        "message": "Your technical interview round has been scheduled for this internship. Please check your dashboard for the date, time, and details.",
+        "note": "Brush up on your technical fundamentals and be ready ahead of time.",
+    },
+    "HR": {
+        "accent": "#9333ea",
+        "badge_color": "#9333ea",
+        "badge_bg": "#f3e8ff",
+        "subject": "HR Round Scheduled",
+        "heading": "HR Interview Scheduled 🗣️",
+        "message": "You've moved to the HR interview round for this internship. Please check your dashboard for the schedule and details.",
+        "note": "This is often the final step before a decision — good luck!",
+    },
+    "Selected": {
+        "accent": "#10b981",
+        "badge_color": "#10b981",
+        "badge_bg": "#d1fae5",
+        "subject": "Congratulations! You've Been Selected",
+        "heading": "You're Selected ✅",
+        "message": "Congratulations! You have been selected for this internship. Please check your dashboard for onboarding details and next steps.",
+        "note": "Welcome aboard — we're excited to have you get started.",
+    },
+    "Accepted": {
+        "accent": "#10b981",
+        "badge_color": "#10b981",
+        "badge_bg": "#d1fae5",
+        "subject": "Congratulations! You've Been Selected",
+        "heading": "You're Selected ✅",
+        "message": "Congratulations! You have been selected for this internship. Please check your dashboard for onboarding details and next steps.",
+        "note": "Welcome aboard — we're excited to have you get started.",
+    },
+    "Rejected": {
+        "accent": "#dc2626",
+        "badge_color": "#dc2626",
+        "badge_bg": "#fee2e2",
+        "subject": "Update on Your Internship Application",
+        "heading": "Application Update",
+        "message": "Thank you for applying. After careful review, we regret to inform you that your application was not selected for this internship this time.",
+        "note": "Don't be discouraged — new opportunities are added regularly. Keep applying!",
+    },
+    "Completed": {
+        "accent": "#0891b2",
+        "badge_color": "#0891b2",
+        "badge_bg": "#cffafe",
+        "subject": "Internship Marked as Completed",
+        "heading": "Internship Completed 🏁",
+        "message": "Your internship has been marked as completed. Great work! Your performance and output are being reviewed by the team.",
+        "note": "Check your dashboard for feedback and any certificates or awards.",
+    },
+}
+
+JOB_STATUS_CONFIG = {
+    "Shortlisted": {
+        "accent": "#0f0fbd",
+        "badge_color": "#0f0fbd",
+        "badge_bg": "#eef2ff",
+        "subject": "You've Been Shortlisted!",
+        "heading": "You're Shortlisted 🎉",
+        "message": "Great news! You have been shortlisted for this job. Please keep an eye on your dashboard for the next steps.",
+        "note": "Stay tuned — the next update could be an interview invite.",
+    },
+    "Tech Interview": {
+        "accent": "#7c3aed",
+        "badge_color": "#7c3aed",
+        "badge_bg": "#f3e8ff",
+        "subject": "Technical Interview Scheduled",
+        "heading": "Tech Interview Scheduled 💻",
+        "message": "Your technical interview round has been scheduled for this job. Please check your dashboard for the date, time, and details.",
+        "note": "Brush up on your technical fundamentals and be ready ahead of time.",
+    },
+    "HR": {
+        "accent": "#9333ea",
+        "badge_color": "#9333ea",
+        "badge_bg": "#f3e8ff",
+        "subject": "HR Round Scheduled",
+        "heading": "HR Interview Scheduled 🗣️",
+        "message": "You've moved to the HR interview round for this job. Please check your dashboard for the schedule and details.",
+        "note": "This is often the final step before a decision — good luck!",
+    },
+    "Selected": {
+        "accent": "#10b981",
+        "badge_color": "#10b981",
+        "badge_bg": "#d1fae5",
+        "subject": "Congratulations! You've Been Selected",
+        "heading": "You're Selected ✅",
+        "message": "Congratulations! You have been selected for this job. Please check your dashboard for onboarding details and next steps.",
+        "note": "Welcome aboard — we're excited to have you get started.",
+    },
+    "Accepted": {
+        "accent": "#10b981",
+        "badge_color": "#10b981",
+        "badge_bg": "#d1fae5",
+        "subject": "Congratulations! You've Been Selected",
+        "heading": "You're Selected ✅",
+        "message": "Congratulations! You have been selected for this job. Please check your dashboard for onboarding details and next steps.",
+        "note": "Welcome aboard — we're excited to have you get started.",
+    },
+    "Rejected": {
+        "accent": "#dc2626",
+        "badge_color": "#dc2626",
+        "badge_bg": "#fee2e2",
+        "subject": "Update on Your Job Application",
+        "heading": "Application Update",
+        "message": "Thank you for applying. After careful review, we regret to inform you that your application was not selected for this job this time.",
+        "note": "Don't be discouraged — new opportunities are added regularly. Keep applying!",
+    },
+    "Completed": {
+        "accent": "#0891b2",
+        "badge_color": "#0891b2",
+        "badge_bg": "#cffafe",
+        "subject": "Job Application Marked as Completed",
+        "heading": "Job Completed 🏁",
+        "message": "Your job application process has been marked as completed. Great work!",
+        "note": "Check your dashboard for feedback or next steps.",
+    },
+}
+
+OPPORTUNITY_CONFIG_MAP = {
+    "Project": {
+        "config": PROJECT_STATUS_CONFIG,
+        "label": "Project",
+    },
+    "Internship": {
+        "config": INTERNSHIP_STATUS_CONFIG,
+        "label": "Internship",
+    },
+    "Job": {
+        "config": JOB_STATUS_CONFIG,
+        "label": "Job",
+    }
 }
 
 
 def project_status_change(doc, method=None):
-    """Triggered on Student Project Enrollment save. Sends email + notification
+    """Triggered on Student Applications save. Sends email + notification
     only when status has actually changed to one of the tracked stages."""
 
     if not doc.has_value_changed("status"):
         return
 
+    # If status is Selected or Accepted, notify the student's college
+    if doc.status in ("Selected", "Accepted"):
+        notify_college_on_student_selection(doc)
+
+    # Check opportunity_type (Project, Internship, Job)
+    opp_type = doc.opportunity_type or "Project"
+    
+    opp_map = OPPORTUNITY_CONFIG_MAP.get(opp_type)
+    if not opp_map:
+        return
+        
     status = doc.status
-    config = PROJECT_STATUS_CONFIG.get(status)
+    config = opp_map["config"].get(status)
 
     if not config:
-        return  # not one of our 6 tracked stages
+        return  # not one of our tracked stages
 
     student_user = get_student_user(doc)
     if not student_user:
         return
 
     full_name = frappe.db.get_value("User", student_user, "full_name") or student_user
+    opp_title = get_opportunity_title(doc, opp_type)
+    opp_label = opp_map["label"]
 
-    send_status_mail(student_user, full_name, status, config, doc)
+    send_status_mail(student_user, full_name, status, config, doc, opp_title, opp_label)
     send_status_notification(student_user, status, config, doc)
+
+
+def notify_college_on_student_selection(doc):
+    """
+    If a student is selected or accepted for a project, internship, or job,
+    notify their college via email and system notification (Notification Log).
+    """
+    try:
+        if not doc.student:
+            return
+
+        # Fetch student details
+        student_doc = frappe.get_doc("Student", doc.student)
+        college_id = student_doc.college
+
+        if not college_id or not frappe.db.exists("College", college_id):
+            return
+
+        # Fetch college details
+        college_doc = frappe.get_doc("College", college_id)
+        college_email = college_doc.email
+
+        if not college_email:
+            return
+
+        # Prepare details
+        student_name = f"{student_doc.first_name} {student_doc.last_name or ''}".strip()
+        opp_type = doc.opportunity_type or "Opportunity"
+        opp_title = get_opportunity_title(doc, opp_type)
+
+        subject = f"Student Selected: {student_name} for {opp_type}"
+        message = f"""
+        Dear {college_doc.college_name or 'College Administrator'},
+
+        We are pleased to inform you that your student, {student_name}, has been selected for the following {opp_type.lower()}:
+
+        Opportunity: {opp_title}
+        Industry: {doc.industry or 'N/A'}
+
+        Please log in to the StrideNex portal for more details.
+
+        Regards,
+        StrideNex Team
+        """
+
+        # 1. Send email to the college email address
+        frappe.sendmail(
+            recipients=[college_email],
+            subject=subject,
+            message=message,
+            now=True
+        )
+
+        # 2. Check if the college email belongs to an existing User
+        if frappe.db.exists("User", college_email):
+            # Send system notification to the user
+            frappe.get_doc({
+                "doctype": "Notification Log",
+                "subject": subject,
+                "email_content": message,
+                "for_user": college_email,
+                "type": "Alert",
+                "document_type": doc.doctype,
+                "document_name": doc.name,
+            }).insert(ignore_permissions=True)
+
+    except Exception as e:
+        frappe.log_error(
+            title=f"College Notification Error for Application {doc.name}",
+            message=frappe.get_traceback()
+        )
+
+
+def get_opportunity_title(doc, opportunity_type):
+    if opportunity_type == "Project":
+        return frappe.db.get_value("Industry Project", doc.project, "project_name") or doc.project or "your project"
+    elif opportunity_type == "Internship":
+        return frappe.db.get_value("Internship", doc.internship, "title") or doc.internship or "your internship"
+    elif opportunity_type == "Job":
+        return frappe.db.get_value("Industry Job Profile", doc.job_profile, "job_title") or doc.job_profile or "your job"
+    return "your application"
 
 
 def get_student_user(doc):
@@ -493,7 +968,6 @@ def get_student_user(doc):
 def send_status_notification(student_user, status, config, doc):
     """Creates an in-app Notification Log entry (bell icon notification)."""
 
-    
     frappe.get_doc({
         "doctype": "Notification Log",
         "subject": config["subject"],
@@ -505,9 +979,7 @@ def send_status_notification(student_user, status, config, doc):
     }).insert(ignore_permissions=True)
 
 
-def send_status_mail(student_user, full_name, status, config, doc):
-    project_name = getattr(doc, "project_name", None) or getattr(doc, "project", None) or "your project"
-    
+def send_status_mail(student_user, full_name, status, config, doc, opportunity_title, opportunity_label):
     message = f"""
 <div style="margin:0;padding:0;background:#f6f6f8;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f6f8;padding:30px 15px;">
@@ -524,7 +996,7 @@ def send_status_mail(student_user, full_name, status, config, doc):
                                 {config['heading']}
                             </h1>
                             <p style="margin:8px 0 0;color:#dbeafe;font-size:14px;">
-                                Update on: {project_name}
+                                Update on: {opportunity_title}
                             </p>
                         </td>
                     </tr>
@@ -546,232 +1018,10 @@ def send_status_mail(student_user, full_name, status, config, doc):
                                 <table width="100%" style="border-collapse:collapse;">
                                     <tr>
                                         <td style="padding:8px 0;color:#64748B;font-size:14px;">
-                                            <strong>Project</strong>
+                                            <strong>{opportunity_label}</strong>
                                         </td>
                                         <td style="padding:8px 0;color:#1E293B;font-size:14px;text-align:right;">
-                                            {project_name}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding:8px 0;color:#64748B;font-size:14px;">
-                                            <strong>Current Status</strong>
-                                        </td>
-                                        <td style="padding:8px 0;text-align:right;">
-                                            <span style="background:{config['badge_bg']};color:{config['badge_color']};
-                                                padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;">
-                                                {status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-
-                            <!-- Note -->
-                            <div style="background:#eef2ff;border-left:4px solid {config['accent']};padding:16px 18px;border-radius:8px;">
-                                <p style="margin:0;color:#1E293B;font-size:14px;line-height:1.8;">
-                                    {config['note']}
-                                </p>
-                            </div>
-
-                        </td>
-                    </tr>
-
-                    <!-- Footer -->
-                    <tr>
-                        <td style="background:#0F172A;padding:24px;text-align:center;">
-                            <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;">
-                                StrideNex Team
-                            </p>
-                            <p style="margin:10px 0 0;color:#94a3b8;font-size:13px;">
-                                Empowering Skills • Building Careers • Creating Opportunities
-                            </p>
-                            <div style="margin-top:16px;padding-top:16px;border-top:1px solid #334155;">
-                                <p style="margin:0;color:#94a3b8;font-size:12px;">
-                                    Log in to your dashboard to view full details of this update.
-                                </p>
-                            </div>
-                        </td>
-                    </tr>
-
-                </table>
-
-            </td>
-        </tr>
-    </table>
-</div>
-"""
-
-    frappe.sendmail(
-        recipients=[student_user],
-        subject=config["subject"],
-        message=message,
-        reference_doctype=doc.doctype,
-        reference_name=doc.name,
-    )
-    
-    
-    
-    
-    
-
-STATUS_CONFIG = {
-    "Shortlisted": {
-        "accent": "#0f0fbd",
-        "badge_color": "#0f0fbd",
-        "badge_bg": "#eef2ff",
-        "subject": "You've Been Shortlisted!",
-        "heading": "You're Shortlisted 🎉",
-        "message": "Great news! You have been shortlisted for this internship. Keep an eye on your dashboard for the next steps.",
-        "note": "Stay tuned — the next update could be an interview invite.",
-    },
-    "Tech Interview": {
-        "accent": "#7c3aed",
-        "badge_color": "#7c3aed",
-        "badge_bg": "#f3e8ff",
-        "subject": "Technical Interview Scheduled",
-        "heading": "Tech Interview Scheduled 💻",
-        "message": "Your technical interview round has been scheduled for this internship. Please check your dashboard for the date, time, and details.",
-        "note": "Brush up on your technical fundamentals and be ready ahead of time.",
-    },
-    "HR": {
-        "accent": "#9333ea",
-        "badge_color": "#9333ea",
-        "badge_bg": "#f3e8ff",
-        "subject": "HR Round Scheduled",
-        "heading": "HR Interview Scheduled 🗣️",
-        "message": "You've moved to the HR interview round for this internship. Please check your dashboard for the schedule and details.",
-        "note": "This is often the final step before a decision — good luck!",
-    },
-    "Final": {
-        "accent": "#2563eb",
-        "badge_color": "#2563eb",
-        "badge_bg": "#dbeafe",
-        "subject": "Final Round Scheduled",
-        "heading": "Final Round Scheduled 🎯",
-        "message": "You've reached the final round for this internship. Please check your dashboard for the schedule and details.",
-        "note": "You're almost there — this is the last step before a final decision.",
-    },
-    "Rejected": {
-        "accent": "#dc2626",
-        "badge_color": "#dc2626",
-        "badge_bg": "#fee2e2",
-        "subject": "Update on Your Internship Application",
-        "heading": "Application Update",
-        "message": "Thank you for applying. After careful review, we regret to inform you that your application was not selected for this internship this time.",
-        "note": "Don't be discouraged — new opportunities are added regularly. Keep applying!",
-    },
-    "Selected": {
-        "accent": "#10b981",
-        "badge_color": "#10b981",
-        "badge_bg": "#d1fae5",
-        "subject": "Congratulations! You've Been Selected",
-        "heading": "You're Selected ✅",
-        "message": "Congratulations! You have been selected for this internship. Please check your dashboard for onboarding details and next steps.",
-        "note": "Welcome aboard — we're excited to have you get started.",
-    },
-}
-
-
-def internship_status_change(doc, method=None):
-    """Triggered on Internship Application save. Sends email + notification
-    only when status changes to one of the tracked stages (excludes 'Applied')."""
-
-    if not doc.has_value_changed("status"):
-        return
-
-    status = doc.status
-    config = STATUS_CONFIG.get(status)
-
-    if not config:
-        return  # 'Applied' or any untracked status - skip
-
-    student_user = get_internship_student_user(doc.student)
-    if not student_user:
-        frappe.log_error(
-            f"No user linked for Student {doc.student}",
-            "Internship Application Notification"
-        )
-        return
-
-    full_name = frappe.db.get_value("User", student_user, "full_name") or student_user
-    internship_title = frappe.db.get_value("Internship", doc.internship, "title") \
-        or doc.internship
-
-    send_internship_status_mail(student_user, full_name, status, config, doc, internship_title)
-    send_internship_status_notification(student_user, status, config, doc)
-
-
-def get_internship_student_user(student):
-    """Student doctype is assumed to have a field linking to User -
-    adjust fieldname below if it's different (e.g. 'user', 'user_id', 'email')."""
-
-    if not student:
-        return None
-
-    for fieldname in ("email_id", "user", "email"):
-        if frappe.db.has_column("Student", fieldname):
-            value = frappe.db.get_value("Student", student, fieldname)
-            if value:
-                return value
-
-    return None
-
-
-def send_internship_status_notification(student_user, status, config, doc):
-    frappe.get_doc({
-        "doctype": "Notification Log",
-        "subject": config["subject"],
-        "email_content": config["message"],
-        "for_user": student_user,
-        "type": "Alert",
-        "document_type": doc.doctype,
-        "document_name": doc.name,
-    }).insert(ignore_permissions=True)
-
-
-def send_internship_status_mail(student_user, full_name, status, config, doc, internship_title):
-    message = f"""
-<div style="margin:0;padding:0;background:#f6f6f8;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f6f8;padding:30px 15px;">
-        <tr>
-            <td align="center">
-
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-                    style="max-width:600px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
-
-                    <!-- Header -->
-                    <tr>
-                        <td style="background:{config['accent']};padding:30px;text-align:center;">
-                            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">
-                                {config['heading']}
-                            </h1>
-                            <p style="margin:8px 0 0;color:#dbeafe;font-size:14px;">
-                                Update on: {internship_title}
-                            </p>
-                        </td>
-                    </tr>
-
-                    <!-- Body -->
-                    <tr>
-                        <td style="padding:32px;">
-
-                            <p style="margin:0 0 20px;color:#1E293B;font-size:16px;line-height:1.8;">
-                                Hi <strong>{full_name}</strong>,
-                            </p>
-
-                            <p style="margin:0 0 24px;color:#1E293B;font-size:15px;line-height:1.8;">
-                                {config['message']}
-                            </p>
-
-                            <!-- Status Badge Card -->
-                            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:24px;">
-                                <table width="100%" style="border-collapse:collapse;">
-                                    <tr>
-                                        <td style="padding:8px 0;color:#64748B;font-size:14px;">
-                                            <strong>Internship</strong>
-                                        </td>
-                                        <td style="padding:8px 0;color:#1E293B;font-size:14px;text-align:right;">
-                                            {internship_title}
+                                            {opportunity_title}
                                         </td>
                                     </tr>
                                     <tr>
@@ -2595,3 +2845,85 @@ def send_test_industry_summary(industry_id, override_email=None):
 	frappe.db.commit()
 
 	return "Sent"
+
+
+def notify_students_on_new_opportunity(doc, method=None):
+    """
+    Triggered when an Industry Project, Internship, or Industry Job Profile is submitted (on_submit).
+    Sends an in-app notification and email to all students.
+    """
+    try:
+        # 1. Determine the opportunity type and key details
+        if doc.doctype == "Industry Project":
+            opportunity_type = "Project"
+            title = doc.project_name
+            industry_name = doc.industry
+            details = f"Duration: {doc.duration or 'N/A'} | Application Deadline: {doc.application_deadline or 'N/A'}"
+        elif doc.doctype == "Internship":
+            opportunity_type = "Internship"
+            title = doc.title
+            industry_name = doc.industry
+            details = f"Duration: {doc.duration or 'N/A'} Months | Location: {doc.location or 'N/A'} ({doc.work_mode or 'N/A'}) | Stipend: {doc.stipend or 'N/A'}"
+        elif doc.doctype == "Industry Job Profile":
+            opportunity_type = "Job"
+            title = doc.job_title
+            industry_name = doc.industry
+            details = f"Location: {doc.location or 'N/A'} | Employment Type: {doc.employment_type or 'N/A'} | Salary: {doc.salary_from or 'N/A'} - {doc.salary_to or 'N/A'}"
+        else:
+            return
+
+        # 2. Get eligible student emails based on Course Table
+        eligible_courses = [d.course for d in doc.get("course") or [] if d.course]
+
+        if eligible_courses:
+            student_emails = frappe.db.sql_list("""
+                SELECT DISTINCT u.email
+                FROM `tabUser` u
+                INNER JOIN `tabHas Role` hr ON hr.parent = u.name
+                INNER JOIN `tabStudent` s ON s.email_id = u.email
+                WHERE u.enabled = 1 
+                  AND hr.role IN ('Student', 'Student Base', 'Student Pro', 'Student lite')
+                  AND s.course IN %(courses)s
+            """, {"courses": eligible_courses})
+        else:
+            student_emails = frappe.db.sql_list("""
+                SELECT DISTINCT u.email
+                FROM `tabUser` u
+                INNER JOIN `tabHas Role` hr ON hr.parent = u.name
+                WHERE u.enabled = 1 AND hr.role IN ('Student', 'Student Base', 'Student Pro', 'Student lite')
+            """)
+
+        student_emails = list(set([e for e in student_emails if e]))
+
+        if not student_emails:
+            return
+
+        # 3. Create the notification document for enqueue
+        subject = f"New {opportunity_type} Opportunity: {title} at {industry_name}"
+        email_content = f"""
+        A new {opportunity_type.lower()} opportunity has been posted by {industry_name}.
+        
+        Opportunity: {title}
+        Details: {details}
+        
+        Please log in to your StrideNex dashboard to apply!
+        """
+
+        notification_doc = {
+            "type": "Alert",
+            "document_type": doc.doctype,
+            "document_name": doc.name,
+            "subject": subject,
+            "from_user": doc.owner or frappe.session.user or "Administrator",
+            "email_content": email_content,
+        }
+
+        # 4. Enqueue the notifications
+        from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
+        enqueue_create_notification(student_emails, notification_doc)
+
+    except Exception as e:
+        frappe.log_error(
+            title=f"Notification Error for {doc.doctype} {doc.name}",
+            message=frappe.get_traceback()
+        )

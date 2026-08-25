@@ -132,12 +132,12 @@ def create_internship():
             "message": str(e)
         }
         
-        
 @frappe.whitelist(allow_guest=True)
 def get_internship_list(
     industry=None,
     student=None,
     course=None,
+    status="Active",
     department=None,
     current_year=None,
     search=None
@@ -163,6 +163,8 @@ def get_internship_list(
 
         if industry:
             filters["industry"] = industry
+        if status:
+            filters["status"] = status
 
         internship_names = None
 
@@ -188,7 +190,6 @@ def get_internship_list(
             else:
                 internship_names &= set(names)
 
-     
         or_filters = None
         if search:
             or_filters = [
@@ -196,6 +197,7 @@ def get_internship_list(
                 ["description", "like", f"%{search}%"],
                 ["location", "like", f"%{search}%"],
             ]
+
         # Apply parent filter
         if internship_names is not None:
             if internship_names:
@@ -211,14 +213,14 @@ def get_internship_list(
             "Internship",
             filters=filters,
             or_filters=or_filters,
-            fields=["name","creation","owner","title","duration","openings",
-                    "required_skills","internship_type","location","required_skills",
-                    "start_date","end_date","industry","type","work_mode","stipend","deadline",
-                    "status","posted_by","description","eligibility","payment_mode"],
+            fields=["name", "creation", "owner", "title", "duration", "openings",
+                    "required_skills", "internship_type", "location", "required_skills",
+                    "start_date", "end_date", "industry", "type", "work_mode", "stipend",
+                    "deadline", "status", "posted_by", "description", "eligibility",
+                    "payment_mode"],
             order_by="creation desc"
         )
- 
-        
+
         internship_names = [i["name"] for i in internships]
 
         # ✅ Skills mapping
@@ -229,70 +231,104 @@ def get_internship_list(
         )
 
         skill_map = {}
-
         for s in all_skills:
-            skill_map.setdefault(
-                s["parent"],
-                []
-            ).append({
-                "skill": s["skill"]
-            })
+            skill_map.setdefault(s["parent"], []).append({"skill": s["skill"]})
+
+        # ✅ All possible application statuses (from Student Applications doctype)
+        ALL_STATUSES = [
+            "Applied", "Shortlisted", "Tech Interview", "HR",
+            "Selected", "Rejected", "Withdrawn", "Completed", "Accepted"
+        ]
 
         # ✅ Application status mapping
         enrollment_map = {}
 
+        # status_counts includes "Not Applied" + every status in ALL_STATUSES, all starting at 0
+        status_counts = {"Not Applied": 0}
+        status_counts.update({status: 0 for status in ALL_STATUSES})
+
+        resolved_student = None
+        student_skill_map = {}
         if student:
-            enrollments = frappe.get_all(
-                "Internship Application",
-                filters={"student": student},
-                fields=["internship", "status"]
+            from stridenex_app.fit_score_engine import _resolve_student, _get_student_skill_map
+            resolved_student = _resolve_student(student)
+            if resolved_student:
+                student_skill_map = _get_student_skill_map(resolved_student)
+
+            applications = frappe.get_all(
+                "Student Applications",
+                filters={"student": resolved_student or student},
+                fields=[
+                    "name",
+                    "opportunity_type",
+                    "project",
+                    "internship",
+                    "job_profile",
+                    "industry",
+                    "status",
+                    "applied_on",
+                    "match_score"
+                ],
+                order_by="applied_on desc"
             )
 
-            enrollment_map = {
-                e["internship"]: e["status"]
-                for e in enrollments
-            }
-            
-        scheduled_interview_count = 0
+            for app in applications:
+                if app.opportunity_type != "Internship" or not app.internship:
+                    continue
 
-        if student:
-            scheduled_interview_count = sum(
-                1 for e in enrollments
-                if e["status"] in ["Tech Interview", "Final", "HR"]
-            )
+                enrollment_map[app.internship] = {
+                    "application_name": app.name,
+                    "status": app.status,
+                    "applied_on": app.applied_on,
+                    "match_score": app.match_score
+                }
 
         # ✅ Final response
         for internship in internships:
+            internship["skills"] = skill_map.get(internship["name"], [])
 
-            internship["skills"] = skill_map.get(
-                internship["name"],
-                []
-            )
+            doc = frappe.get_doc("Internship", internship["name"])
 
-            doc = frappe.get_doc(
-                "Internship",
-                internship["name"]
-            )
-
-            internship["course"] = [
-                r.course for r in doc.course
-            ]
-
-            internship["department"] = [
-                r.department for r in doc.department
-            ]
-
-            internship["academic_year"] = [
-                r.academic_year for r in doc.academic_year
-            ]
+            internship["course"] = [r.course for r in doc.course]
+            internship["department"] = [r.department for r in doc.department]
+            internship["academic_year"] = [r.academic_year for r in doc.academic_year]
 
             if student:
-                internship["applied_status"] = enrollment_map.get(
-                    internship["name"],
-                    "Not Applied"
-                )
+                from stridenex_app.fit_score_engine import _score_coverage_and_depth, _score_quality, _score_breadth
+                req_skills = [s["skill"] for s in skill_map.get(internship["name"], []) if s.get("skill")]
+                if req_skills and resolved_student:
+                    coverage_pts, depth_pts, matched, missing = _score_coverage_and_depth(
+                        req_skills, student_skill_map
+                    )
+                    quality_pts = _score_quality(matched, student_skill_map)
+                    breadth_pts = _score_breadth(req_skills, student_skill_map)
+                    raw_score = coverage_pts + depth_pts + quality_pts + breadth_pts
+                    match_score = min(round(raw_score), 100)
+                else:
+                    match_score = 0
+                internship["match_score"] = match_score
+
+                application_info = enrollment_map.get(internship["name"])
+                if application_info:
+                    current_status = application_info["status"] or "Applied"
+                    internship["applied_status"] = current_status
+                    application_info["match_score"] = match_score
+                    internship["application_details"] = application_info
+                else:
+                    current_status = "Not Applied"
+                    internship["applied_status"] = current_status
+                    internship["application_details"] = None
             else:
-                internship["applied_status"] = "Not Applied"
+                internship["match_score"] = 0
+                current_status = "Not Applied"
+                internship["applied_status"] = current_status
+                internship["application_details"] = None
+
+            # Tally status counts across all internships in the result set
+            status_counts[current_status] = status_counts.get(current_status, 0) + 1
+
+        if student:
+            internships.sort(key=lambda x: x.get("match_score", 0), reverse=True)
 
         return gen_response(
             status=200,
@@ -301,7 +337,7 @@ def get_internship_list(
                 "internships": internships,
                 "statistics": {
                     "total_internships": len(internships),
-                    "scheduled_interview_count": scheduled_interview_count
+                    "status_counts": status_counts
                 }
             }
         )
