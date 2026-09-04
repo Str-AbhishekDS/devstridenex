@@ -182,13 +182,13 @@ doc_events = {
         "on_update": "stridenex_app.api_stridenex_app.notification.project_status_change",
     },
     "Industry Project": {
-        "on_submit": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
+        "after_insert": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
     },
     "Internship": {
-        "on_submit": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
+        "after_insert": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
     },
     "Industry Job Profile": {
-        "on_submit": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
+        "after_insert": "stridenex_app.api_stridenex_app.notification.notify_students_on_new_opportunity"
     },
     # "Internship Application": {
     #     "on_update": "stridenex_app.api_stridenex_app.notification.internship_status_change"
@@ -346,6 +346,19 @@ fixtures = [
         "doctype": "Insights Workbook",
         "filters": [
             ["title", "=", "StrideNex Dashbord"]
+        ]
+    },
+    {
+        "doctype": "Notification",
+        "filters": [
+            ["name", "in", [
+                "Mentor Add new Offers",
+                "Application Submitted Successfully for Project",
+                "Internship application",
+                "Inactive User Reminder",
+                "Onboarding Reminder",
+                "Wellcome to Stridenex, Your Registration Completed Succssesfully."
+            ]]
         ]
     }
 

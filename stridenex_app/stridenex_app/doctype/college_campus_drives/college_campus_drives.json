@@ -40,16 +40,19 @@
    "options": "Industry list"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "registeration_deadline",
    "fieldtype": "Datetime",
    "label": "Registeration Deadline"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "drive_date",
    "fieldtype": "Datetime",
    "label": "Drive Date"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "package_offered",
    "fieldtype": "Data",
    "label": "Package Offered"
@@ -96,12 +99,14 @@
    "options": "Role"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "branches",
    "fieldtype": "Table MultiSelect",
    "label": "Branches",
    "options": "Branch Table"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "required_skill",
    "fieldtype": "Table MultiSelect",
    "label": "Required Skills",
@@ -112,8 +117,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-06 12:28:10.225745",
- "modified_by": "Administrator",
+ "modified": "2026-08-25 17:40:33.637984",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "College Campus Drives",
  "naming_rule": "Expression (old style)",

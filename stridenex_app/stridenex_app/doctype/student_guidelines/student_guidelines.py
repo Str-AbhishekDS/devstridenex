@@ -14,7 +14,7 @@ from frappe.utils import now
 
 
 @frappe.whitelist(allow_guest=True)
-def get_guidelines(module="Student", tab=None):
+def get_guidelines(module,tab,student):
 
     filters = {
         "module": module,
@@ -41,11 +41,11 @@ def get_guidelines(module="Student", tab=None):
         order_by="step_no asc"
     )
 
-    student = frappe.db.get_value(
-        "Student",
-        {"email_id": frappe.session.user},
-        "name"
-    )
+    # student = frappe.db.get_value(
+    #     "Student",
+    #     {"email_id": frappe.session.user},
+    #     "name"
+    # )
 
     completed = 0
 
@@ -55,7 +55,7 @@ def get_guidelines(module="Student", tab=None):
 
         if student:
             progress = frappe.db.get_value(
-                "Student Onboarding Progress",
+                "Student Guideline Progress",
                 {
                     "student": student,
                     "guideline": guideline.name
@@ -65,6 +65,7 @@ def get_guidelines(module="Student", tab=None):
 
             if progress:
                 status = progress
+     
 
         guideline["status"] = status
 
@@ -88,52 +89,82 @@ def get_guidelines(module="Student", tab=None):
         "steps": guidelines
     }
 
-@frappe.whitelist()
-def complete_onboarding(guideline):
 
-    student = frappe.db.get_value(
-        "Student",
-        {"email_id": frappe.session.user},
-        "name"
-    )
+
+@frappe.whitelist(allow_guest=True)
+def complete_onboarding(guideline, student):
+
+    if not guideline:
+        frappe.throw("Guideline is required")
 
     if not student:
-        frappe.throw("Student not found")
+        frappe.throw("Student is required")
 
-    existing = frappe.db.exists(
-        "Student Onboarding Progress",
-        {
-            "student": student,
-            "guideline": guideline
-        }
-    )
+    # Check existing progress directly in DB
+    existing = frappe.db.sql("""
+        SELECT name
+        FROM `tabStudent Guideline Progress`
+        WHERE student = %s
+        AND guideline = %s
+        LIMIT 1
+    """, (student, guideline), as_dict=True)
 
     if existing:
-
-        frappe.db.set_value(
-            "Student Onboarding Progress",
-            existing,
-            {
-                "status": "Completed",
-                "completed_on": now()
-            }
-        )
+        frappe.db.sql("""
+            UPDATE `tabStudent Guideline Progress`
+            SET status = %s,
+                completed_on = %s
+            WHERE name = %s
+        """, ("Completed", now(), existing[0].name))
 
     else:
+        name = frappe.generate_hash(length=10)
 
-        doc = frappe.get_doc({
-            "doctype": "Student Onboarding Progress",
-            "student": student,
-            "guideline": guideline,
-            "status": "Completed",
-            "completed_on": now()
-        })
-
-        doc.insert(ignore_permissions=True)
+        frappe.db.sql("""
+            INSERT INTO `tabStudent Guideline Progress`
+            (
+                name,
+                creation,
+                modified,
+                modified_by,
+                owner,
+                docstatus,
+                student,
+                guideline,
+                status,
+                completed_on
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                0,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+        """, (
+            name,
+            now(),
+            now(),
+            "Guest",
+            "Guest",
+            student,
+            guideline,
+            "Completed",
+            now()
+        ))
 
     frappe.db.commit()
 
     return {
         "success": True,
-        "message": "Onboarding step completed"
+        "message": "Onboarding step completed",
+        "student": student,
+        "guideline": guideline,
+        "status": "Completed"
     }

@@ -266,8 +266,7 @@ def get_community():
         members = frappe.get_all(
             "Community Member",
             filters={
-                "community": community_name,
-                "status": "Approved"
+                "community": community_name
             },
             fields=[
                 "name",

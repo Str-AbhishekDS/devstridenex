@@ -170,7 +170,8 @@ def get_applications(
     internship=None,
     project=None,
     job_profile=None,
-    student=None
+    student=None,
+    industry=None
 ):
     try:
         filters = []
@@ -199,6 +200,10 @@ def get_applications(
         if student:
             filters.append("sa.student = %(student)s")
             values["student"] = student
+
+        if industry:
+            filters.append("sa.industry = %(industry)s")
+            values["industry"] = industry
 
         where_clause = ""
 
@@ -268,7 +273,8 @@ def get_applications_count(
     internship=None,
     project=None,
     job_profile=None,
-    student=None
+    student=None,
+    industry=None
 ):
     try:
         filters = []
@@ -297,6 +303,10 @@ def get_applications_count(
         if student:
             filters.append("sa.student = %(student)s")
             values["student"] = student
+
+        if industry:
+            filters.append("sa.industry = %(industry)s")
+            values["industry"] = industry
 
         where_clause = ""
 

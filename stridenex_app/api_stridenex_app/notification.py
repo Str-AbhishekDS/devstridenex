@@ -842,6 +842,12 @@ def project_status_change(doc, method=None):
     if doc.status in ("Selected", "Accepted"):
         notify_college_on_student_selection(doc)
 
+    # Check if student is accepting or rejecting an offer
+    doc_before = doc.get_doc_before_save()
+    if doc_before and doc_before.status == "Selected" and doc.status in ("Accepted", "Rejected"):
+        notify_industry_on_student_response(doc)
+        return  # Bypass sending standard student status updates since student initiated this transition
+
     # Check opportunity_type (Project, Internship, Job)
     opp_type = doc.opportunity_type or "Project"
     
@@ -934,6 +940,154 @@ def notify_college_on_student_selection(doc):
     except Exception as e:
         frappe.log_error(
             title=f"College Notification Error for Application {doc.name}",
+            message=frappe.get_traceback()
+        )
+
+
+def notify_industry_on_student_response(doc):
+    """
+    If a student accepts or rejects an offer (status transitions from 'Selected' to 'Accepted' or 'Rejected'),
+    notify the industry/company via email and system notification (Notification Log).
+    """
+    try:
+        if not doc.industry:
+            return
+
+        industry_email = frappe.db.get_value("Industry list", doc.industry, "email")
+        if not industry_email:
+            return
+
+        student_name = "A student"
+        if doc.student:
+            student_doc = frappe.get_doc("Student", doc.student)
+            student_name = f"{student_doc.first_name} {student_doc.last_name or ''}".strip()
+
+        opp_type = doc.opportunity_type or "Opportunity"
+        opp_title = get_opportunity_title(doc, opp_type)
+
+        action = "accepted" if doc.status == "Accepted" else "rejected"
+        subject = f"Offer {action.capitalize()}: {student_name} for {opp_type}"
+
+        accent_color = "#10b981" if doc.status == "Accepted" else "#dc2626"
+        badge_bg = "#d1fae5" if doc.status == "Accepted" else "#fee2e2"
+        badge_color = "#10b981" if doc.status == "Accepted" else "#dc2626"
+
+        message = f"""
+<div style="margin:0;padding:0;background:#f6f6f8;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f6f8;padding:30px 15px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+                    style="max-width:600px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background:{accent_color};padding:30px;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">
+                                Offer {action.capitalize()}
+                            </h1>
+                            <p style="margin:8px 0 0;color:#ffffff;font-size:14px;opacity:0.9;">
+                                Response from {student_name}
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding:32px;">
+                            <p style="margin:0 0 20px;color:#1E293B;font-size:16px;line-height:1.8;">
+                                Dear Team,
+                            </p>
+                            <p style="margin:0 0 24px;color:#1E293B;font-size:15px;line-height:1.8;">
+                                The student <strong>{student_name}</strong> has <strong>{action}</strong> your offer for the following opportunity.
+                            </p>
+                            <!-- Details Card -->
+                            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:24px;">
+                                <table width="100%" style="border-collapse:collapse;">
+                                    <tr>
+                                        <td style="padding:8px 0;color:#64748B;font-size:14px;">
+                                            <strong>Opportunity Type</strong>
+                                        </td>
+                                        <td style="padding:8px 0;color:#1E293B;font-size:14px;text-align:right;">
+                                            {opp_type}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:8px 0;color:#64748B;font-size:14px;">
+                                            <strong>Opportunity Title</strong>
+                                        </td>
+                                        <td style="padding:8px 0;color:#1E293B;font-size:14px;text-align:right;">
+                                            {opp_title}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:8px 0;color:#64748B;font-size:14px;">
+                                            <strong>Student Name</strong>
+                                        </td>
+                                        <td style="padding:8px 0;color:#1E293B;font-size:14px;text-align:right;">
+                                            {student_name}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:8px 0;color:#64748B;font-size:14px;">
+                                            <strong>Response</strong>
+                                        </td>
+                                        <td style="padding:8px 0;text-align:right;">
+                                            <span style="background:{badge_bg};color:{badge_color};
+                                                padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;">
+                                                {doc.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style="background:#eef2ff;border-left:4px solid {accent_color};padding:16px 18px;border-radius:8px;">
+                                <p style="margin:0;color:#1E293B;font-size:14px;line-height:1.8;">
+                                    Please log in to your dashboard on StrideNex to review this application.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background:#0F172A;padding:24px;text-align:center;">
+                            <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;">
+                                StrideNex Team
+                            </p>
+                            <p style="margin:10px 0 0;color:#94a3b8;font-size:13px;">
+                                Empowering Skills • Building Careers • Creating Opportunities
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+        """
+
+        # 1. Send email to the industry email address
+        frappe.sendmail(
+            recipients=[industry_email],
+            subject=subject,
+            message=message,
+            now=True
+        )
+
+        # 2. Check if the industry email belongs to an existing User
+        if frappe.db.exists("User", industry_email):
+            # Send system notification to the user
+            frappe.get_doc({
+                "doctype": "Notification Log",
+                "subject": subject,
+                "email_content": message,
+                "for_user": industry_email,
+                "type": "Alert",
+                "document_type": doc.doctype,
+                "document_name": doc.name,
+            }).insert(ignore_permissions=True)
+
+    except Exception as e:
+        frappe.log_error(
+            title=f"Industry Notification Error for Application {doc.name}",
             message=frappe.get_traceback()
         )
 
@@ -2849,10 +3003,17 @@ def send_test_industry_summary(industry_id, override_email=None):
 
 def notify_students_on_new_opportunity(doc, method=None):
     """
-    Triggered when an Industry Project, Internship, or Industry Job Profile is submitted (on_submit).
-    Sends an in-app notification and email to all students.
+    Triggered when an Industry Project, Internship, or Industry Job Profile is inserted (after_insert).
+    Sends an in-app notification and email to all matching students.
     """
+    original_user = frappe.session.user
+    if original_user != "Administrator":
+        frappe.set_user("Administrator")
     try:
+        # Deduplication check: check if notification already exists for this document
+        if frappe.db.exists("Notification Log", {"document_type": doc.doctype, "document_name": doc.name}):
+            return
+
         # 1. Determine the opportunity type and key details
         if doc.doctype == "Industry Project":
             opportunity_type = "Project"
@@ -2872,28 +3033,46 @@ def notify_students_on_new_opportunity(doc, method=None):
         else:
             return
 
-        # 2. Get eligible student emails based on Course Table
+        # 2. Get eligible student emails based on Course, Department, and Skill
         eligible_courses = [d.course for d in doc.get("course") or [] if d.course]
+        eligible_departments = [d.department for d in doc.get("department") or [] if d.department]
+
+        skill_field = "skills_required" if doc.doctype == "Industry Job Profile" else "required_skills"
+        required_skills = [d.skill for d in doc.get(skill_field) or [] if d.skill]
+
+        query = """
+            SELECT DISTINCT u.email
+            FROM `tabUser` u
+            INNER JOIN `tabHas Role` hr ON hr.parent = u.name
+            INNER JOIN `tabStudent` s ON s.email_id = u.email
+            WHERE u.enabled = 1 
+              AND hr.role IN ('Student', 'Student Base', 'Student Pro', 'Student lite')
+        """
+        query_args = {}
 
         if eligible_courses:
-            student_emails = frappe.db.sql_list("""
-                SELECT DISTINCT u.email
-                FROM `tabUser` u
-                INNER JOIN `tabHas Role` hr ON hr.parent = u.name
-                INNER JOIN `tabStudent` s ON s.email_id = u.email
-                WHERE u.enabled = 1 
-                  AND hr.role IN ('Student', 'Student Base', 'Student Pro', 'Student lite')
-                  AND s.course IN %(courses)s
-            """, {"courses": eligible_courses})
-        else:
-            student_emails = frappe.db.sql_list("""
-                SELECT DISTINCT u.email
-                FROM `tabUser` u
-                INNER JOIN `tabHas Role` hr ON hr.parent = u.name
-                WHERE u.enabled = 1 AND hr.role IN ('Student', 'Student Base', 'Student Pro', 'Student lite')
-            """)
+            query += " AND s.course IN %(courses)s"
+            query_args["courses"] = eligible_courses
 
+        if eligible_departments:
+            query += " AND s.department IN %(departments)s"
+            query_args["departments"] = eligible_departments
+
+        if required_skills:
+            query += """ AND EXISTS (
+                SELECT 1 FROM `tabStudent Skill` ss
+                WHERE ss.student = s.name
+                  AND ss.status != 'Rejected'
+                  AND ss.skill IN %(skills)s
+            )"""
+            query_args["skills"] = required_skills
+
+        student_emails = frappe.db.sql_list(query, query_args)
         student_emails = list(set([e for e in student_emails if e]))
+
+        frappe.logger().info(
+            f"notify_students_on_new_opportunity for {doc.doctype} {doc.name}: found {len(student_emails)} eligible student recipients. Courses={eligible_courses}, Departments={eligible_departments}, Skills={required_skills}"
+        )
 
         if not student_emails:
             return
@@ -2914,7 +3093,7 @@ def notify_students_on_new_opportunity(doc, method=None):
             "document_type": doc.doctype,
             "document_name": doc.name,
             "subject": subject,
-            "from_user": doc.owner or frappe.session.user or "Administrator",
+            "from_user": doc.owner or "Administrator",
             "email_content": email_content,
         }
 
@@ -2927,3 +3106,6 @@ def notify_students_on_new_opportunity(doc, method=None):
             title=f"Notification Error for {doc.doctype} {doc.name}",
             message=frappe.get_traceback()
         )
+    finally:
+        if original_user != "Administrator":
+            frappe.set_user(original_user)

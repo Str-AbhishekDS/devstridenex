@@ -1,19 +1,22 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
- "autoname": "field:designation",
- "creation": "2026-04-10 08:52:41.171960",
+ "creation": "2026-08-31 09:22:04.481540",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_jfco",
-  "amended_from",
-  "designation",
-  "industry_role"
+  "section_break_dkyq",
+  "college",
+  "course_type",
+  "stream",
+  "course",
+  "department",
+  "amended_from"
  ],
  "fields": [
   {
-   "fieldname": "section_break_jfco",
+   "fieldname": "section_break_dkyq",
    "fieldtype": "Section Break"
   },
   {
@@ -21,33 +24,50 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Industry Designation",
+   "options": "College Program Details",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
   },
   {
-   "fieldname": "designation",
-   "fieldtype": "Data",
-   "label": "Designation",
-   "unique": 1
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College"
   },
   {
-   "fieldname": "industry_role",
+   "fieldname": "course_type",
    "fieldtype": "Link",
-   "label": "Industry Role",
-   "options": "Industry Role"
+   "label": "Course Type",
+   "options": "Course Type"
+  },
+  {
+   "fieldname": "stream",
+   "fieldtype": "Link",
+   "label": "Stream",
+   "options": "Stream"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Courses"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "College Department"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-29 15:40:09.104455",
+ "modified": "2026-09-03 13:30:39.439553",
  "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
- "name": "Industry Designation",
- "naming_rule": "By fieldname",
+ "name": "College Program Details",
  "owner": "Administrator",
  "permissions": [
   {
@@ -64,7 +84,6 @@
    "write": 1
   }
  ],
- "quick_entry": 1,
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "sort_field": "creation",

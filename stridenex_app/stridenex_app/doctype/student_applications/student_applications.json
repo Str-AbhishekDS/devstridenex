@@ -69,6 +69,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "default": "Applied",
    "fieldname": "status",
    "fieldtype": "Select",
@@ -117,8 +118,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-11 12:54:30.543841",
- "modified_by": "Administrator",
+ "modified": "2026-08-26 16:17:37.476971",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Student Applications",
  "naming_rule": "Expression (old style)",

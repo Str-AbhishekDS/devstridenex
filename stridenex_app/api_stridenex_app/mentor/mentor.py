@@ -158,31 +158,50 @@ def create_mentor_supplier(mentor):
     try:
         if not mentor.email_id:
             return
-        if frappe.db.exists("Supplier", {"supplier_name": mentor.email_id}):
-            return
-        supplier_name = frappe.db.get_value(
-            "Supplier",
-            {"email_id": mentor.email_id},
-            "name"
-        )
+            
+        settings = frappe.get_single("Billing Settings")
+        if settings.sys_url:
+            from stridenex_app.api_stridenex_app.uat_client import call_uat_api
+            res = call_uat_api(
+                "quantbit_payments_platform.api.uat_create_supplier",
+                {
+                    "supplier_email": mentor.email_id,
+                    "supplier_name": mentor.mentor_name or mentor.email_id,
+                    "gstin": mentor.gstin
+                }
+            )
+            return res.get("supplier_name") if isinstance(res, dict) else res
+        else:
+            frappe.throw("Billing Settings sys_url is not configured for remote UAT operations.")
 
-        if supplier_name:
-            return supplier_name
-
-        supplier = frappe.new_doc("Supplier")
-        supplier.supplier_name = mentor.email_id
-        supplier.supplier_group = "All Supplier Groups"
-        supplier.supplier_type = "Company"
-        supplier.email_id = mentor.email_id
-        supplier.gstin = mentor.gstin
-        supplier.tax_withholding_category = "Professional Fees - Individual"
-        supplier.insert(ignore_permissions=True)
-        frappe.db.commit()
-
-        return supplier.name
-
-    except DuplicateEntryError:
-        return
+        # Legacy local Supplier creation code (commented out)
+        # if frappe.db.exists("DocType", "Supplier"):
+        #     supplier_name = frappe.db.get_value(
+        #         "Supplier",
+        #         {"email_id": mentor.email_id},
+        #         "name"
+        #     )
+        #     if not supplier_name:
+        #         supplier_name = frappe.db.get_value(
+        #             "Supplier",
+        #             {"supplier_name": mentor.email_id},
+        #             "name"
+        #         )
+        # 
+        #     if supplier_name:
+        #         return supplier_name
+        # 
+        #     supplier = frappe.new_doc("Supplier")
+        #     supplier.supplier_name = mentor.email_id
+        #     supplier.supplier_group = "All Supplier Groups"
+        #     supplier.supplier_type = "Company"
+        #     supplier.email_id = mentor.email_id
+        #     supplier.gstin = mentor.gstin
+        #     supplier.tax_withholding_category = "Professional Fees - Individual"
+        #     supplier.insert(ignore_permissions=True)
+        #     frappe.db.commit()
+        # 
+        #     return supplier.name
 
     except Exception:
         frappe.log_error(

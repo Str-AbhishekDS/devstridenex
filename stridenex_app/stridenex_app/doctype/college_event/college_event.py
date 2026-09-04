@@ -5,11 +5,22 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_url, format_date, getdate, today
-from frappe.desk.doctype.notification_log.notification_log import make_notification_logs
+from frappe.desk.doctype.notification_log.notification_log import make_notification_logs, enqueue_create_notification
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
     exception_handel, get_pagination_params, make_cache_key, make_pagination_meta
 )
+
+
+def resolve_college_name(college):
+    """Resolve a college email to its document name if needed."""
+    if not college:
+        return college
+    if "@" in college:
+        resolved = frappe.db.get_value("College", {"email": college}, "name")
+        if resolved:
+            return resolved
+    return college
 
 
 class CollegeEvent(Document):
@@ -45,49 +56,127 @@ class CollegeEvent(Document):
             )
 
     def notify_students(self):
-        students = self.get_matching_students()
-        if not students:
+        """Send Frappe system notifications to all matching students for this event."""
+        # Prevent duplicate notifications for the same event
+        if frappe.db.exists("Notification Log", {
+            "document_type": self.doctype,
+            "document_name": self.name
+        }):
             frappe.log_error(
-                title="College Event Notification",
-                message=f"No matching students found for event {self.name} (Scope: {self.participation_scope}, College: {self.college})"
+                title="College Event Notification (skipped)",
+                message=f"Notification already sent for event {self.name}. Skipping duplicate."
             )
             return
 
-        sent = 0
-        errors = 0
-        for student in students:
-            try:
-                user_id = student.get("email_id")
-                if user_id and frappe.db.exists("User", user_id):
-                    self.send_event_notification(user_id)
-                    sent += 1
+        student_users = self.get_matching_student_users()
+        if not student_users:
+            frappe.log_error(
+                title="College Event Notification",
+                message=f"No matching student users found for event {self.name} (Scope: {self.participation_scope}, College: {self.college})"
+            )
+            return
 
-                # Commit periodically to keep database connection healthy
-                if sent % 50 == 0:
-                    frappe.db.commit()
+        subject = _("New {0}: {1}").format(self.event_type or "Event", self.event)
+        from_user = self.owner if (self.owner and self.owner != "Guest") else "Administrator"
 
-            except Exception:
-                errors += 1
-                frappe.log_error(
-                    title=f"College Event Notify Error — {student.get('email_id')}",
-                    message=frappe.get_traceback(),
+        notification_doc = frappe._dict({
+            "type": "Alert",
+            "document_type": self.doctype,
+            "document_name": self.name,
+            "subject": subject,
+            "from_user": from_user,
+            "email_content": _("Starts on: {0}").format(
+                format_date(self.start_date) if self.start_date else "N/A"
+            ),
+        })
+
+        try:
+            enqueue_create_notification(student_users, notification_doc)
+            frappe.log_error(
+                title="College Event Notification (sent)",
+                message=(
+                    f"Event: {self.name} | College: {self.college} | "
+                    f"Recipients: {len(student_users)} | Users: {student_users[:10]}"
                 )
-                continue
+            )
+        except Exception as notify_err:
+            frappe.log_error(
+                title="College Event Notification (failed)",
+                message=(
+                    f"Event: {self.name} | College: {self.college} | "
+                    f"Error: {notify_err}\n{frappe.get_traceback()}"
+                )
+            )
 
-        frappe.db.commit()
-        frappe.logger().info(
-            f"College Event {self.name}: system notifications sent to {sent} students, {errors} errors"
-        )
+    def get_matching_student_users(self):
+        """Fetch emails of enabled student users belonging to this college/scope."""
+        college = resolve_college_name(self.college)
+        if not college:
+            return []
+
+        if self.participation_scope == "Inter College":
+            # Get university of the event's college
+            university = frappe.db.get_value("College", college, "university")
+            if not university:
+                return []
+
+            # Get all colleges under the same university
+            colleges = frappe.get_all(
+                "College",
+                filters={"university": university},
+                pluck="name"
+            )
+            if not colleges:
+                return []
+
+            # Get streams of the event's college
+            streams = frappe.get_all(
+                "College Courses Table",
+                filters={"parent": college},
+                pluck="stream"
+            )
+            if not streams:
+                return []
+
+            return frappe.db.sql_list(
+                """
+                SELECT DISTINCT u.email
+                FROM `tabUser` u
+                INNER JOIN `tabHas Role` hr ON hr.parent = u.name
+                INNER JOIN `tabStudent` s ON s.email_id = u.email
+                WHERE u.enabled = 1
+                  AND s.college IN %s
+                  AND s.stream IN %s
+                  AND hr.role IN ('Student', 'Student Base', 'Student Pro', 'Student lite')
+                """,
+                (tuple(colleges), tuple(streams)),
+            )
+        else:
+            # Intra College — all students of the same college
+            return frappe.db.sql_list(
+                """
+                SELECT DISTINCT u.email
+                FROM `tabUser` u
+                INNER JOIN `tabHas Role` hr ON hr.parent = u.name
+                INNER JOIN `tabStudent` s ON s.email_id = u.email
+                WHERE u.enabled = 1
+                  AND s.college = %s
+                  AND hr.role IN ('Student', 'Student Base', 'Student Pro', 'Student lite')
+                """,
+                (college,),
+            )
 
     def get_matching_students(self):
         """
         Fetch students based on participation scope:
           - Intra College: all students of the same college.
           - Inter College: students of all colleges under the same university who have the same stream.
+        Keep for backward compatibility.
         """
+        college = resolve_college_name(self.college)
         if self.participation_scope == "Inter College":
             # 1. Get university of the event's college
-            university = frappe.db.get_value("College", self.college, "university")
+            university = frappe.db.get_value("College", college, "university")
             if not university:
                 return []
 
@@ -103,7 +192,7 @@ class CollegeEvent(Document):
             # 3. Get streams of the event's college
             streams = frappe.get_all(
                 "College Courses Table",
-                filters={"parent": self.college},
+                filters={"parent": college},
                 pluck="stream"
             )
             if not streams:
@@ -116,7 +205,7 @@ class CollegeEvent(Document):
             }
         else:
             # Intra College — all students of the same college
-            filters = {"college": self.college}
+            filters = {"college": college}
 
         return frappe.get_all(
             "Student",
@@ -125,6 +214,7 @@ class CollegeEvent(Document):
         )
 
     def send_event_notification(self, student_user):
+        """Keep for backward compatibility."""
         notification_doc = frappe._dict({
             "type": "Alert",
             "document_type": self.doctype,
@@ -139,10 +229,9 @@ class CollegeEvent(Document):
         make_notification_logs(notification_doc, [student_user])
 
 
-
 def notify_students_background(event_name):
     """
-    Background job called by frappe.enqueue from CollegeEvent.on_submit.
+    Background job called by frappe.enqueue from CollegeEvent.after_insert.
     Sends email + in-app notification to every matching student.
     """
     import time
@@ -163,8 +252,14 @@ def notify_students_background(event_name):
                 raise
 
     try:
-        doc.notify_students()
-        frappe.db.commit()
+        # Switch to Administrator context so 'from_user' is never 'Guest'
+        original_user = frappe.session.user
+        frappe.set_user("Administrator")
+        try:
+            doc.notify_students()
+            frappe.db.commit()
+        finally:
+            frappe.set_user(original_user)
     except Exception:
         frappe.db.rollback()
         frappe.log_error(
@@ -173,26 +268,18 @@ def notify_students_background(event_name):
         )
 
 
-
 DEFAULT_PAGE_SIZE = 20
 
 @frappe.whitelist(allow_guest=True)
 def get_college_event_list(college=None, student=None, page=1, page_size=DEFAULT_PAGE_SIZE, filter="upcoming"):
     """
     Fetch college events with optional date-based filtering.
-
-    Args:
-        college  : College name to scope results.
-        student  : Student email/name for registration status lookup.
-        page     : Page number (default 1).
-        page_size: Items per page (default 20).
-        filter   : Date scope filter.
-                   - "upcoming" (default) — events whose end_date >= today.
-                   - "past"               — events whose end_date < today.
-                   - "all"                — no date restriction.
     """
     try:
         page, page_size, limit, offset = get_pagination_params(page, page_size)
+
+        if college:
+            college = resolve_college_name(college)
 
         # ── Base scope filter (Intra-College OR matching college) ──────────────
         scope_filters = [
@@ -300,7 +387,7 @@ def create_college_event():
         doc = frappe.get_doc({
             "doctype": "College Event",
             "event": data.get("event"),
-            "college": data.get("college"),
+            "college": resolve_college_name(data.get("college")),
             "start_date": data.get("start_date"),
             "end_date": data.get("end_date"),
             "price": data.get("price"),
@@ -332,6 +419,8 @@ def update_college_event(name):
        
 
         doc.update(data)
+        if "college" in data:
+            doc.college = resolve_college_name(data.get("college"))
 
         doc.save(ignore_permissions=True)
         frappe.db.commit()

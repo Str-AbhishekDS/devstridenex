@@ -596,15 +596,6 @@ import mimetypes
 @frappe.whitelist(allow_guest=True)
 def upload_file_api():
     """
-    Generic file upload endpoint (used here for resumes).
-    Saves the file (private or public) and optionally links it to any doctype/docname/field.
-
-    Form-data params expected:
-      - file       : the file itself (required)
-      - doctype    : target doctype to attach to (optional)
-      - docname    : target document name to attach to (optional)
-      - fieldname  : target fieldname to attach to, e.g. "resume" (optional)
-      - is_private : "1" or "0" (optional, default "1")
 
     Returns file_url on success.
     """
@@ -774,74 +765,6 @@ def get_support_tickets(status=None):
 
 
 
-# @frappe.whitelist(allow_guest=True)
-# def get_offer_letter(student, offer_type, name, template):
-#     if not student:
-#         frappe.throw("Student is required")
-
-#     if not template:
-#         frappe.throw("Template is required")
-
-#     if not name:
-#         frappe.throw("Name is required")
-
-#     if not frappe.db.exists("Student", student):
-#         frappe.throw("Student not found", frappe.DoesNotExistError)
-
-#     doc = frappe.get_doc("Student", student)
-
-#     template_map = {
-#         "Internship": "stridenex_app/templates/offer_letter/internship_offer.html",
-#         "Job": "stridenex_app/templates/offer_letter/job_offer.html",
-#         "Project": "stridenex_app/templates/offer_letter/project_offer.html",
-#     }
-
-#     doctype_map = {
-#         "Internship": "Internship",
-#         "Job": "Industry Job Profile",
-#         "Project": "Industry Project",
-#     }
-
-#     template_path = template_map.get(offer_type)
-#     doctype_name = doctype_map.get(offer_type)
-
-#     if not template_path or not doctype_name:
-#         frappe.throw(f"Invalid offer_type: {offer_type}")
-
-#     if not frappe.db.exists(doctype_name, name):
-#         frappe.throw(f"{doctype_name} '{name}' not found", frappe.DoesNotExistError)
-
-#     record = frappe.get_doc(doctype_name, name)
-
-#     # path to the bundled static logo, as a file:// URI so wkhtmltopdf can read it directly
-#     static_logo_path = frappe.get_app_path(
-#         "stridenex_app", "templates", "static", "Stridenex Logo png.png"
-#     )
-#     static_logo_url = f"file://{static_logo_path}"
-
-#     context = {
-#         "doc": doc,
-#         "static_logo_url": static_logo_url,
-#     }
-
-#     # pass the record under the variable name each template expects
-#     context_key_map = {
-#         "Internship": "internship",
-#         "Job": "job",
-#         "Project": "project",
-#     }
-#     context[context_key_map[offer_type]] = record
-
-#     html = frappe.render_template(template_path, context)
-
-#     pdf = get_pdf(html)
-
-#     frappe.local.response.filename = f"{doc.first_name}_{doc.last_name}_Offer_Letter.pdf"
-#     frappe.local.response.filecontent = pdf
-#     frappe.local.response.type = "download"
-
-# import frappe
-# from frappe.utils.pdf import get_pdf
 
 @frappe.whitelist(allow_guest=True)
 def get_offer_letter(student, offer_type, name, template):

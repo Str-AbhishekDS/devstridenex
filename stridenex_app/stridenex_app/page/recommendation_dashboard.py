@@ -360,6 +360,11 @@ def _search_projects(industry=None, keyword=None):
 
 	for p in projects:
 		p["required_skills"] = _get_child_skill_names("Industry Project", p["name"], "required_skills")
+		if p.get("duration"):
+			try:
+				p["duration"] = int(p["duration"]) // 86400
+			except (ValueError, TypeError):
+				pass
 
 	if keyword:
 		kw = keyword.lower()

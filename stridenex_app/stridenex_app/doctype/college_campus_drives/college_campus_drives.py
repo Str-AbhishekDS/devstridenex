@@ -22,6 +22,15 @@ from stridenex_app.api_stridenex_app.app_utils import (
 CACHE_TTL = 300
 DEFAULT_PAGE_SIZE = 20
 
+def resolve_college_name(college):
+    if not college:
+        return college
+    if "@" in college:
+        resolved = frappe.db.get_value("College", {"email": college}, "name")
+        if resolved:
+            return resolved
+    return college
+
 class CollegeCampusDrives(Document):
     
     def autoname(self):
@@ -40,36 +49,115 @@ class CollegeCampusDrives(Document):
             else:
                 self.name = base_name
                 
+    def after_insert(self):
+        # Skip if the create_drive() API flagged this insert to handle
+        # notifications explicitly (post-commit, as Administrator).
+        if getattr(self.flags, "skip_notify_on_insert", False):
+            return
+        self.notify_students()
+
     def on_submit(self):
         self.notify_students()
 
     def notify_students(self):
-        students = self.get_matching_students()
-        if not students:
+        """Send Frappe system notifications to all matching students of this college."""
+        # Prevent duplicate notifications for the same drive
+        if frappe.db.exists("Notification Log", {
+            "document_type": self.doctype,
+            "document_name": self.name
+        }):
             frappe.log_error(
-                title="College Campus Drive Notification",
-                message=f"No matching students found for drive {self.name} (College: {self.college})"
+                title="College Campus Drive Notification (skipped)",
+                message=f"Notification already sent for drive {self.name}. Skipping duplicate."
             )
             return
 
-        for student in students:
-            self.send_drive_email(student)
-            if student.get("user"):
-                self.send_drive_notification(student.get("user"))
+        student_users = self.get_matching_student_users()
+        if not student_users:
+            frappe.log_error(
+                title="College Campus Drive Notification",
+                message=f"No matching student users found for drive {self.name} (College: {self.college})"
+            )
+            return
 
-    def get_matching_students(self):
-        """Fetch students belonging to this college, optionally filtered by branch."""
-        filters = {"college": self.college}
+        company = self.industry_name or self.industry or "N/A"
+        subject = _("New Campus Placement Drive: {0} at {1}").format(self.job_title or "N/A", company)
 
-        # branch_list = [row.branch for row in self.branches] if self.branches else []
-        # if branch_list:
-        #     filters["branch"] = ["in", branch_list]
+        details = []
+        if self.job_title:
+            details.append(f"Job Title: {self.job_title}")
+        details.append(f"Company: {company}")
+        if self.drive_date:
+            details.append(f"Drive Date: {format_datetime(self.drive_date)}")
+        if self.registeration_deadline:
+            details.append(f"Registration Deadline: {format_datetime(self.registeration_deadline)}")
+        if self.package_offered:
+            details.append(f"Package Offered: {self.package_offered}")
+        if self.criteria:
+            details.append(f"Eligibility Criteria: {self.criteria} CGPA")
+        if self.backlog is not None:
+            details.append(f"Max Backlogs Allowed: {self.backlog}")
 
-        return frappe.get_all(
-            "Student",
-            filters=filters,
-            fields=["name", "first_name", "email_id"],
+        email_content = _("A new campus placement drive has been announced.\n\n{0}").format("\n".join(details))
+
+        # Always use Administrator as the sender so Guest-session API calls
+        # never produce invalid notification authors.
+        from_user = self.owner if (self.owner and self.owner != "Guest") else "Administrator"
+
+        notification_doc = frappe._dict({
+            "type": "Alert",
+            "document_type": self.doctype,
+            "document_name": self.name,
+            "subject": subject,
+            "from_user": from_user,
+            "email_content": email_content,
+        })
+
+        try:
+            enqueue_create_notification(student_users, notification_doc)
+            frappe.log_error(
+                title="College Campus Drive Notification (sent)",
+                message=(
+                    f"Drive: {self.name} | College: {self.college} | "
+                    f"Recipients: {len(student_users)} | Users: {student_users[:10]}"
+                )
+            )
+        except Exception as notify_err:
+            frappe.log_error(
+                title="College Campus Drive Notification (failed)",
+                message=(
+                    f"Drive: {self.name} | College: {self.college} | "
+                    f"Error: {notify_err}\n{frappe.get_traceback()}"
+                )
+            )
+
+    def get_matching_student_users(self):
+        """Fetch emails of enabled student users belonging to this college."""
+        college = resolve_college_name(self.college)
+        if not college:
+            frappe.log_error(
+                title="College Campus Drive Notification",
+                message=f"Drive {self.name}: college field is empty after resolve."
+            )
+            return []
+
+        users = frappe.db.sql_list(
+            """
+            SELECT DISTINCT u.email
+            FROM `tabUser` u
+            INNER JOIN `tabHas Role` hr ON hr.parent = u.name
+            INNER JOIN `tabStudent` s ON s.email_id = u.email
+            WHERE u.enabled = 1
+              AND s.college = %s
+              AND hr.role IN ('Student', 'Student Base', 'Student Pro', 'Student lite')
+            """,
+            (college,),
         )
+        frappe.log_error(
+            title="Campus Drive Student Lookup",
+            message=f"Drive: {self.name} | College: '{college}' | Found {len(users)} student users."
+        )
+        return users
 
     def send_drive_email(self, student):
         if not student.get("email_id"):
@@ -218,6 +306,7 @@ def get_drives_by_college(college, page=1, page_size=DEFAULT_PAGE_SIZE):
         if not college:
             return {"status": 400, "message": "College is required"}
 
+        college = resolve_college_name(college)
         filters = {"college": college}
         total   = frappe.db.count("College Campus Drives", filters=filters)
 
@@ -336,6 +425,7 @@ def get_campus_drive_list(
         filters = {}
 
         if college:
+            college = resolve_college_name(college)
             filters["college"] = college
 
         
@@ -448,6 +538,7 @@ def get_campus_drive_list(
                 student_backlog = None
 
         result = []
+        now = now_datetime()
 
         for drive in drives:
             # ---- Eligibility filter: backlog ----
@@ -471,7 +562,6 @@ def get_campus_drive_list(
                     continue  # student doesn't meet minimum CGPA for this drive
 
             drive["required_skill"] = skill_map.get(drive["name"], [])
-           
 
             if student:
                 application_info = enrollment_map.get(drive["name"])
@@ -487,6 +577,24 @@ def get_campus_drive_list(
                 current_status = "Not Applied"
                 drive["applied_status"] = current_status
                 drive["application_details"] = None
+
+            # ---- Filter: Expired / Past drives ----
+            # Show only drives where registration deadline (or drive date) is in the future,
+            # OR if the student has already applied to it (so they can track status).
+            has_expired = False
+            if drive.get("registeration_deadline"):
+                if frappe.utils.get_datetime(drive.get("registeration_deadline")) < now:
+                    has_expired = True
+            if drive.get("drive_date"):
+                if frappe.utils.get_datetime(drive.get("drive_date")) < now:
+                    has_expired = True
+
+            is_applied = current_status in ["Applied", "Shortlisted", "Selected", "Rejected"]
+
+            if has_expired and not is_applied:
+                continue
+
+            drive["status"] = "Closed" if has_expired else "Registrations Open"
 
             status_counts[current_status] = status_counts.get(current_status, 0) + 1
             result.append(drive)
@@ -513,7 +621,7 @@ def create_drive():
             return {"status": 400, "message": "Request body is required"}
 
         doc = frappe.new_doc("College Campus Drives")
-        doc.college = data.get("college")
+        doc.college = resolve_college_name(data.get("college"))
         doc.industry_name = data.get("industry_name")
         doc.registeration_deadline = data.get("registeration_deadline")
         doc.drive_date = data.get("drive_date")
@@ -521,18 +629,15 @@ def create_drive():
         doc.backlog = data.get("backlog")
         doc.criteria = data.get("criteria")
         doc.role = data.get("role")
-        doc.job_title=data.get("job_title")
-       
+        doc.job_title = data.get("job_title")
 
         for d in data.get("designation", []):
             doc.append("designation", {
                 "designation": d.get("designation")
             })
 
-        
         # Branches
         doc.set("branches", [])
-
         for row in data.get("branches", []):
             if isinstance(row, dict):
                 doc.append("branches", {
@@ -541,16 +646,30 @@ def create_drive():
 
         # Required Skills
         doc.set("required_skill", [])
-
         for row in data.get("required_skill", []):
             if isinstance(row, dict):
                 doc.append("required_skill", {
                     "skill": row.get("skill")
                 })
 
-
+        # insert() fires after_insert which also calls notify_students.
+        # We pass flags so after_insert can detect this API path and skip
+        # the notification — we'll call it explicitly after commit instead.
+        doc.flags.skip_notify_on_insert = True
         doc.insert(ignore_permissions=True)
+
+        # ── Commit FIRST so the document is visible to background workers ──
         frappe.db.commit()
+
+        # ── Now dispatch notifications as Administrator (not Guest) ──────
+        try:
+            notify_drive_students(doc.name)
+        except Exception as notify_err:
+            # Log but don't fail the API response
+            frappe.log_error(
+                title="create_drive: notification dispatch failed",
+                message=f"Drive: {doc.name} | Error: {notify_err}\n{frappe.get_traceback()}"
+            )
 
         return {
             "status": 200,
@@ -562,6 +681,26 @@ def create_drive():
         frappe.log_error(frappe.get_traceback(), "create_drive Error")
         return {"status": 500, "message": str(e)}
 
+
+def notify_drive_students(drive_name):
+    """
+    Standalone post-commit notification dispatcher.
+    Runs as Administrator so system notifications are always valid.
+    Called explicitly after db.commit() in create_drive() to ensure
+    the document is fully persisted before background workers read it.
+    """
+    if not drive_name:
+        return
+
+    # Switch to Administrator context so 'from_user' is never 'Guest'
+    original_user = frappe.session.user
+    frappe.set_user("Administrator")
+    try:
+        doc = frappe.get_doc("College Campus Drives", drive_name)
+        doc.notify_students()
+    finally:
+        frappe.set_user(original_user)
+
 @frappe.whitelist(allow_guest=True)
 def update_drive(name):
     try:
@@ -572,7 +711,7 @@ def update_drive(name):
 
         doc = frappe.get_doc("College Campus Drives", name)
 
-        doc.college = data.get("college", doc.college)
+        doc.college = resolve_college_name(data.get("college", doc.college))
         doc.industry_name = data.get("industry_name", doc.industry_name)
         doc.registeration_deadline = data.get("registeration_deadline", doc.registeration_deadline)
         doc.drive_date = data.get("drive_date", doc.drive_date)
@@ -636,6 +775,8 @@ def delete_drive(name):
 @frappe.whitelist(allow_guest=True)
 def get_drive_count(college=None):
     try:
+        if college:
+            college = resolve_college_name(college)
         # Base filters
         base_filters = {}
         if college:
@@ -724,6 +865,8 @@ def get_drive_count_by_name(name=None, status=None):
 @frappe.whitelist()
 def get_placement_stats(college=None):
     try:
+        if college:
+            college = resolve_college_name(college)
         base = "AND d.college = %s" if college else ""
         base_vals = [college] if college else []
 
@@ -815,6 +958,8 @@ def get_placement_stats(college=None):
 @frappe.whitelist(allow_guest=True)
 def get_branch_wise_performance(college=None):
         try:
+            if college:
+                college = resolve_college_name(college)
             base = "AND d.college = %s" if college else ""
             base_vals = [college] if college else []
         # ── 5. Department-wise Placement (Top 6) ──────────────────────────
@@ -854,6 +999,8 @@ def get_branch_wise_performance(college=None):
 @frappe.whitelist(allow_guest=True)
 def get_placement_funnel(college=None, year=None):
     try:
+        if college:
+            college = resolve_college_name(college)
         base_student = []
         base_app = []
         student_where = []
@@ -965,6 +1112,8 @@ def get_placement_funnel(college=None, year=None):
 @frappe.whitelist()
 def get_top_recruiters(college=None, limit=5):
     try:
+        if college:
+            college = resolve_college_name(college)
         conditions = ["cda.status = 'Selected'"]
         values = []
 
@@ -1001,6 +1150,8 @@ def get_top_recruiters(college=None, limit=5):
 @frappe.whitelist()
 def get_salary_bands(college=None):
     try:
+        if college:
+            college = resolve_college_name(college)
         conditions = ["cda.status = 'Selected'", "cda.package_lpa IS NOT NULL", "cda.package_lpa > 0"]
         values = []
 
@@ -1049,6 +1200,8 @@ def get_salary_bands(college=None):
 @frappe.whitelist(allow_guest=True)
 def get_low_employability_students(college=None, threshold=50, limit=20, offset=0):
     try:
+        if college:
+            college = resolve_college_name(college)
         threshold = float(threshold)
         limit = int(limit)
         offset = int(offset)

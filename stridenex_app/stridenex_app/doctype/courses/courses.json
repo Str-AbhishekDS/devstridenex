@@ -3,13 +3,14 @@
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:{course_name}",
- "creation": "2026-02-17 11:10:40.955332",
+ "creation": "2026-09-02 17:35:29.478921",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "course_name",
-  "stream",
   "course_type",
+  "stream",
+  "course_name",
+  "academic_years",
   "amended_from"
  ],
  "fields": [
@@ -17,6 +18,12 @@
    "fieldname": "course_name",
    "fieldtype": "Data",
    "label": "Course Name"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "academic_years",
+   "fieldtype": "Data",
+   "label": "Academic Years"
   },
   {
    "fieldname": "stream",
@@ -45,8 +52,8 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-24 09:32:24.211945",
- "modified_by": "Administrator",
+ "modified": "2026-09-02 17:47:25.052128",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Courses",
  "naming_rule": "Expression (old style)",

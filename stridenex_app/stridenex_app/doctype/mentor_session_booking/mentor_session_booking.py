@@ -188,6 +188,45 @@ class MentorSessionBooking(Document):
                         ignore_permissions=True
                     )
 
+            # Notify the mentor when a Group Session / Workshop / Async Review is successfully booked (status == "Scheduled")
+            if self.status == "Scheduled" and self.offering_type and self.offering_type != "1:1 Mentorship":
+                mentor_subject = f"New {self.offering_type} Booking"
+                
+                # Check if this notification has already been sent to the mentor
+                already_sent_to_mentor = frappe.db.exists("Notification Log", {
+                    "document_type": "Mentor Session Booking",
+                    "document_name": self.name,
+                    "subject": mentor_subject
+                })
+                
+                if not already_sent_to_mentor:
+                    mentor_email = frappe.db.get_value("Mentor", self.mentor, "email_id") or self.mentor
+                    resolved_mentor_user = frappe.db.get_value("User", {"email": mentor_email}, "name") or frappe.db.get_value("User", mentor_email, "name")
+                    
+                    if resolved_mentor_user:
+                        student_email = frappe.db.get_value("Student", self.student, "email_id") or self.student
+                        student_full_name = _get_student_full_name(student_email)
+                        offering_title = frappe.db.get_value("Mentor Offering", self.offering, "title") if self.offering else None
+                        offering_display = offering_title or self.get("topic") or "Mentor Session"
+                        
+                        mentor_message = f"""
+                            A student has registered/booked your {self.offering_type}.
+
+                            Student: {student_full_name} ({self.student})
+                            Offering: {offering_display}
+                            Date: {self.session_date}
+                            Time: {self.from_time} - {self.to_time}
+                        """
+                        
+                        create_notification(
+                            user=resolved_mentor_user,
+                            subject=mentor_subject,
+                            message=mentor_message,
+                            document_type="Mentor Session Booking",
+                            document_name=self.name,
+                            ignore_permissions=True
+                        )
+
     def _refresh_seat_count(self):
         if self.offering_type == "Group Session" and self.get("group_slot"):
             slot = frappe.get_doc("Group Session Slot", self.group_slot)
@@ -361,20 +400,22 @@ def create_notification(user, subject, message, document_type=None, document_nam
             )
 
     # ----------------------------------------------------------
-    # Resolve User — unchanged logic
+    # Resolve User
     # ----------------------------------------------------------
     if not user:
         return
 
     frappe.log_error(user)
-    user = frappe.db.get_value("User", {"email": user}, "name")
+    
+    resolved_user = frappe.db.get_value("User", {"email": user}, "name")
+    if not resolved_user:
+        resolved_user = frappe.db.get_value("User", user, "name")
 
-    if not user:
-        user = frappe.db.get_value("User", user, "name")
-
-    if not user:
+    if not resolved_user:
         frappe.log_error(f"User not found: {user}", "NOTIFICATION ERROR")
         return
+
+    user = resolved_user
 
     # ----------------------------------------------------------
     # EMAIL — unchanged logic
@@ -384,7 +425,7 @@ def create_notification(user, subject, message, document_type=None, document_nam
             recipients=[user],
             subject=subject,
             message=message,
-            now=True
+            now=False
         )
     except Exception:
         frappe.log_error(frappe.get_traceback(), "EMAIL ERROR")
@@ -1105,16 +1146,17 @@ def reschedule_session(session_name, mentor, student, new_date, new_from_time, n
     """
     Permission: WRITE on 'Mentor Session Booking'.
     Configured via Role Permission Manager — no hardcoded roles.
-    reason: Optional text explaining why the session is being rescheduled.
+    reason: Required text explaining why the session is being rescheduled.
 
     Validates (in order) BEFORE saving:
       1. WRITE permission
-      2. Session exists and is in 'Scheduled' status
-      3. new_from_time < new_to_time
-      4. new_date is not in the past
-      5. Mentor has no blocked time overlapping the new slot (whole-day or partial)
-      6. Mentor has no other session overlapping the new slot (excludes this booking)
-      7. Student has no other session overlapping the new slot (excludes this booking)
+      2. reason is provided (mandatory)
+      3. Session exists and is in 'Scheduled' status
+      4. new_from_time < new_to_time
+      5. new_date is not in the past
+      6. Mentor has no blocked time overlapping the new slot (whole-day or partial)
+      7. Mentor has no other session overlapping the new slot (excludes this booking)
+      8. Student has no other session overlapping the new slot (excludes this booking)
     Only after all validations pass does it save and send a notification.
     """
     # ----------------------------------------------------------
@@ -1127,6 +1169,14 @@ def reschedule_session(session_name, mentor, student, new_date, new_from_time, n
             _("You do not have permission to reschedule sessions."),
             frappe.PermissionError
         )
+
+    # ----------------------------------------------------------
+    # 2. Reason is mandatory
+    # ----------------------------------------------------------
+    if not reason or not str(reason).strip():
+        frappe.throw(_("Reason for rescheduling is required."), frappe.ValidationError)
+
+    reason = str(reason).strip()
 
     # ----------------------------------------------------------
     # 2. Load document and validate current status
@@ -1534,6 +1584,11 @@ def submit_review(booking_name, rating, review, skill_highlights=None):
     # Set rating on the parent booking record as well
     booking.rating = float(rating)
 
+    # Ignore link validation — we're only writing to the review child table and
+    # the rating field. The booking may have a stale payout_reference link
+    # (e.g. the Mentor Payout record was deleted), which is unrelated to this
+    # operation and must not block review submission.
+    booking.flags.ignore_links = True
     booking.save(ignore_permissions=True)
     frappe.db.commit()
 
@@ -2334,9 +2389,13 @@ def get_pending_requests(mentor, limit=None):
         )
 
     # ----------------------------------------------------------
-    # Unchanged logic below
+    # Filter only bookings where payout_status is 'Paid'
     # ----------------------------------------------------------
-    filters = {"mentor": mentor, "mentor_request_status": "Pending"}
+    filters = {
+        "mentor": mentor,
+        "mentor_request_status": "Pending",
+        "payout_status": "Paid"
+    }
 
     total_pending_count = frappe.db.count("Mentor Session Booking", filters=filters)
 
@@ -2346,7 +2405,7 @@ def get_pending_requests(mentor, limit=None):
         "fields":  [
             "name", "student", "offering", "topic", "session_date",
             "from_time", "to_time", "session_type", "priority",
-            "student_message", "amount_paid",
+            "student_message", "amount_paid", "payout_status",
         ],
     }
 
@@ -2382,11 +2441,11 @@ def get_request_counts(mentor):
         )
 
     # ----------------------------------------------------------
-    # Unchanged logic below
+    # Filter pending request count by payout_status='Paid' to align with get_pending_requests
     # ----------------------------------------------------------
     pending = frappe.db.count(
         "Mentor Session Booking",
-        {"mentor": mentor, "mentor_request_status": "Pending"}
+        {"mentor": mentor, "mentor_request_status": "Pending", "payout_status": "Paid"}
     )
 
     approved = frappe.db.sql("""

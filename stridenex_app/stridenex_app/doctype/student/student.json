@@ -14,6 +14,7 @@
   "linkedin",
   "github",
   "backlog",
+  "marksheet",
   "column_break_cdla",
   "stream",
   "college",
@@ -22,6 +23,7 @@
   "department",
   "cgpa",
   "current_year",
+  "other_college",
   "column_break_brzj",
   "academic_year",
   "semester",
@@ -98,11 +100,9 @@
    "fieldname": "college",
    "fieldtype": "Link",
    "label": "College",
-   "options": "College",
-   "reqd": 1
+   "options": "College"
   },
   {
-   "default": "null",
    "fieldname": "department",
    "fieldtype": "Link",
    "label": "Department",
@@ -115,7 +115,6 @@
    "options": "Str Course Type"
   },
   {
-   "default": "Null",
    "fieldname": "course",
    "fieldtype": "Link",
    "label": "Course",
@@ -245,13 +244,23 @@
    "fieldtype": "Table",
    "label": "Project",
    "options": "Student Project Table"
+  },
+  {
+   "fieldname": "marksheet",
+   "fieldtype": "Attach",
+   "label": "Marksheet"
+  },
+  {
+   "fieldname": "other_college",
+   "fieldtype": "Data",
+   "label": "Other College "
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-24 09:43:03.948934",
+ "modified": "2026-09-02 16:26:15.221720",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Student",

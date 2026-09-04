@@ -121,10 +121,25 @@ def _do_create_student():
     ALLOWED_FIELDS = {
         "first_name", "last_name", "mobile_no", "stream", "college",
         "course", "department", "academic_year", "semester", "current_year",
-        "date_of_birth", "gender", "linkedin", "github", "cgpa", "backlog"
+        "date_of_birth", "gender", "linkedin", "github", "cgpa", "backlog","other_college"
     }
 
     clean_data = {k: v for k, v in data.items() if k in ALLOWED_FIELDS}
+
+    # ── Normalize academic_year: map numeric values → Select labels ───────────
+    # The Courses master stores `academic_years` as a number (e.g. 4).
+    # The Student.academic_year field is a Select with text labels.
+    _AY_LABEL_MAP = {
+        "1": "First Year",
+        "2": "Second Year",
+        "3": "Third Year",
+        "4": "Forth Year",
+    }
+    _AY_VALID = set(_AY_LABEL_MAP.values())
+    if "academic_year" in clean_data:
+        ay_val = str(clean_data["academic_year"]).strip()
+        if ay_val not in _AY_VALID:
+            clean_data["academic_year"] = _AY_LABEL_MAP.get(ay_val, ay_val)
 
     student = frappe.get_doc({
         "doctype": "Student",

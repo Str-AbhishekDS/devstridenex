@@ -249,75 +249,98 @@ class MentorPayoutSheet(Document):
 			})
 
 		# Generate Purchase Invoices for released payouts
+		billing_settings = frappe.get_single("Billing Settings")
 		for row in self.summary:
 			if not row.released or row.net_payout <= 0:
 				continue
 			
-			supplier = get_or_create_supplier(row.mentor)
-			
-			items = []
-			
-			# 1. Gross completed sessions mentorship (Debit)
-			items.append({
-				"item_code": mentor_services_item,
-				"item_name": f"Mentorship Gross completed - Sheet: {self.name}",
-				"qty": 1,
-				"rate": row.gross_amount,
-				"price_list_rate": row.gross_amount,
-				"amount": row.gross_amount,
-				"expense_account": mentor_expense_account
-			})
-			
-			# 2. Commission Deduction (Credit)
-			if row.commission_amount > 0:
-				items.append({
-					"item_code": mentor_services_item,
-					"item_name": f"Commission Deduction - Sheet: {self.name}",
-					"qty": 1,
-					"rate": -row.commission_amount,
-					"price_list_rate": -row.commission_amount,
-					"amount": -row.commission_amount,
-					"expense_account": commission_account
-				})
-				
-			# 3. Student Refund Deduction (Credit)
-			if row.refund_amount > 0:
-				items.append({
-					"item_code": mentor_services_item,
-					"item_name": f"Student Refund Deduction - Sheet: {self.name}",
-					"qty": 1,
-					"rate": -row.refund_amount,
-					"price_list_rate": -row.refund_amount,
-					"amount": -row.refund_amount,
-					"expense_account": penalty_account
-				})
-				
-			# 4. Absenteeism Penalty Deduction (Credit)
-			if row.total_penalties > 0:
-				items.append({                                   
-					"item_code": mentor_services_item,
-					"item_name": f"Absenteeism Penalty Deduction - Sheet: {self.name}",
-					"qty": 1,
-					"rate": -row.total_penalties,                                
-					"price_list_rate": -row.total_penalties,
-					"amount": -row.total_penalties,
-					"expense_account": penalty_account
-				})
-				 
-			pi = frappe.get_doc({                            
-				"doctype": "Purchase Invoice",
-				"supplier": supplier,
-				"company": company,
-				"posting_date": frappe.utils.today(),         
-				"credit_to": credit_to,
-				"ignore_pricing_rule": 1,
-				"apply_tds": 1,             
-				"items": items             
-			})
-			pi.insert(ignore_permissions=True)                 
-			pi.submit()              
-			
-			frappe.msgprint(f"Generated Purchase Invoice {pi.name} for mentor {row.mentor}")     
+			if billing_settings.sys_url:
+				from stridenex_app.api_stridenex_app.uat_client import call_uat_api
+				res = call_uat_api(
+					"quantbit_payments_platform.api.uat_create_purchase_invoice_for_payout",
+					{
+						"mentor_email": row.mentor,
+						"gross_amount": float(row.gross_amount or 0),
+						"commission_amount": float(row.commission_amount or 0),
+						"refund_amount": float(row.refund_amount or 0),
+						"total_penalties": float(row.total_penalties or 0),
+						"sheet_name": self.name
+					}
+				)
+				pi_name = res.get("purchase_invoice") if isinstance(res, dict) else None
+				if pi_name:
+					frappe.msgprint(f"Generated Purchase Invoice {pi_name} on UAT for mentor {row.mentor}")
+				continue
+			else:
+				frappe.throw("Billing Settings sys_url is not configured for remote UAT operations.")
+
+			# Legacy local Purchase Invoice generation code (commented out)
+			# if frappe.db.exists("DocType", "Purchase Invoice"):
+			# 	supplier = get_or_create_supplier(row.mentor)
+			# 	
+			# 	items = []
+			# 	
+			# 	# 1. Gross completed sessions mentorship (Debit)
+			# 	items.append({
+			# 		"item_code": mentor_services_item,
+			# 		"item_name": f"Mentorship Gross completed - Sheet: {self.name}",
+			# 		"qty": 1,
+			# 		"rate": row.gross_amount,
+			# 		"price_list_rate": row.gross_amount,
+			# 		"amount": row.gross_amount,
+			# 		"expense_account": mentor_expense_account
+			# 	})
+			# 	
+			# 	# 2. Commission Deduction (Credit)
+			# 	if row.commission_amount > 0:
+			# 		items.append({
+			# 			"item_code": mentor_services_item,
+			# 			"item_name": f"Commission Deduction - Sheet: {self.name}",
+			# 			"qty": 1,
+			# 			"rate": -row.commission_amount,
+			# 			"price_list_rate": -row.commission_amount,
+			# 			"amount": -row.commission_amount,
+			# 			"expense_account": commission_account
+			# 		})
+			# 		
+			# 	# 3. Student Refund Deduction (Credit)
+			# 	if row.refund_amount > 0:
+			# 		items.append({
+			# 			"item_code": mentor_services_item,
+			# 			"item_name": f"Student Refund Deduction - Sheet: {self.name}",
+			# 			"qty": 1,
+			# 			"rate": -row.refund_amount,
+			# 			"price_list_rate": -row.refund_amount,
+			# 			"amount": -row.refund_amount,
+			# 			"expense_account": penalty_account
+			# 		})
+			# 		
+			# 	# 4. Absenteeism Penalty Deduction (Credit)
+			# 	if row.total_penalties > 0:
+			# 		items.append({                                   
+			# 			"item_code": mentor_services_item,
+			# 			"item_name": f"Absenteeism Penalty Deduction - Sheet: {self.name}",
+			# 			"qty": 1,
+			# 			"rate": -row.total_penalties,                                
+			# 			"price_list_rate": -row.total_penalties,
+			# 			"amount": -row.total_penalties,
+			# 			"expense_account": penalty_account
+			# 		})
+			# 		 
+			# 	pi = frappe.get_doc({                            
+			# 		"doctype": "Purchase Invoice",
+			# 		"supplier": supplier,
+			# 		"company": company,
+			# 		"posting_date": frappe.utils.today(),         
+			# 		"credit_to": credit_to,
+			# 		"ignore_pricing_rule": 1,
+			# 		"apply_tds": 1,             
+			# 		"items": items             
+			# 	})
+			# 	pi.insert(ignore_permissions=True)                 
+			# 	pi.submit()              
+			# 	
+			# 	frappe.msgprint(f"Generated Purchase Invoice {pi.name} for mentor {row.mentor}")     
 
 def get_or_create_supplier(mentor_email):
 	supplier_name = frappe.db.get_value("Supplier", {"email_id": mentor_email}, "name")
@@ -444,72 +467,105 @@ def create_paid_sales_invoice_for_booking(booking_doc, payment_ref):
 		if original_user != "Administrator":
 			frappe.set_user("Administrator")
 
-		company = frappe.defaults.get_global_default("company") or "Quantbit Technologies Pvt Ltd"
-		student_email = booking_doc.student
-		amount = float(booking_doc.amount_paid or 0)
-		
-		# Resolve setting-based accounts
-		accounts_setting = None
-		try:
-			accounts_setting = frappe.get_single("Mentor Payout Accounts Setting")
-		except Exception:
-			pass
+		settings = frappe.get_single("Billing Settings")
+		if settings.sys_url:
+			from stridenex_app.api_stridenex_app.uat_client import call_uat_api
+			student_name = frappe.db.get_value("User", booking_doc.student, "full_name") or booking_doc.student
+			res = call_uat_api(
+				"quantbit_payments_platform.api.uat_create_paid_sales_invoice",
+				{
+					"student_email": booking_doc.student,
+					"student_name": student_name,
+					"amount": float(booking_doc.amount_paid or 0),
+					"offering_type": booking_doc.offering_type or "1:1 Session",
+					"payment_ref": payment_ref,
+				}
+			)
+			invoice_name = res.get("sales_invoice") if isinstance(res, dict) else None
+			pe_name = res.get("payment_entry") if isinstance(res, dict) else None
+			
+			if invoice_name:
+				if booking_doc.meta.has_field("sales_invoice"):
+					booking_doc.db_set("sales_invoice", invoice_name)
+				
+				sh_name = frappe.db.get_value("Subscription History", {"razorpay_payment_id": payment_ref}, "name")
+				if sh_name:
+					frappe.db.set_value("Subscription History", sh_name, {
+						"sales_invoice_no": invoice_name,
+						"payment_entry_no": pe_name
+					}, update_modified=False)
+				return invoice_name
+		else:
+			frappe.throw("Billing Settings sys_url is not configured for remote UAT operations.")
 
-		sales_account = (accounts_setting.sales_account if accounts_setting and accounts_setting.sales_account else None) or "Sales - QTPL"
-		clearing_account = (accounts_setting.razorpay_clearing_account if accounts_setting and accounts_setting.razorpay_clearing_account else None) or "Razorpay Clearing - QTPL"
-
-		# Resolve Customer
-		customer = get_or_create_student_customer(student_email)
-
-		# Resolve Item (1:1 Session, Workshop, Group Session, etc.) based on offering_type
-		offering_type = booking_doc.offering_type or "1:1 Session"
-		item_code = get_or_create_item(offering_type)
-
-		# Create and Submit Sales Invoice
-		debit_to = frappe.db.get_value("Account", {"account_type": "Receivable", "company": company}, "name") or f"Debtors - {frappe.db.get_value('Company', company, 'abbr')}"
-		invoice = frappe.get_doc({
-			"doctype": "Sales Invoice",
-			"company": company,
-			"customer": customer,
-			"posting_date": frappe.utils.today(),
-			"due_date": frappe.utils.today(),
-			"currency": "INR",
-			"debit_to": debit_to,
-			"taxes_and_charges": "Output GST In-state - QTPL",
-			"items": [{
-				"item_code": item_code,
-				"qty": 1,
-				"rate": amount,
-				"income_account": sales_account
-			}]
-		})
-		invoice.set_missing_values()
-		invoice.calculate_taxes_and_totals()
-		invoice.insert(ignore_permissions=True)
-		invoice.submit()
-
-		# Create and Submit Payment Entry to mark Sales Invoice as Paid
-		from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
-		pe = get_payment_entry("Sales Invoice", invoice.name)
-		pe.reference_no = payment_ref
-		pe.reference_date = frappe.utils.today()
-		pe.paid_to = clearing_account
-		pe.insert(ignore_permissions=True)
-		pe.submit()
-
-		# Link the Sales Invoice name back to the booking's sales_invoice field if it exists
-		if booking_doc.meta.has_field("sales_invoice"):
-			booking_doc.db_set("sales_invoice", invoice.name)
-		
-		# Also link to Subscription History if possible
-		sh_name = frappe.db.get_value("Subscription History", {"razorpay_payment_id": payment_ref}, "name")
-		if sh_name:
-			frappe.db.set_value("Subscription History", sh_name, {
-				"sales_invoice_no": invoice.name,
-				"payment_entry_no": pe.name
-			}, update_modified=False)
-
-		return invoice.name
+		# Legacy local Sales Invoice generation code (commented out)
+		# if frappe.db.exists("DocType", "Sales Invoice"):
+		# 	company = frappe.defaults.get_global_default("company") or "Quantbit Technologies Pvt Ltd"
+		# 	student_email = booking_doc.student
+		# 	amount = float(booking_doc.amount_paid or 0)
+		# 	
+		# 	# Resolve setting-based accounts
+		# 	accounts_setting = None
+		# 	try:
+		# 		accounts_setting = frappe.get_single("Mentor Payout Accounts Setting")
+		# 	except Exception:
+		# 		pass
+		# 
+		# 	sales_account = (accounts_setting.sales_account if accounts_setting and accounts_setting.sales_account else None) or "Sales - QTPL"
+		# 	clearing_account = (accounts_setting.razorpay_clearing_account if accounts_setting and accounts_setting.razorpay_clearing_account else None) or "Razorpay Clearing - QTPL"
+		# 
+		# 	# Resolve Customer
+		# 	customer = get_or_create_student_customer(student_email)
+		# 
+		# 	# Resolve Item (1:1 Session, Workshop, Group Session, etc.) based on offering_type
+		# 	offering_type = booking_doc.offering_type or "1:1 Session"
+		# 	item_code = get_or_create_item(offering_type)
+		# 
+		# 	# Create and Submit Sales Invoice
+		# 	debit_to = frappe.db.get_value("Account", {"account_type": "Receivable", "company": company}, "name") or f"Debtors - {frappe.db.get_value('Company', company, 'abbr')}"
+		# 	invoice = frappe.get_doc({
+		# 		"doctype": "Sales Invoice",
+		# 		"company": company,
+		# 		"customer": customer,
+		# 		"posting_date": frappe.utils.today(),
+		# 		"due_date": frappe.utils.today(),
+		# 		"currency": "INR",
+		# 		"debit_to": debit_to,
+		# 		"taxes_and_charges": "Output GST In-state - QTPL",
+		# 		"items": [{
+		# 			"item_code": item_code,
+		# 			"qty": 1,
+		# 			"rate": amount,
+		# 			"income_account": sales_account
+		# 		}]
+		# 	})
+		# 	invoice.set_missing_values()
+		# 	invoice.calculate_taxes_and_totals()
+		# 	invoice.insert(ignore_permissions=True)
+		# 	invoice.submit()
+		# 
+		# 	# Create and Submit Payment Entry to mark Sales Invoice as Paid
+		# 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+		# 	pe = get_payment_entry("Sales Invoice", invoice.name)
+		# 	pe.reference_no = payment_ref
+		# 	pe.reference_date = frappe.utils.today()
+		# 	pe.paid_to = clearing_account
+		# 	pe.insert(ignore_permissions=True)
+		# 	pe.submit()
+		# 
+		# 	# Link the Sales Invoice name back to the booking's sales_invoice field if it exists
+		# 	if booking_doc.meta.has_field("sales_invoice"):
+		# 		booking_doc.db_set("sales_invoice", invoice.name)
+		# 	
+		# 	# Also link to Subscription History if possible
+		# 	sh_name = frappe.db.get_value("Subscription History", {"razorpay_payment_id": payment_ref}, "name")
+		# 	if sh_name:
+		# 		frappe.db.set_value("Subscription History", sh_name, {
+		# 			"sales_invoice_no": invoice.name,
+		# 			"payment_entry_no": pe.name
+		# 		}, update_modified=False)
+		# 
+		# 	return invoice.name
 	except Exception as e:
 		frappe.log_error(title="Failed to generate paid Sales Invoice for session booking", message=frappe.get_traceback())
 		raise e

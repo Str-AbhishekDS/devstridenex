@@ -537,56 +537,134 @@ def get_learning_activity(student=None, weeks=7):
     }
 
 
+import frappe
+from frappe.utils import add_days, today, getdate
 
-@frappe.whitelist(allow_guest=False)
+
+@frappe.whitelist(allow_guest=True)
 def get_todays_opportunity_alerts():
     try:
-        from frappe.utils import add_days, today
+        student_email = frappe.form_dict.get("student")
+        course = frappe.form_dict.get("course")
+        department = frappe.form_dict.get("department")
+        current_year = frappe.form_dict.get("current_year")
 
-        from_date = add_days(today(), -5)
+        if student_email and frappe.db.exists("Student", student_email):
+            student_doc = frappe.get_doc("Student", student_email)
+            if not course:
+                course = student_doc.course
+            if not department:
+                department = student_doc.department
+            if not current_year:
+                current_year = student_doc.current_year
 
-        # ---------------- Internships ----------------
-        internships = frappe.get_all(
-            "Internship",
-            filters={"creation": [">=", from_date]},
-            fields=["name", "title", "creation"],
-            order_by="creation desc"
-        )
+        new_from_date = add_days(today(), -5)      # "new posting" window
+        deadline_to_date = add_days(today(), 7)    # "deadline approaching" window
+        deadline_from_date = today()
 
-        internship_data = [
+        # -------- doctype config: name, deadline field, extra display fields --------
+        doctype_config = [
             {
-                "name": i["name"],
-                "title": i.get("title"),
-                "date": i["creation"].strftime("%Y-%m-%d")
-            }
-            for i in internships
+                "doctype": "Internship",
+                "deadline_field": "application_deadline",
+                "title_field": "title",
+                "status_field": "status",
+                "open_statuses": ["Active"],
+            },
+            {
+                "doctype": "Industry Project",
+                "deadline_field": "application_deadline",
+                "title_field": "project_name",
+                "status_field": "status",
+                "open_statuses": ["Active"],
+            },
+            {
+                "doctype": "Industry Job Profile",
+                "deadline_field": "last_date",
+                "title_field": "job_title",
+                "status_field": "status",
+                "open_statuses": ["Open"],
+            },
         ]
 
-        # ---------------- Industry Projects ----------------
-        projects = frappe.get_all(
-            "Industry Project",
-            filters={"creation": [">=", from_date]},
-            fields=["name", "project_name", "creation"],
-            order_by="creation desc"
-        )
+        new_postings = []
+        deadline_alerts = []
 
-        project_data = [
-            {
-                "name": p["name"],
-                "project_name": p.get("project_name"),
-                "date": p["creation"].strftime("%Y-%m-%d")
+        for cfg in doctype_config:
+            # ---------------- New postings (last 5 days) ----------------
+            new_records = frappe.get_all(
+                cfg["doctype"],
+                filters={
+                    "creation": [">=", new_from_date],
+                },
+                fields=["name", cfg["title_field"], "creation"],
+                order_by="creation desc",
+            )
+
+            if new_records:
+                new_names = [r["name"] for r in new_records]
+                matched_new_names = set(_filter_opportunities_for_student(
+                    doctype=cfg["doctype"],
+                    names=new_names,
+                    course=course,
+                    department=department,
+                    current_year=current_year,
+                ))
+                for r in new_records:
+                    if r["name"] in matched_new_names:
+                        new_postings.append({
+                            "type": cfg["doctype"],
+                            "name": r["name"],
+                            "title": r.get(cfg["title_field"]),
+                            "date": r["creation"].strftime("%Y-%m-%d"),
+                            "alert": "New opportunity posted"
+                        })
+
+            # ---------------- Deadline within next 7 days ----------------
+            deadline_filters = {
+                cfg["deadline_field"]: ["between", [deadline_from_date, deadline_to_date]],
             }
-            for p in projects
-        ]
+            if cfg.get("status_field") and cfg.get("open_statuses"):
+                deadline_filters[cfg["status_field"]] = ["in", cfg["open_statuses"]]
+
+            deadline_records = frappe.get_all(
+                cfg["doctype"],
+                filters=deadline_filters,
+                fields=["name", cfg["title_field"], cfg["deadline_field"]],
+                order_by=f"{cfg['deadline_field']} asc",
+            )
+
+            if deadline_records:
+                deadline_names = [r["name"] for r in deadline_records]
+                matched_deadline_names = set(_filter_opportunities_for_student(
+                    doctype=cfg["doctype"],
+                    names=deadline_names,
+                    course=course,
+                    department=department,
+                    current_year=current_year,
+                ))
+                for r in deadline_records:
+                    if r["name"] in matched_deadline_names:
+                        deadline_date = r.get(cfg["deadline_field"])
+                        days_left = (getdate(deadline_date) - getdate(today())).days
+                        deadline_alerts.append({
+                            "type": cfg["doctype"],
+                            "name": r["name"],
+                            "title": r.get(cfg["title_field"]),
+                            "deadline": deadline_date.strftime("%Y-%m-%d") if deadline_date else None,
+                            "days_left": days_left,
+                            "alert": f"Deadline in {days_left} day(s)" if days_left > 0 else "Deadline is today"
+                        })
 
         return gen_response(
             status=200,
-            message="Recent internships and projects fetched successfully",
+            message="Opportunity alerts fetched successfully",
             data={
-                "internships": internship_data,
-                "projects": project_data,
-                "total_internships": len(internship_data),
-                "total_projects": len(project_data)
+                "student": student_email,
+                "new_postings": new_postings,
+                "deadline_alerts": deadline_alerts,
+                "total_new_postings": len(new_postings),
+                "total_deadline_alerts": len(deadline_alerts),
             }
         )
 
@@ -594,4 +672,51 @@ def get_todays_opportunity_alerts():
         return exception_handel(e)
 
 
+def _filter_opportunities_for_student(doctype, names, course, department, current_year):
+    """
+    Filters a list of opportunity names to only those that match the student's
+    course, department, or academic year, or are open to all.
+    """
+    if not names:
+        return []
 
+    # Map each parent to its restricted courses, departments, academic_years
+    course_map = {}
+    for r in frappe.get_all("Course Table", filters={"parenttype": doctype, "parent": ["in", names]}, fields=["parent", "course"]):
+        course_map.setdefault(r["parent"], set()).add(r["course"])
+
+    dept_map = {}
+    for r in frappe.get_all("Department Table", filters={"parenttype": doctype, "parent": ["in", names]}, fields=["parent", "department"]):
+        dept_map.setdefault(r["parent"], set()).add(r["department"])
+
+    year_map = {}
+    for r in frappe.get_all("Academic Year Table", filters={"parenttype": doctype, "parent": ["in", names]}, fields=["parent", "academic_year"]):
+        year_map.setdefault(r["parent"], set()).add(r["academic_year"])
+
+    matched_names = []
+    for name in names:
+        has_course_restriction = name in course_map
+        has_dept_restriction = name in dept_map
+        has_year_restriction = name in year_map
+
+        # Open to all if there are no restrictions at all
+        if not (has_course_restriction or has_dept_restriction or has_year_restriction):
+            matched_names.append(name)
+            continue
+
+        # Match course
+        if course and has_course_restriction and course in course_map[name]:
+            matched_names.append(name)
+            continue
+
+        # Match department
+        if department and has_dept_restriction and department in dept_map[name]:
+            matched_names.append(name)
+            continue
+
+        # Match academic year
+        if current_year and has_year_restriction and current_year in year_map[name]:
+            matched_names.append(name)
+            continue
+
+    return matched_names

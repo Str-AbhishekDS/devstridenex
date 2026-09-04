@@ -310,6 +310,7 @@ from frappe.utils import getdate
 @frappe.whitelist(allow_guest=True)
 def get_student_onboarding_graph(year=None, college=None):
     try:
+        college = resolve_college_name(college)
         # Default year = current year
         if not year:
             year = getdate().year
@@ -411,6 +412,7 @@ def get_columns():
 @frappe.whitelist(allow_guest=True)
  # requires login; drop allow_guest=True unless you truly want it public
 def get_data(college=None):
+    college = resolve_college_name(college)
     conditions = ""
     values = {"low_levels": tuple(LOW_LEVELS) if len(LOW_LEVELS) > 1 else (LOW_LEVELS[0], LOW_LEVELS[0])}
 
