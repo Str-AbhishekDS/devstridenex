@@ -1,21 +1,29 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:{college}-{course_name}",
- "creation": "2026-02-17 11:10:40.955332",
+ "autoname": "format:{course_name}",
+ "creation": "2026-09-02 17:35:29.478921",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "course_name",
-  "stream",
   "course_type",
-  "college"
+  "stream",
+  "course_name",
+  "academic_years",
+  "amended_from"
  ],
  "fields": [
   {
    "fieldname": "course_name",
    "fieldtype": "Data",
    "label": "Course Name"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "academic_years",
+   "fieldtype": "Data",
+   "label": "Academic Years"
   },
   {
    "fieldname": "stream",
@@ -26,20 +34,25 @@
   {
    "fieldname": "course_type",
    "fieldtype": "Link",
-   "label": "Course Type",
+   "label": "Program Level",
    "options": "Course Type"
   },
   {
-   "fieldname": "college",
+   "fieldname": "amended_from",
    "fieldtype": "Link",
-   "label": "College",
-   "options": "College"
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Courses",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-06-29 11:52:39.047624",
+ "modified": "2026-09-02 17:47:25.052128",
  "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Courses",
@@ -63,5 +76,6 @@
  "rows_threshold_for_grid_search": 20,
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

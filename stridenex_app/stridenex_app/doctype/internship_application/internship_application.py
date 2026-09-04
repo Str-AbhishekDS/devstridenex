@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import now
+from frappe.utils import now, now_datetime
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
     exception_handel
@@ -53,6 +53,9 @@ class InternshipApplication(Document):
 
         score = (len(matched) / len(required_skills)) * 100
         self.match_score = round(score)
+
+
+
         
 @frappe.whitelist()
 def get_match_score(student, internship):
@@ -78,42 +81,7 @@ def get_match_score(student, internship):
 
     return round(score)
 
-@frappe.whitelist(allow_guest=False)
-def get_student_application_list(industry=None):
-    try:
-        session_user = frappe.session.user
 
-        # if not frappe.has_permission(
-        #     "Internship Application",
-        #     ptype="read",
-        #     user=session_user
-        # ):
-        #     frappe.throw(
-        #         "You do not have permission to access Internship Applications.",
-        #         frappe.PermissionError
-        #     )
-
-        filters = {}
-
-        if industry:
-            filters["industry"] = industry
-
-        internship = frappe.get_list(
-            "Internship Application",
-            filters=filters,
-            fields=["*"],
-            order_by="creation desc"
-        )
-
-        return gen_response(
-            status=200,
-            message="Internship Applications list fetched successfully",
-            data=internship
-        )
-
-    except Exception as e:
-        return exception_handel(e)
-    
 
 @frappe.whitelist(allow_guest=False)
 def get_application_status_count(industry=None):

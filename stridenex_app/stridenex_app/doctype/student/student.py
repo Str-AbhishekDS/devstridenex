@@ -7,10 +7,11 @@ import math
 
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
-    exception_handel,get_pagination_params,make_cache_key,make_pagination_meta
+    exception_handel,make_cache_key,make_pagination_meta
 )
 import frappe
 from frappe.model.document import Document
+from frappe.utils import getdate, today
 CACHE_TTL   = 300 
 
 class Student(Document):
@@ -18,6 +19,19 @@ class Student(Document):
     
         self.validate_resume()
         self.validate_social_links()
+        self.validate_date_of_birth()
+
+    def validate_date_of_birth(self):
+        if self.date_of_birth:
+            dob = getdate(self.date_of_birth)
+            current_date = getdate(today())
+            if dob >= current_date:
+                frappe.throw("Date of Birth cannot be today or in the future.")
+            
+            # Age check: must be at least 15 years old
+            age = current_date.year - dob.year - ((current_date.month, current_date.day) < (dob.month, dob.day))
+            if age < 15:
+                frappe.throw("Student must be at least 15 years old. Please enter a valid Date of Birth.")
 
     def validate_resume(self):
         if self.resume:
@@ -113,10 +127,15 @@ def get_dashboard_stats(student=None):
 
     s = frappe.get_doc("Student", student)
 
+    total_skills = frappe.db.count("Student Skill", {
+        "student": student,
+        "status": ["!=", "Rejected"]
+    })
+
     return {
         "employability_score": s.employability_score,
         
-        "total_skills": len(s.get("skill") or []),
+        "total_skills": total_skills,
         "cgpa": s.cgpa,
         "backlog": s.get("backlog") or 0,
        
@@ -128,67 +147,6 @@ def get_profile_completeness(student_doc):
                         "college", "course", "resume", "cgpa", "date_of_birth"]
     filled = sum(1 for f in required_fields if student_doc.get(f))
     return round((filled / len(required_fields)) * 100)
-
-# DEFAULT_PAGE_SIZE = 20
-# @frappe.whitelist(allow_guest=True)
-# def get_student_list(college=None, page=1, page_size=DEFAULT_PAGE_SIZE):
-#     try:
-#         page, page_size, limit, offset = get_pagination_params(page, page_size)
-
-#         filters = {}
-#         if college:
-#             filters["college"] = college
-
-#         # ── Cache key unique to every (college, page, page_size) combo ──────
-#         cache_key = make_cache_key("student_list", college=college, page=page, page_size=page_size)
-
-#         cached = frappe.cache().get_value(cache_key)
-#         if cached:
-#             return cached                         # ← cache HIT, return immediately
-
-#         # ── Total count (for pagination meta) ───────────────────ps aux | grep gunicorn────────────
-#         total = frappe.db.count("Student", filters=filters)
-
-#         # ── Paginated fetch ─────────────────────────────────────────────────
-#         students = frappe.get_all(
-#             "Student",
-#             filters=filters,
-#             fields=["*"],
-#             order_by="creation desc",
-#             limit=limit,
-#             start=offset,
-#         )
-
-#         # ── Enrich with child table in one DB round-trip ─────────────────────
-#         if students:
-#             parent_names = [s["name"] for s in students]
-#             all_skills = frappe.get_all(
-#                 "Student Skill Table",
-#                 filters=[["parent", "in", parent_names]],
-#                 fields=["parent", "skill"],
-#             )
-#             # Group skills by parent
-#             skills_map = {}
-#             for sk in all_skills:
-#                 skills_map.setdefault(sk["parent"], []).append({"skill": sk["skill"]})
-#             for student in students:
-#                 student["skills"] = skills_map.get(student["name"], [])
-
-#         # ── Build response ───────────────────────────────────────────────────
-#         result = gen_response(
-#             status=200,
-#             message="Student list fetched successfully",
-#             data={
-#                 "students":   students,
-#                 "pagination": make_pagination_meta(total, page, page_size),
-#             }
-#         )
-
-#         frappe.cache().set_value(cache_key, result, expires_in_sec=CACHE_TTL)
-#         return result
-
-#     except Exception as e:
-#         return exception_handel(e)
     
 DEFAULT_PAGE_SIZE = 20
 
@@ -432,3 +390,333 @@ def create_skill():
             "status": "error",
             "message": str(e)
         }
+    
+
+import frappe
+from frappe.utils import getdate, nowdate, add_days, cint
+
+MINUTES_PER_LESSON = 20  # tune this, or replace with a real duration lookup
+
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_member(student=None):
+    """
+    Resolve the LMS `member` (a User docname/email) for a given Student
+    record or the logged-in user. Returns the email/User-name string.
+    """
+    if student:
+        email = frappe.db.get_value("Student", student, "email_id")
+        if email:
+            return email
+        # allow passing the email/User name directly
+        if frappe.db.exists("User", student):
+            return student
+        frappe.throw(frappe._("Student not found: {0}").format(student))
+
+    # default to the logged-in user
+    if frappe.db.exists("Student", {"email_id": frappe.session.user}):
+        return frappe.session.user
+    frappe.throw(frappe._("No Student record linked to the current user."))
+
+
+def _activity_level(lessons, problems, study_minutes):
+    """Bucket a day's activity into a 0-4 heatmap intensity, low -> high."""
+    score = lessons + problems + (study_minutes / 30.0)
+    if score <= 0:
+        return 0
+    if score < 2:
+        return 1
+    if score < 4:
+        return 2
+    if score < 7:
+        return 3
+    return 4
+
+
+def _estimate_minutes(lessons_completed):
+    """See ASSUMPTION note at top of file."""
+    return lessons_completed * MINUTES_PER_LESSON
+
+
+# ---------------------------------------------------------------------------
+# main endpoint
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+def get_learning_activity(student=None, weeks=7):
+    """
+    Returns the heatmap grid (oldest -> newest, 7-day rows) plus the three
+    stat tiles: total Lessons, total Problems, total Study Time.
+
+    Response shape:
+    {
+      "weeks": [
+        {"week_start": "2026-06-14", "days": [
+            {"date": "2026-06-14", "level": 2, "lessons": 1,
+             "problems": 3, "study_minutes": 20}, ...
+        ]}, ...
+      ],
+      "totals": {"lessons": 42, "problems": 87, "study_hours": 68.0}
+    }
+    """
+    weeks = cint(weeks) or 7
+    member = _resolve_member(student)
+
+    end_date = getdate(nowdate())
+    start_date = add_days(end_date, -(weeks * 7 - 1))
+
+    # --- lessons completed per day, from LMS Course Progress ---------------
+    lesson_rows = frappe.db.sql(
+        """
+        select date(creation) as day, count(*) as lessons
+        from `tabLMS Course Progress`
+        where member = %(member)s
+          and status = 'Complete'
+          and date(creation) between %(start)s and %(end)s
+        group by date(creation)
+        """,
+        {"member": member, "start": start_date, "end": end_date},
+        as_dict=True,
+    )
+    lessons_by_day = {str(r.day): cint(r.lessons) for r in lesson_rows}
+
+    # --- problems (correctly answered quiz questions) per day --------------
+    problem_rows = frappe.db.sql(
+        """
+        select date(sub.creation) as day, count(*) as problems
+        from `tabLMS Quiz Submission` sub
+        inner join `tabLMS Quiz Result` res
+            on res.parent = sub.name and res.parenttype = 'LMS Quiz Submission'
+        where sub.member = %(member)s
+          and res.is_correct = 1
+          and date(sub.creation) between %(start)s and %(end)s
+        group by date(sub.creation)
+        """,
+        {"member": member, "start": start_date, "end": end_date},
+        as_dict=True,
+    )
+    problems_by_day = {str(r.day): cint(r.problems) for r in problem_rows}
+
+    # --- assemble day-by-day, then chunk into weeks -------------------------
+    days = []
+    cursor = start_date
+    while cursor <= end_date:
+        key = str(cursor)
+        lessons = lessons_by_day.get(key, 0)
+        problems = problems_by_day.get(key, 0)
+        minutes = _estimate_minutes(lessons)
+        days.append({
+            "date": key,
+            "level": _activity_level(lessons, problems, minutes),
+            "lessons": lessons,
+            "problems": problems,
+            "study_minutes": minutes,
+        })
+        cursor = add_days(cursor, 1)
+
+    grid = []
+    for i in range(0, len(days), 7):
+        chunk = days[i:i + 7]
+        if chunk:
+            grid.append({"week_start": chunk[0]["date"], "days": chunk})
+
+    total_lessons = sum(d["lessons"] for d in days)
+    total_problems = sum(d["problems"] for d in days)
+    total_minutes = sum(d["study_minutes"] for d in days)
+
+    return {
+        "weeks": grid,
+        "totals": {
+            "lessons": total_lessons,
+            "problems": total_problems,
+            "study_hours": round(total_minutes / 60.0, 1),
+        },
+    }
+
+
+import frappe
+from frappe.utils import add_days, today, getdate
+
+
+@frappe.whitelist(allow_guest=True)
+def get_todays_opportunity_alerts():
+    try:
+        student_email = frappe.form_dict.get("student")
+        course = frappe.form_dict.get("course")
+        department = frappe.form_dict.get("department")
+        current_year = frappe.form_dict.get("current_year")
+
+        if student_email and frappe.db.exists("Student", student_email):
+            student_doc = frappe.get_doc("Student", student_email)
+            if not course:
+                course = student_doc.course
+            if not department:
+                department = student_doc.department
+            if not current_year:
+                current_year = student_doc.current_year
+
+        new_from_date = add_days(today(), -5)      # "new posting" window
+        deadline_to_date = add_days(today(), 7)    # "deadline approaching" window
+        deadline_from_date = today()
+
+        # -------- doctype config: name, deadline field, extra display fields --------
+        doctype_config = [
+            {
+                "doctype": "Internship",
+                "deadline_field": "application_deadline",
+                "title_field": "title",
+                "status_field": "status",
+                "open_statuses": ["Active"],
+            },
+            {
+                "doctype": "Industry Project",
+                "deadline_field": "application_deadline",
+                "title_field": "project_name",
+                "status_field": "status",
+                "open_statuses": ["Active"],
+            },
+            {
+                "doctype": "Industry Job Profile",
+                "deadline_field": "last_date",
+                "title_field": "job_title",
+                "status_field": "status",
+                "open_statuses": ["Open"],
+            },
+        ]
+
+        new_postings = []
+        deadline_alerts = []
+
+        for cfg in doctype_config:
+            # ---------------- New postings (last 5 days) ----------------
+            new_records = frappe.get_all(
+                cfg["doctype"],
+                filters={
+                    "creation": [">=", new_from_date],
+                },
+                fields=["name", cfg["title_field"], "creation"],
+                order_by="creation desc",
+            )
+
+            if new_records:
+                new_names = [r["name"] for r in new_records]
+                matched_new_names = set(_filter_opportunities_for_student(
+                    doctype=cfg["doctype"],
+                    names=new_names,
+                    course=course,
+                    department=department,
+                    current_year=current_year,
+                ))
+                for r in new_records:
+                    if r["name"] in matched_new_names:
+                        new_postings.append({
+                            "type": cfg["doctype"],
+                            "name": r["name"],
+                            "title": r.get(cfg["title_field"]),
+                            "date": r["creation"].strftime("%Y-%m-%d"),
+                            "alert": "New opportunity posted"
+                        })
+
+            # ---------------- Deadline within next 7 days ----------------
+            deadline_filters = {
+                cfg["deadline_field"]: ["between", [deadline_from_date, deadline_to_date]],
+            }
+            if cfg.get("status_field") and cfg.get("open_statuses"):
+                deadline_filters[cfg["status_field"]] = ["in", cfg["open_statuses"]]
+
+            deadline_records = frappe.get_all(
+                cfg["doctype"],
+                filters=deadline_filters,
+                fields=["name", cfg["title_field"], cfg["deadline_field"]],
+                order_by=f"{cfg['deadline_field']} asc",
+            )
+
+            if deadline_records:
+                deadline_names = [r["name"] for r in deadline_records]
+                matched_deadline_names = set(_filter_opportunities_for_student(
+                    doctype=cfg["doctype"],
+                    names=deadline_names,
+                    course=course,
+                    department=department,
+                    current_year=current_year,
+                ))
+                for r in deadline_records:
+                    if r["name"] in matched_deadline_names:
+                        deadline_date = r.get(cfg["deadline_field"])
+                        days_left = (getdate(deadline_date) - getdate(today())).days
+                        deadline_alerts.append({
+                            "type": cfg["doctype"],
+                            "name": r["name"],
+                            "title": r.get(cfg["title_field"]),
+                            "deadline": deadline_date.strftime("%Y-%m-%d") if deadline_date else None,
+                            "days_left": days_left,
+                            "alert": f"Deadline in {days_left} day(s)" if days_left > 0 else "Deadline is today"
+                        })
+
+        return gen_response(
+            status=200,
+            message="Opportunity alerts fetched successfully",
+            data={
+                "student": student_email,
+                "new_postings": new_postings,
+                "deadline_alerts": deadline_alerts,
+                "total_new_postings": len(new_postings),
+                "total_deadline_alerts": len(deadline_alerts),
+            }
+        )
+
+    except Exception as e:
+        return exception_handel(e)
+
+
+def _filter_opportunities_for_student(doctype, names, course, department, current_year):
+    """
+    Filters a list of opportunity names to only those that match the student's
+    course, department, or academic year, or are open to all.
+    """
+    if not names:
+        return []
+
+    # Map each parent to its restricted courses, departments, academic_years
+    course_map = {}
+    for r in frappe.get_all("Course Table", filters={"parenttype": doctype, "parent": ["in", names]}, fields=["parent", "course"]):
+        course_map.setdefault(r["parent"], set()).add(r["course"])
+
+    dept_map = {}
+    for r in frappe.get_all("Department Table", filters={"parenttype": doctype, "parent": ["in", names]}, fields=["parent", "department"]):
+        dept_map.setdefault(r["parent"], set()).add(r["department"])
+
+    year_map = {}
+    for r in frappe.get_all("Academic Year Table", filters={"parenttype": doctype, "parent": ["in", names]}, fields=["parent", "academic_year"]):
+        year_map.setdefault(r["parent"], set()).add(r["academic_year"])
+
+    matched_names = []
+    for name in names:
+        has_course_restriction = name in course_map
+        has_dept_restriction = name in dept_map
+        has_year_restriction = name in year_map
+
+        # Open to all if there are no restrictions at all
+        if not (has_course_restriction or has_dept_restriction or has_year_restriction):
+            matched_names.append(name)
+            continue
+
+        # Match course
+        if course and has_course_restriction and course in course_map[name]:
+            matched_names.append(name)
+            continue
+
+        # Match department
+        if department and has_dept_restriction and department in dept_map[name]:
+            matched_names.append(name)
+            continue
+
+        # Match academic year
+        if current_year and has_year_restriction and current_year in year_map[name]:
+            matched_names.append(name)
+            continue
+
+    return matched_names

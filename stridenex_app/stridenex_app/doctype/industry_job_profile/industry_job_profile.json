@@ -1,0 +1,222 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:{job_title}-{industry}",
+ "creation": "2026-08-04 09:05:44.191652",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "job_title",
+  "industry",
+  "course",
+  "department",
+  "experience",
+  "job_description",
+  "skills_required",
+  "section_break_1",
+  "employment_type",
+  "location",
+  "column_break_1",
+  "salary_from",
+  "salary_to",
+  "openings",
+  "last_date",
+  "section_break_2",
+  "contact_person",
+  "contact_email",
+  "contact_phone",
+  "attachment",
+  "section_break_3",
+  "status",
+  "is_active",
+  "published_on",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "job_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Job Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "industry",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Industry",
+   "options": "Industry list",
+   "reqd": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Table MultiSelect",
+   "label": "Department",
+   "options": "Department Table"
+  },
+  {
+   "fieldname": "job_description",
+   "fieldtype": "Text Editor",
+   "in_list_view": 1,
+   "label": "Job Description",
+   "reqd": 1
+  },
+  {
+   "fieldname": "skills_required",
+   "fieldtype": "Table",
+   "label": "Skills Required",
+   "options": "Student Skill Table"
+  },
+  {
+   "fieldname": "experience",
+   "fieldtype": "Data",
+   "label": "Experience"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "employment_type",
+   "fieldtype": "Select",
+   "label": "Employment Type",
+   "options": "Full Time\nPart Time\nContract\nWork From Home\nHybrid"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "salary_from",
+   "fieldtype": "Currency",
+   "label": "Salary From"
+  },
+  {
+   "fieldname": "salary_to",
+   "fieldtype": "Currency",
+   "label": "Salary To"
+  },
+  {
+   "fieldname": "openings",
+   "fieldtype": "Int",
+   "label": "Openings"
+  },
+  {
+   "fieldname": "last_date",
+   "fieldtype": "Date",
+   "label": "Last Date to Apply"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Data",
+   "label": "Contact Person"
+  },
+  {
+   "fieldname": "contact_email",
+   "fieldtype": "Data",
+   "label": "Contact Email"
+  },
+  {
+   "fieldname": "contact_phone",
+   "fieldtype": "Data",
+   "label": "Contact Phone"
+  },
+  {
+   "fieldname": "attachment",
+   "fieldtype": "Attach",
+   "label": "Attachment"
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nOpen\nClosed\nExpired"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "published_on",
+   "fieldtype": "Datetime",
+   "label": "Published On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Industry Job Profile",
+   "read_only": 1
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Table MultiSelect",
+   "label": "Course",
+   "options": "Course Table"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-08-04 12:21:09.412667",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Industry Job Profile",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Industry",
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Student"
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -164,30 +164,72 @@ def delete_channel(channel_id):
 # MESSAGES
 # ===========================================================================
 
+# @frappe.whitelist(allow_guest=True)
+# def list_messages(channel_id,channel_category, limit=50, start=0, order="asc"):
+#     """List messages in a channel."""
+#     # _require_login()
+#     return frappe.get_all(
+#         "Raven Message",
+#         filters={"channel_id": channel_id},
+#         fields=[
+#     "name",
+#     "channel_id",
+#     "text",
+#     "owner",
+#     "message_type",
+#     "creation",
+#     "is_edited",
+#     "is_reply",
+#     "linked_message",
+#     "replied_message_details",
+# ],
+#         order_by=f"creation {order}",
+#         limit_page_length=limit,
+#         limit_start=start,
+#     )
 @frappe.whitelist(allow_guest=True)
-def list_messages(channel_id, limit=50, start=0, order="asc"):
+def list_messages(channel_id, channel_category=None, limit=50, start=0, order="asc"):
     """List messages in a channel."""
-    # _require_login()
+
+    if not channel_id:
+        frappe.throw("Channel ID is required.")
+
+    # limit = cint(limit)
+    # start = cint(start)
+
+    # Prevent SQL injection
+    order = (order or "asc").lower()
+    if order not in ["asc", "desc"]:
+        order = "asc"
+
+    filters = {
+        "channel_id": channel_id
+    }
+
+    # If you want to filter by channel category as well
+    if channel_category:
+        filters["channel_category"] = channel_category
+
     return frappe.get_all(
         "Raven Message",
-        filters={"channel_id": channel_id},
+        filters=filters,
         fields=[
-    "name",
-    "channel_id",
-    "text",
-    "owner",
-    "message_type",
-    "creation",
-    "is_edited",
-    "is_reply",
-    "linked_message",
-    "replied_message_details",
-],
+            "name",
+            "channel_id",
+            "text",
+            "owner",
+            "message_type",
+            "creation",
+            "is_edited",
+            "is_reply",
+            "linked_message",
+            "replied_message_details",
+            "channel_category"
+        ],
         order_by=f"creation {order}",
         limit_page_length=limit,
         limit_start=start,
     )
-
 
 @frappe.whitelist()
 def get_message(message_id):
@@ -196,9 +238,21 @@ def get_message(message_id):
 
 
 @frappe.whitelist()
-def send_message(channel_id, text, reply_to_message=None, message_type="Text"):
+def send_message():
     """Send a message to a channel."""
     _require_login()
+
+    channel_id = frappe.form_dict.get("channel_id")
+    text = frappe.form_dict.get("text")
+    reply_to_message = frappe.form_dict.get("reply_to_message")
+    file = frappe.form_dict.get("file")
+    message_type = frappe.form_dict.get("message_type") or "Text"
+
+    if not channel_id:
+        frappe.throw(_("Channel ID is required"))
+
+    if not text:
+        frappe.throw(_("Message text is required"))
 
     if not frappe.db.exists("Raven Channel", channel_id):
         frappe.throw(_("Channel not found"))
@@ -208,8 +262,10 @@ def send_message(channel_id, text, reply_to_message=None, message_type="Text"):
         "channel_id": channel_id,
         "text": text,
         "message_type": message_type,
+        "file": file,   # <-- comma added here
         **({"reply_to_message": reply_to_message} if reply_to_message else {}),
     })
+
     doc.insert(ignore_permissions=True)
     return doc.as_dict()
 
@@ -241,7 +297,37 @@ def delete_message(message_id):
     doc.delete(ignore_permissions=True)
     return {"deleted": message_id}
 
+@frappe.whitelist()
+def get_replies(message_id):
+    """Get all replies to a particular message."""
+    _require_login()
 
+    if not frappe.db.exists("Raven Message", message_id):
+        frappe.throw(_("Message not found"))
+
+    replies = frappe.get_all(
+        "Raven Message",
+        filters={"is_reply": message_id},
+        fields=[
+            "name",
+            "channel_id",
+            "text",
+            "message_type",
+            "owner",
+            "creation",
+            "modified",
+            "is_edited",
+            "is_reply"
+           
+        ],
+        order_by="creation asc",
+    )
+
+    return {
+        "message_id": message_id,
+        "reply_count": len(replies),
+        "replies": replies,
+    }
 @frappe.whitelist()
 def upload_and_send_file(channel_id, file_url, message_type="File"):
     """

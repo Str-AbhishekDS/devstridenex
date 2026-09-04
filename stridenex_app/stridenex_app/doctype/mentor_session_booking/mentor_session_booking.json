@@ -1,268 +1,281 @@
 {
- "actions": [],
- "allow_rename": 1,
- "autoname": "format:SB-{YYYY}-{#####}",
- "creation": "2026-04-01 12:43:57.787072",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "column_break_ardd",
-  "student",
-  "offering",
-  "offering_type",
-  "lms_batch",
-  "lms_enrollment",
-  "mentor",
-  "session_date",
-  "amount_paid",
-  "notes",
-  "review",
-  "shared_with_student",
-  "student_message",
-  "column_break_lugc",
-  "payment_reference",
-  "status",
-  "session_type",
-  "priority",
-  "topic",
-  "from_time",
-  "to_time",
-  "duration",
-  "meeting_link",
-  "amended_from",
-  "alt_time",
-  "alt_date",
-  "requested_date",
-  "requested_time",
-  "mentor_request_status",
-  "payout_section",
-  "payout_status",
-  "payout_reference"
- ],
- "fields": [
-  {
-   "fieldname": "offering",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Offering",
-   "options": "Mentor Offering",
-   "reqd": 1
-  },
-  {
-   "fieldname": "student",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Student",
-   "options": "Student",
-   "reqd": 1
-  },
-  {
-   "fetch_from": "offering.mentor",
-   "fieldname": "mentor",
-   "fieldtype": "Link",
-   "label": "Mentor",
-   "options": "Mentor"
-  },
-  {
-   "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
-   "fieldname": "session_date",
-   "fieldtype": "Date",
-   "label": "Session Date"
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status",
-   "options": "Pending\nScheduled\nAccepted\nCompleted\nCancelled\nPayment Pending"
-  },
-  {
-   "fieldname": "amount_paid",
-   "fieldtype": "Currency",
-   "label": "Amount Paid (\u20b9)"
-  },
-  {
-   "fieldname": "payment_reference",
-   "fieldtype": "Data",
-   "label": "Payment Reference"
-  },
-  {
-   "fieldname": "notes",
-   "fieldtype": "Small Text",
-   "label": "Notes"
-  },
-  {
-   "fieldname": "review",
-   "fieldtype": "Table",
-   "label": "Review",
-   "options": "Mentor Offering Review"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Mentor Session Booking",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "column_break_lugc",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "priority",
-   "fieldtype": "Select",
-   "label": "Priority",
-   "options": "High\nMedium\nLow"
-  },
-  {
-   "fieldname": "session_type",
-   "fieldtype": "Select",
-   "label": "Session Type",
-   "options": "Career\nTechnical\nResume\nInterview Prep\nStartup\nOther"
-  },
-  {
-   "fieldname": "topic",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Topic"
-  },
-  {
-   "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
-   "fieldname": "from_time",
-   "fieldtype": "Time",
-   "label": "From Time"
-  },
-  {
-   "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
-   "fieldname": "to_time",
-   "fieldtype": "Time",
-   "label": "To Time"
-  },
-  {
-   "fetch_from": "offering.duration_minutes",
-   "fieldname": "duration",
-   "fieldtype": "Int",
-   "label": "Duration (mins)"
-  },
-  {
-   "fieldname": "meeting_link",
-   "fieldtype": "Data",
-   "label": "Meeting Link"
-  },
-  {
-   "fetch_from": "offering.offering_type",
-   "fieldname": "offering_type",
-   "fieldtype": "Select",
-   "label": "Offering Type",
-   "options": "\n1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
-  },
-  {
-   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
-   "fieldname": "lms_batch",
-   "fieldtype": "Link",
-   "label": "LMS Batch",
-   "options": "LMS Batch"
-  },
-  {
-   "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
-   "fieldname": "lms_enrollment",
-   "fieldtype": "Link",
-   "label": "LMS Enrollment",
-   "options": "LMS Enrollment",
-   "read_only": 1
-  },
-  {
-   "fieldname": "alt_time",
-   "fieldtype": "Time",
-   "label": "Suggested Alt Time"
-  },
-  {
-   "fieldname": "alt_date",
-   "fieldtype": "Date",
-   "label": "Suggested Alt Date"
-  },
-  {
-   "fieldname": "student_message",
-   "fieldtype": "Small Text",
-   "label": "Message from Student"
-  },
-  {
-   "fieldname": "requested_date",
-   "fieldtype": "Datetime",
-   "label": "Requested Date"
-  },
-  {
-   "fieldname": "requested_time",
-   "fieldtype": "Time",
-   "label": "Requested Time"
-  },
-  {
-   "fieldname": "mentor_request_status",
-   "fieldtype": "Select",
-   "label": "Mentor Request Status",
-   "options": "Pending\nAccepted\nDeclined\nSuggested Alt Time\nCompleted"
-  },
-  {
-   "fieldname": "shared_with_student",
-   "fieldtype": "Small Text",
-   "label": "Shared with Student"
-  },
-  {
-   "fieldname": "column_break_ardd",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "payout_section",
-   "fieldtype": "Section Break",
-   "label": "Payout Details"
-  },
-  {
-   "default": "Unpaid",
-   "fieldname": "payout_status",
-   "fieldtype": "Select",
-   "in_list_view": 0,
-   "in_standard_filter": 1,
-   "label": "Payout Status",
-   "options": "Unpaid\nProcessing\nPaid"
-  },
-  {
-   "fieldname": "payout_reference",
-   "fieldtype": "Link",
-   "label": "Payout Reference",
-   "options": "Mentor Payout",
-   "read_only": 1
-  }
- ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-07-08 11:37:25.331999",
- "modified_by": "Administrator",
- "module": "Stridenex App",
- "name": "Mentor Session Booking",
- "naming_rule": "Expression (old style)",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
- "row_format": "Dynamic",
- "rows_threshold_for_grid_search": 20,
- "sort_field": "creation",
- "sort_order": "DESC",
- "states": []
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "format:SB-{YYYY}-{#####}",
+    "creation": "2026-04-01 12:43:57.787072",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "column_break_ardd",
+        "student",
+        "offering",
+        "offering_type",
+        "lms_batch",
+        "lms_enrollment",
+        "mentor",
+        "session_date",
+        "amount_paid",
+        "notes",
+        "reschedule_reason",
+        "review",
+        "shared_with_student",
+        "student_message",
+        "column_break_lugc",
+        "payment_reference",
+        "status",
+        "session_type",
+        "priority",
+        "topic",
+        "from_time",
+        "to_time",
+        "duration",
+        "meeting_link",
+        "amended_from",
+        "alt_time",
+        "alt_date",
+        "requested_date",
+        "requested_time",
+        "mentor_request_status",
+        "payout_section",
+        "payout_status",
+        "payout_reference",
+        "mentor_absent"
+    ],
+    "fields": [
+        {
+            "fieldname": "offering",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Offering",
+            "options": "Mentor Offering",
+            "reqd": 1
+        },
+        {
+            "fieldname": "student",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Student",
+            "options": "Student",
+            "reqd": 1
+        },
+        {
+            "fetch_from": "offering.mentor",
+            "fieldname": "mentor",
+            "fieldtype": "Link",
+            "label": "Mentor",
+            "options": "Mentor"
+        },
+        {
+            "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
+            "fieldname": "session_date",
+            "fieldtype": "Date",
+            "label": "Session Date"
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Status",
+            "options": "Pending\nScheduled\nAccepted\nCompleted\nCancelled\nPayment Pending"
+        },
+        {
+            "fieldname": "amount_paid",
+            "fieldtype": "Currency",
+            "label": "Amount Paid (\u20b9)"
+        },
+        {
+            "fieldname": "payment_reference",
+            "fieldtype": "Data",
+            "label": "Payment Reference"
+        },
+        {
+            "fieldname": "notes",
+            "fieldtype": "Small Text",
+            "label": "Notes"
+        },
+        {
+            "fieldname": "reschedule_reason",
+            "fieldtype": "Small Text",
+            "label": "Reschedule Reason"
+        },
+        {
+            "fieldname": "review",
+            "fieldtype": "Table",
+            "label": "Review",
+            "options": "Mentor Offering Review"
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "Mentor Session Booking",
+            "print_hide": 1,
+            "read_only": 1,
+            "search_index": 1
+        },
+        {
+            "fieldname": "column_break_lugc",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "priority",
+            "fieldtype": "Select",
+            "label": "Priority",
+            "options": "High\nMedium\nLow"
+        },
+        {
+            "fieldname": "session_type",
+            "fieldtype": "Select",
+            "label": "Session Type",
+            "options": "Career\nTechnical\nResume\nInterview Prep\nStartup\nOther"
+        },
+        {
+            "fieldname": "topic",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Topic"
+        },
+        {
+            "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
+            "fieldname": "from_time",
+            "fieldtype": "Time",
+            "label": "From Time"
+        },
+        {
+            "depends_on": "eval:doc.offering_type==\"1:1 Mentorship\" ",
+            "fieldname": "to_time",
+            "fieldtype": "Time",
+            "label": "To Time"
+        },
+        {
+            "fetch_from": "offering.duration_minutes",
+            "fieldname": "duration",
+            "fieldtype": "Int",
+            "label": "Duration (mins)"
+        },
+        {
+            "fieldname": "meeting_link",
+            "fieldtype": "Data",
+            "label": "Meeting Link"
+        },
+        {
+            "fetch_from": "offering.offering_type",
+            "fieldname": "offering_type",
+            "fieldtype": "Select",
+            "label": "Offering Type",
+            "options": "\n1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
+        },
+        {
+            "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+            "fieldname": "lms_batch",
+            "fieldtype": "Link",
+            "label": "LMS Batch",
+            "options": "LMS Batch"
+        },
+        {
+            "depends_on": "eval:doc.offering_type==\"Group Session\" || doc.offering_type==\"Workshop\"",
+            "fieldname": "lms_enrollment",
+            "fieldtype": "Link",
+            "label": "LMS Enrollment",
+            "options": "LMS Enrollment",
+            "read_only": 1
+        },
+        {
+            "fieldname": "alt_time",
+            "fieldtype": "Time",
+            "label": "Suggested Alt Time"
+        },
+        {
+            "fieldname": "alt_date",
+            "fieldtype": "Date",
+            "label": "Suggested Alt Date"
+        },
+        {
+            "fieldname": "student_message",
+            "fieldtype": "Small Text",
+            "label": "Message from Student"
+        },
+        {
+            "fieldname": "requested_date",
+            "fieldtype": "Datetime",
+            "label": "Requested Date"
+        },
+        {
+            "fieldname": "requested_time",
+            "fieldtype": "Time",
+            "label": "Requested Time"
+        },
+        {
+            "fieldname": "mentor_request_status",
+            "fieldtype": "Select",
+            "label": "Mentor Request Status",
+            "options": "Pending\nAccepted\nDeclined\nSuggested Alt Time\nCompleted"
+        },
+        {
+            "fieldname": "shared_with_student",
+            "fieldtype": "Small Text",
+            "label": "Shared with Student"
+        },
+        {
+            "fieldname": "column_break_ardd",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "payout_section",
+            "fieldtype": "Section Break",
+            "label": "Payout Details"
+        },
+        {
+            "default": "Unpaid",
+            "fieldname": "payout_status",
+            "fieldtype": "Select",
+            "in_list_view": 0,
+            "in_standard_filter": 1,
+            "label": "Payout Status",
+            "options": "Unpaid\nProcessing\nPaid"
+        },
+        {
+            "fieldname": "payout_reference",
+            "fieldtype": "Link",
+            "label": "Payout Reference",
+            "options": "Mentor Payout Sheet",
+            "read_only": 1
+        },
+        {
+            "default": "0",
+            "fieldname": "mentor_absent",
+            "fieldtype": "Check",
+            "label": "Mentor Absent"
+        }
+    ],
+    "grid_page_length": 50,
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2026-07-08 11:37:25.331999",
+    "modified_by": "Administrator",
+    "module": "Stridenex App",
+    "name": "Mentor Session Booking",
+    "naming_rule": "Expression (old style)",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "row_format": "Dynamic",
+    "rows_threshold_for_grid_search": 20,
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "states": []
 }

@@ -1,0 +1,108 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-25 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "released",
+  "mentor",
+  "gross_amount",
+  "total_penalties",
+  "commission_amount",
+  "earned_amount",
+  "refund_amount",
+  "tds_rate",
+  "tds_amount",
+  "net_payout",
+  "status"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "released",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Released"
+  },
+  {
+   "fieldname": "mentor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mentor",
+   "options": "Mentor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "gross_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Gross Amount"
+  },
+  {
+   "fieldname": "total_penalties",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Penalties Deducted"
+  },
+  {
+   "fieldname": "commission_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Commission Amount"
+  },
+  {
+   "fieldname": "earned_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Earned Amount"
+  },
+  {
+   "fieldname": "refund_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Refund Amount"
+  },
+  {
+   "fieldname": "tds_rate",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "TDS Rate (%)"
+  },
+  {
+   "fieldname": "tds_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "TDS Amount"
+  },
+  {
+   "fieldname": "net_payout",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Net Payout"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nApproved\nPaid",
+   "default": "Draft"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "modified": "2026-07-25 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Payout Sheet Summary Row",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "mentor",
+ "sort_order": "ASC",
+ "states": []
+}

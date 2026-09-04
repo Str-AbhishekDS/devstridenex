@@ -1,0 +1,106 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "creation": "2026-08-12 10:39:15.321244",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "section_break_dsl6",
+        "community",
+        "member",
+        "student",
+        "role",
+        "status",
+        "joined_on",
+        "amended_from"
+    ],
+    "fields": [
+        {
+            "fieldname": "section_break_dsl6",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "community",
+            "fieldtype": "Link",
+            "label": "Community",
+            "options": "Community",
+            "reqd": 1,
+            "search_index": 1
+        },
+        {
+            "fieldname": "member",
+            "fieldtype": "Link",
+            "label": "Member",
+            "options": "User",
+            "reqd": 1,
+            "search_index": 1
+        },
+        {
+            "fieldname": "student",
+            "fieldtype": "Link",
+            "label": "Student",
+            "options": "Student",
+            "search_index": 1
+        },
+        {
+            "fieldname": "role",
+            "fieldtype": "Select",
+            "label": "Role",
+            "options": "Admin\nModerator\nMember",
+            "default": "Member",
+            "reqd": 1
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "label": "Status",
+            "options": "Pending\nApproved\nRejected\nBlocked",
+            "default": "Pending",
+            "reqd": 1
+        },
+        {
+            "fieldname": "joined_on",
+            "fieldtype": "Datetime",
+            "label": "Joined On",
+            "read_only": 1
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "Community Member",
+            "print_hide": 1,
+            "read_only": 1,
+            "search_index": 1
+        }
+    ],
+    "grid_page_length": 50,
+    "index_web_pages_for_search": 1,
+    "is_submittable": 0,
+    "links": [],
+    "modified": "2026-08-12 10:39:15.321244",
+    "modified_by": "Administrator",
+    "module": "Stridenex App",
+    "name": "Community Member",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "row_format": "Dynamic",
+    "rows_threshold_for_grid_search": 20,
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "states": []
+}

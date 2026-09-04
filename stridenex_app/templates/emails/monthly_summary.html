@@ -1,0 +1,125 @@
+<!-- templates/emails/monthly_summary.html -->
+
+<div style="margin:0;padding:20px;background:#f6f6f8;font-family:'Inter',Arial,sans-serif;">
+    <div style="max-width:650px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+
+```
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0f0fbd,#2e2ed9);padding:30px;text-align:center;">
+        <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;">
+            Monthly Progress Summary
+        </h1>
+        <p style="margin:8px 0 0;color:#dbe4ff;font-size:14px;">
+            {{ month_name }} {{ year }}
+        </p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:30px;">
+
+        <p style="margin-top:0;color:#101622;font-size:15px;">
+            Hello <strong>{{ student_name }}</strong>,
+        </p>
+
+        <p style="color:#64748B;font-size:14px;line-height:1.6;">
+            Here's a snapshot of your activity on StrideNex during {{ month_name }}.
+        </p>
+
+        <!-- Summary Cards -->
+        <table width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;">
+            <tr>
+                <td width="50%" style="padding:8px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:28px;font-weight:700;color:#0f0fbd;">
+                            {{ projects|length }}
+                        </div>
+                        <div style="font-size:13px;color:#64748B;">
+                            Project Applications
+                        </div>
+                    </div>
+                </td>
+
+                <td width="50%" style="padding:8px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:28px;font-weight:700;color:#ff6b00;">
+                            {{ internships|length }}
+                        </div>
+                        <div style="font-size:13px;color:#64748B;">
+                            Internship Applications
+                        </div>
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <td width="50%" style="padding:8px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:28px;font-weight:700;color:#0f0fbd;">
+                            {{ habit_plans|length }}
+                        </div>
+                        <div style="font-size:13px;color:#64748B;">
+                            Habit Plans
+                        </div>
+                    </div>
+                </td>
+
+                <td width="50%" style="padding:8px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;">
+                        <div style="font-size:28px;font-weight:700;color:#ff6b00;">
+                            {{ skills|length }}
+                        </div>
+                        <div style="font-size:13px;color:#64748B;">
+                            Skills Added
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Career Path -->
+        {% if path_enrollments %}
+        <div style="margin-top:28px;padding:18px;background:#f8fafc;border-left:4px solid #ff6b00;border-radius:8px;">
+            <h3 style="margin:0 0 10px;color:#101622;font-size:16px;">
+                Career Path Progress
+            </h3>
+
+            {% for pe in path_enrollments[:3] %}
+            <div style="margin-bottom:8px;font-size:14px;color:#475569;">
+                <strong>{{ pe.career_path }}</strong>
+                — {{ pe.completion_percent }}% Complete
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Recent Skills -->
+        {% if skills %}
+        <div style="margin-top:24px;">
+            <h3 style="margin-bottom:10px;color:#101622;font-size:16px;">
+                Recently Added Skills
+            </h3>
+
+            {% for s in skills[:5] %}
+            <span style="display:inline-block;background:#eef2ff;color:#0f0fbd;padding:6px 12px;border-radius:20px;font-size:12px;margin:4px;">
+                {{ s.skill }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2e8f0;">
+            <p style="margin:0;color:#64748B;font-size:13px;line-height:1.6;">
+                Keep learning, building, and growing.
+            </p>
+
+            <p style="margin:10px 0 0;color:#101622;font-weight:600;">
+                Team StrideNex
+            </p>
+        </div>
+
+    </div>
+</div>
+```
+
+</div>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            color: #1c1c22;
+            font-size: 12.5px;
+            line-height: 1.6;
+            background: #fdfcfa;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 34px 44px 20px;
+            border-bottom: 4px solid #0f5e59;
+        }
+
+        .name {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0f5e59;
+            letter-spacing: -.3px;
+        }
+
+        .title {
+            font-size: 12.5px;
+            color: #6b6f76;
+            margin-top: 3px;
+        }
+
+        .contact {
+            text-align: right;
+            font-size: 11px;
+            color: #52565d;
+            line-height: 1.7;
+        }
+
+        .body {
+            padding: 22px 44px 40px;
+        }
+
+        .summary {
+            font-size: 12.8px;
+            color: #33343a;
+            margin-bottom: 22px;
+        }
+
+        h2 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            font-weight: 700;
+            color: #0f5e59;
+            margin: 0 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h2::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #d8d4cb;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 22px;
+            margin-bottom: 22px;
+        }
+
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 4px;
+            bottom: 4px;
+            width: 2px;
+            background: #d8d4cb;
+        }
+
+        .t-item {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .t-item::before {
+            content: "";
+            position: absolute;
+            left: -22px;
+            top: 3px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #0f5e59;
+            border: 2px solid #fdfcfa;
+            box-shadow: 0 0 0 2px #0f5e59;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .item-title {
+            font-weight: 700;
+            font-size: 13.5px;
+        }
+
+        .item-sub {
+            color: #b17a2e;
+            font-weight: 600;
+            font-size: 11px;
+            margin: 2px 0 3px;
+        }
+
+        .desc {
+            font-size: 12.3px;
+            color: #3a3a41;
+        }
+
+        .flat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 30px;
+            margin-bottom: 4px;
+        }
+
+        .card {
+            border: 1px solid #e5e1d7;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        .card .item-title {
+            font-size: 12.5px;
+        }
+
+        .card .item-sub {
+            margin-bottom: 0;
+        }
+
+        .chip-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .chip {
+            font-size: 10.5px;
+            font-weight: 600;
+            background: #e8f2f0;
+            color: #0f5e59;
+            padding: 3px 10px;
+            border-radius: 11px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div>
+            <div class="name">{{ doc.first_name }} {{ doc.last_name }}</div>
+            <div class="title">{{ doc.course }} Student · {{ doc.college }}</div>
+        </div>
+        <div class="contact">
+            {{ doc.mobile_no }}<br>
+            {{ doc.email_id }}<br>
+            {% if doc.linkedin %}{{ doc.linkedin }}{% if doc.github %} · {% endif %}{% endif %}{% if doc.github %}{{
+            doc.github }}{% endif %}
+        </div>
+    </div>
+
+    <div class="body">
+        <div class="summary">
+            Motivated and detail-oriented student pursuing <strong>{{ doc.course }}</strong> at
+            <strong>{{ doc.college }}</strong>. Committed to academic growth, practical skill-building,
+            and continuous learning in the field of {{ doc.course }}.
+        </div>
+
+        {% if doc.internship %}
+        <h2>Experience</h2>
+        <div class="timeline">
+            {% for row in doc.internship %}
+            <div class="t-item">
+                <div class="item-row">
+                    <span class="item-title">{{ row.job_title }}</span>
+                    <span class="item-sub">{{ row.start_date }}{% if row.end_date %} - {{ row.end_date }}{% endif
+                        %}</span>
+                </div>
+                <div class="item-sub">{{ row.company_name }}</div>
+                <div class="desc">{{ row.description }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if doc.project %}
+        <h2>Projects</h2>
+        <div class="timeline">
+            {% for row in doc.project %}
+            <div class="t-item">
+                <div class="item-title">{{ row.project_name }}</div>
+                {% if row.company_name %}<div class="item-sub">{{ row.company_name }}</div>{% endif %}
+                <div class="desc">{{ row.project_description }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if doc.table_apwt %}
+        <h2>Education</h2>
+        <div class="flat-grid">
+            {% for row in doc.table_apwt %}
+            <div class="card">
+                <div class="item-title">{{ row.education_level }}</div>
+                <div class="item-sub">{{ row.institution_name }} · {{ row.passing_year }}</div>
+                <div class="desc">CGPA {{ row.percentage_cgpa }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if doc.skill %}
+        <h2>Skills</h2>
+        <div class="chip-wrap" style="margin-bottom: 18px;">
+            {% for row in doc.skill %}
+            <span class="chip">{{ row.skill }}{% if row.level %} · {{ row.level }}{% endif %}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if doc.certificates %}
+        <h2>Certifications</h2>
+        <div class="flat-grid">
+            {% for row in doc.certificates %}
+            <div class="card">
+                <div class="item-title">{{ row.certificate_name }}</div>
+                <div class="item-sub">{{ row.issuing_organization }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+</body>
+
+</html>

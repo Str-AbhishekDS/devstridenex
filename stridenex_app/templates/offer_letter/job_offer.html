@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            color: #333;
+            line-height: 1.7;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page {
+            padding: 22mm 18mm 0 18mm;
+            position: relative;
+        }
+
+        /* ---------- Header ---------- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid #1a8c8c;
+            padding-bottom: 18px;
+            margin-bottom: 30px;
+        }
+
+        .header .company-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1a8c8c;
+        }
+
+        .header .letter-title {
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            color: #16324f;
+            text-transform: uppercase;
+        }
+
+        /* ---------- Meta row ---------- */
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            font-size: 11.5px;
+            color: #444;
+        }
+
+        /* ---------- Body ---------- */
+        .content p {
+            margin: 0 0 14px 0;
+            text-align: justify;
+        }
+
+        .content strong {
+            color: #16324f;
+        }
+
+        .highlight-date {
+            font-weight: bold;
+            color: #d98324;
+        }
+
+        /* ---------- Details table (kept, restyled) ---------- */
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0 25px 0;
+        }
+
+        .details-table td {
+            padding: 8px 10px;
+            border: 1px solid #e0e4e8;
+            font-size: 11.5px;
+        }
+
+        .details-table td.label {
+            font-weight: bold;
+            background: #f0f6f6;
+            color: #16324f;
+            width: 35%;
+        }
+
+        /* ---------- Contact block ---------- */
+        .contact-block {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #444;
+        }
+
+        .contact-block p {
+            margin: 0 0 4px 0;
+        }
+
+        .contact-block strong {
+            color: #16324f;
+        }
+
+        /* ---------- Signature ---------- */
+        .signature-block {
+            margin-top: 45px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .signature-block .sign-box {
+            width: 45%;
+        }
+
+        .sign-line {
+            margin-top: 40px;
+            border-top: 1px solid #444;
+            padding-top: 5px;
+            font-size: 11.5px;
+        }
+
+        /* ---------- Footer ---------- */
+        .footer-bar {
+            margin-top: 45px;
+            background: #16324f;
+            color: #fff;
+            padding: 12px 18mm;
+            text-align: center;
+        }
+
+        .footer-bar img {
+            max-height: 32px;
+            max-width: 130px;
+            object-fit: contain;
+            margin-bottom: 6px;
+            filter: brightness(0) invert(1);
+        }
+
+        .footer-bar p {
+            font-size: 10px;
+            color: #cfd8e0;
+            margin: 0;
+        }
+
+        .generated-by {
+            text-align: center;
+            padding: 8px 0 18px 0;
+            font-size: 9px;
+            color: #999;
+            letter-spacing: 0.5px;
+        }
+
+        /* accent stripe like the reference design */
+        .stripe-top {
+            height: 6px;
+            width: 100%;
+            background: linear-gradient(90deg, #1a8c8c 0%, #1a8c8c 60%, #d98324 60%, #d98324 100%);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="stripe-top"></div>
+
+    <div class="page">
+
+        <!-- Header -->
+        <div class="header">
+            <div class="company-name">
+                {{ job.industry if job else "" }}
+            </div>
+            <div class="letter-title">Job Offer Letter</div>
+        </div>
+
+        <!-- Meta -->
+        <div class="meta-row">
+            <div>Date: {{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</div>
+            <div>Ref No: {{ job.name if job else "" }}</div>
+        </div>
+
+        <!-- Body -->
+        <div class="content">
+            <p>Dear {{ doc.first_name }} {{ doc.last_name }},</p>
+
+            <p>
+                We are pleased to offer you the position of
+                <strong>{{ job.job_title if job else "" }}</strong>
+                with our organization. We were impressed with your background
+                and skills, and we believe you will be a valuable addition to
+                our team. Please find the details of this offer below.
+            </p>
+
+            <table class="details-table">
+                <tr>
+                    <td class="label">Job Title</td>
+                    <td>{{ job.job_title if job else "" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Employment Type</td>
+                    <td>{{ job.employment_type if job else "" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Location</td>
+                    <td>{{ job.location if job else "" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Experience Required</td>
+                    <td>{{ job.experience if job else "" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Openings</td>
+                    <td>{{ job.openings if job else "" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Salary Range</td>
+                    <td>
+                        {% if job and job.salary_from and job.salary_to %}
+                        {{ frappe.utils.fmt_money(job.salary_from, currency="INR") }}
+                        -
+                        {{ frappe.utils.fmt_money(job.salary_to, currency="INR") }}
+                        per annum
+                        {% else %}
+                        As per company standards
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Last Date to Apply</td>
+                    <td>
+                        <span class="highlight-date">
+                            {{ frappe.utils.formatdate(job.last_date) if job and job.last_date else "" }}
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <p>
+                Kindly confirm your acceptance of this offer by signing and
+                returning a copy of this letter. We look forward to welcoming
+                you and working together.
+            </p>
+
+            <p>Congratulations, and welcome aboard!</p>
+
+            <div class="contact-block">
+                <p><strong>For queries, contact:</strong></p>
+                <p>
+                    {{ job.contact_person if job else "" }}
+                    {% if job and job.contact_email %} | {{ job.contact_email }}{% endif %}
+                    {% if job and job.contact_phone %} | {{ job.contact_phone }}{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Signature -->
+        <div class="signature-block">
+            <div class="sign-box">
+                <div class="sign-line">Authorized Signatory</div>
+            </div>
+            <div class="sign-box">
+                <div class="sign-line">{{ doc.first_name }} {{ doc.last_name }} (Candidate)</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-bar">
+        <img src="{{ static_logo_url }}" alt="Stridenex Logo">
+        <p>This is a system-generated offer letter and does not require a physical signature unless specified.</p>
+    </div>
+
+    <div class="generated-by">
+        Generated by Stridenex
+    </div>
+
+</body>
+
+</html>

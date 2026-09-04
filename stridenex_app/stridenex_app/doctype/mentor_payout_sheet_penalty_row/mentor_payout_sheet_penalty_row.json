@@ -1,0 +1,66 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-25 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "mentor",
+  "booking",
+  "offering_type",
+  "penalty_rate",
+  "penalty_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "mentor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mentor",
+   "options": "Mentor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "booking",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Missed Booking Reference",
+   "options": "Mentor Session Booking",
+   "reqd": 1
+  },
+  {
+   "fieldname": "offering_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Offering Type",
+   "options": "1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
+  },
+  {
+   "fieldname": "penalty_rate",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Penalty Rate (%)"
+  },
+  {
+   "fieldname": "penalty_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Penalty Amount"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "modified": "2026-07-25 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Payout Sheet Penalty Row",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "mentor",
+ "sort_order": "ASC",
+ "states": []
+}

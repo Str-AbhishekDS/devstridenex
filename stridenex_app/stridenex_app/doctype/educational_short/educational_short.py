@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.exceptions import DuplicateEntryError
 
 
 class EducationalShort(Document):
@@ -10,45 +11,91 @@ class EducationalShort(Document):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_gap_recommendations(user=None, limit=5):
-    user = user or frappe.session.user
+def get_recommendations(limit=5):
+    user = frappe.session.user
+    user == "Guest"
+    limit = int(limit)
 
-    gaps = frappe.get_list("Learning Gap",
+    # Skills the user has engaged with, via likes + saves
+    liked_skills = frappe.get_all(
+        "Liked Short",
         filters={"user": user},
-        fields=["topic", "weakness_score"],
-        order_by="weakness_score desc", limit_page_length=3)
+        pluck="short"
+    )
+    saved_skills = frappe.get_all(
+        "Saved Short",
+        filters={"user": user},
+        pluck="short"
+    )
+    engaged_short_names = list(set(liked_skills + saved_skills))
 
-    if not gaps:
-        return {"curated_for": [], "recommendations": []}
+    interacted_skills = []
+    if engaged_short_names:
+        interacted_skills = frappe.get_all(
+            "Educational Short",
+            filters={"name": ["in", engaged_short_names]},
+            pluck="skill"
+        )
+        interacted_skills = [s for s in interacted_skills if s]
 
-    topics = [g["topic"] for g in gaps]
+    if interacted_skills:
+        # weight skills by how often the user engaged with them
+        from collections import Counter
+        skill_weight = Counter(interacted_skills)
+        top_skills = [s for s, _ in skill_weight.most_common(5)]
 
-    # naive text match; swap for embedding cosine-similarity for better quality
-    shorts = frappe.get_list("Educational Short",
-        filters={"status": "Published"},
-        fields=["name", "title", "duration_seconds", "subject"])
+        shorts = frappe.get_list(
+            "Educational Short",
+            filters={
+                "status": "Published",
+                "skill": ["in", top_skills],
+                "name": ["not in", engaged_short_names]  # don't recommend what they already liked/saved
+            },
+            fields=["name", "title", "duration_seconds", "subject", "skill", "view_count", "like_count"],
+            limit_page_length=200
+        )
 
-    scored = []
-    for s in shorts:
-        overlap = sum(1 for t in topics if t.lower() in s["title"].lower())
-        if overlap:
-            match_pct = min(99, 70 + overlap * 15)  # simple heuristic
+        scored = []
+        for s in shorts:
+            weight = skill_weight.get(s["skill"], 0)
+            match_pct = min(99, 70 + weight * 8)
             scored.append({
                 "name": s["name"],
                 "title": s["title"],
-                "duration_display": f"{s['duration_seconds']}s",
+                "duration_display": f"{s['duration_seconds']} sec",
+                "skill": s["skill"],
                 "match_pct": match_pct
             })
 
-    scored.sort(key=lambda x: x["match_pct"], reverse=True)
+        scored.sort(key=lambda x: (x["match_pct"], x["name"]), reverse=True)
+        curated_for = top_skills
+        recommendations = scored[:limit]
+
+    else:
+        # No history yet -> fall back to trending (most viewed)
+        shorts = frappe.get_list(
+            "Educational Short",
+            filters={"status": "Published"},
+            fields=["name", "title", "duration_seconds", "subject", "skill", "view_count"],
+            order_by="view_count desc",
+            limit_page_length=limit
+        )
+        recommendations = [{
+            "name": s["name"],
+            "title": s["title"],
+            "duration_display": f"{s['duration_seconds']} sec",
+            "skill": s["skill"],
+            "match_pct": None
+        } for s in shorts]
+        curated_for = []
+
     return {
-        "curated_for": topics,
-        "recommendations": scored[:limit]
+        "curated_for": curated_for,
+        "recommendations": recommendations
     }
 
 
-
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def save_short(short_name, user=None):
     try:
         user = user or frappe.session.user
@@ -76,12 +123,32 @@ def save_short(short_name, user=None):
 
 
 
+@frappe.whitelist(allow_guest=True)
+def unsave_short(short_name, user=None):
+    try:
+        user = user or frappe.session.user
+
+        frappe.db.delete(
+            "Saved Short",
+            {
+                "user": user,
+                "short": short_name
+            }
+        )
+        frappe.db.commit()
+
+        return {"status": "success"}
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Unsave Short Error")
+        raise
+
 def format_views(n):
     if n >= 1_000_000: return f"{n/1_000_000:.1f}M"
     if n >= 1_000: return f"{int(n/1000)}K"
     return str(n)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_saved_shorts(user=None, limit=10):
     user = user or frappe.session.user
 
@@ -91,8 +158,10 @@ def get_saved_shorts(user=None, limit=10):
         fields=["*"],
         limit_page_length=int(limit)
     )
-@frappe.whitelist()
-def get_shorts_feed(user=None,limit=10,skill=None):
+
+@frappe.whitelist(allow_guest=True)
+def get_shorts_feed(user=None, limit=10, skill=None):
+    user = user or frappe.session.user
     filters = {"status": "Published"}
     if skill:
         filters["skill"] = skill
@@ -100,19 +169,63 @@ def get_shorts_feed(user=None,limit=10,skill=None):
     shorts = frappe.get_list(
         "Educational Short",
         filters=filters,
-        fields=["name", "title", "thumbnail", "cover_gradient",
-                "duration_seconds", "view_count", "subject","video","skill"],
+        fields=["name", "title", "thumbnail",
+               "view_count", "subject", "video", "skill","description","tags","like_count"],
         order_by="published_on desc",
         limit_page_length=limit
     )
-    saved_shorts = frappe.get_all(
+
+    saved_shorts = set(
+    str(x) for x in frappe.get_all(
         "Saved Short",
         filters={"user": user},
         pluck="short"
     )
-    saved_shorts = set(saved_shorts)
+
+)
+    liked_shorts = {str(x) for x in frappe.get_all(
+        "Liked Shorts", filters={"user": user}, pluck="short")}
+    
+
     for s in shorts:
         s["views_display"] = format_views(s["view_count"] or 0)
-        s["duration_display"] = f"{s['duration_seconds']} sec"
-        s["is_saved"] = s["name"] in saved_shorts
+        
+        s["is_saved"] = str(s["name"]) in saved_shorts
+        s["is_liked"] = str(s["name"]) in liked_shorts
+
     return shorts
+
+
+@frappe.whitelist(allow_guest=True)
+def toggle_like(short):
+    user = frappe.session.user
+    if user == "Guest":
+        frappe.throw("Login required", frappe.PermissionError)
+
+    existing = frappe.db.exists("Liked Shorts", {"user": user, "short": short})
+
+    if existing:
+        frappe.delete_doc("Liked Shorts", existing, ignore_permissions=True)
+        frappe.db.set_value("Educational Short", short, "like_count",
+                             frappe.db.count("Liked Shorts", {"short": short}))
+        liked = False
+    else:
+        doc = frappe.get_doc({
+            "doctype": "Liked Shorts",
+            "user": user,
+            "short": short
+        })
+        doc.insert(ignore_permissions=True)
+        frappe.db.set_value("Educational Short", short, "like_count",
+                             frappe.db.count("Liked Shorts", {"short": short}))
+        liked = True
+
+    frappe.db.commit()
+
+    return {
+        "liked": liked,
+        "like_count": frappe.db.get_value("Educational Short", short, "like_count")
+    }
+
+
+

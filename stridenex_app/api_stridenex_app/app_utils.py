@@ -126,11 +126,24 @@ def is_student_in_batch(batch_name, student_email):
     )
 
 
-def add_student_to_batch(batch_name, student_email):
+def add_student_to_batch(batch_name, student_email, raise_if_duplicate=True):
     """
     Enroll student by creating an LMS Batch Enrollment record.
     LMS Batch Enrollment is a standalone doctype — NOT a child table.
     Fields: batch (Link→LMS Batch), member (Link→User).
+
+    Args:
+        raise_if_duplicate: If True (default), throws when already enrolled.
+                            Set to False for idempotent calls (e.g. from on_update)
+                            so re-saves don't swallow real errors.
+    Returns:
+        "enrolled"  — new enrollment created
+        "exists"    — already enrolled (only when raise_if_duplicate=False)
+
+    NOTE: The LMS app's LMSBatchEnrollment.validate() enforces that the inserting
+    user must be a Moderator/Admin OR the batch must allow self-enrollment.
+    Since we enroll from a server-side hook (not as the student), we temporarily
+    switch to Administrator so the LMS validation passes, then switch back.
     """
     info = get_batch_seat_info(batch_name)
 
@@ -138,16 +151,27 @@ def add_student_to_batch(batch_name, student_email):
         frappe.throw(_("This batch is full. No seats available."))
 
     if is_student_in_batch(batch_name, student_email):
-        frappe.throw(_("You are already enrolled in this batch."))
+        if raise_if_duplicate:
+            frappe.throw(_("You are already enrolled in this batch."))
+        return "exists"
 
-    # Create standalone LMS Batch Enrollment record
-    enrollment = frappe.get_doc({
-        "doctype": "LMS Batch Enrollment",
-        "batch":   batch_name,
-        "member":  student_email,
-    })
-    enrollment.insert(ignore_permissions=True)
-    frappe.db.commit()
+    # ── Insert as Administrator so LMS validate_owner / validate_self_enrollment pass ──
+    # The LMS app throws unless: owner==member OR inserting user is Moderator/Admin.
+    # We are inserting server-side on behalf of the student, so we run as Administrator.
+    prev_user = frappe.session.user
+    try:
+        frappe.set_user("Administrator")
+        enrollment = frappe.get_doc({
+            "doctype": "LMS Batch Enrollment",
+            "batch":   batch_name,
+            "member":  student_email,
+        })
+        enrollment.insert(ignore_permissions=True)
+        frappe.db.commit()
+    finally:
+        frappe.set_user(prev_user)
+
+    return "enrolled"
 
 
 def remove_student_from_batch(batch_name, student_email):
@@ -322,7 +346,7 @@ def get_pagination_params(page=1, page_size=DEFAULT_PAGE_SIZE):
 def make_pagination_meta(total: int, page: int, page_size: int) -> dict:
     """
     Build the pagination block returned in every response.
-    Paste this object straight into your gen_response data.
+    Paste this object straight into  gen_response data.
     """
     total_pages = max(1, -(-total // page_size))   # ceiling division
     return {
@@ -519,3 +543,216 @@ def _upsert_user(student, email):
 
     student.user = email
     student.save(ignore_permissions=True)
+    
+    
+import frappe
+from frappe.utils import now_datetime, add_to_date, get_datetime
+
+ROLE_STEP_MAP = {
+    "Student Base": 2,
+    "Mentor": 3,
+    "College Base": 4,
+    "Industry Base": 3,
+}
+
+REMINDER_INTERVAL_DAYS = 2
+
+
+def send_onboarding_reminders():
+    """Runs daily (scheduled). Sends onboarding reminder mail to users
+    whose is_onboarded < required steps for their role, throttled to
+    once every 2 days using 'User Reminder Tracking' doctype."""
+
+    for role, total_steps in ROLE_STEP_MAP.items():
+        users = get_users_with_role(role)
+
+        for user in users:
+            user_values = frappe.db.get_value(
+                "User", user, ["is_onboarded", "full_name", "enabled"], as_dict=True
+            )
+
+            if not user_values or not user_values.enabled:
+                continue
+
+            is_onboarded = safe_int(user_values.is_onboarded)
+
+            if is_onboarded >= total_steps:
+                continue  # onboarding already complete
+
+            tracking = get_or_create_tracking(user)
+
+            if was_reminded_recently(tracking.last_onboarding_reminder):
+                continue  # reminded within last 2 days
+
+            send_reminder_mail(user, role, is_onboarded, total_steps, user_values.full_name)
+            update_tracking(tracking)
+
+
+def get_users_with_role(role):
+    return frappe.get_all(
+        "Has Role",
+        filters={"role": role, "parenttype": "User"},
+        pluck="parent",
+        distinct=True,
+    ) or []
+
+
+def safe_int(value):
+    if value and str(value).strip().isdigit():
+        return int(value)
+    return 0
+
+
+def get_or_create_tracking(user):
+    """Fetch existing tracking record for user, or create a fresh one."""
+    if frappe.db.exists("User Reminder Tracking", {"user": user}):
+        return frappe.get_doc("User Reminder Tracking", {"user": user})
+
+    new_doc = frappe.get_doc({
+        "doctype": "User Reminder Tracking",
+        "user": user,
+        "reminder_count": 0,
+    })
+    new_doc.insert(ignore_permissions=True)
+    return new_doc
+
+
+def was_reminded_recently(last_reminder_datetime):
+    if not last_reminder_datetime:
+        return False
+    cutoff = add_to_date(now_datetime(), days=-REMINDER_INTERVAL_DAYS)
+    return get_datetime(last_reminder_datetime) >= cutoff
+
+
+def update_tracking(tracking_doc):
+    tracking_doc.last_onboarding_reminder = now_datetime()
+    tracking_doc.reminder_count = (tracking_doc.reminder_count or 0) + 1
+    tracking_doc.save(ignore_permissions=True)
+    frappe.db.commit()
+
+
+def send_reminder_mail(user, role, completed, total, full_name=None):
+    remaining = total - completed
+    user_full_name = full_name or user
+
+    subject = "Action Required: Complete Your Onboarding Process"
+
+    message = f"""
+        <div style="margin:0;padding:0;background:#f6f6f8;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f6f8;padding:30px 15px;">
+                <tr>
+                    <td align="center">
+
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+                            style="max-width:600px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+
+                            <!-- Header -->
+                            <tr>
+                                <td style="background:#0f0fbd;padding:30px;text-align:center;">
+                                    <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">
+                                        Complete Your Onboarding
+                                    </h1>
+                                    <p style="margin:8px 0 0;color:#dbeafe;font-size:14px;">
+                                        Action Required to Unlock Full Platform Access
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <!-- Body -->
+                            <tr>
+                                <td style="padding:32px;">
+
+                                    <p style="margin:0 0 20px;color:#1E293B;font-size:16px;line-height:1.8;">
+                                        Hi <strong>{user_full_name}</strong>,
+                                    </p>
+
+                                    <p style="margin:0 0 24px;color:#1E293B;font-size:15px;line-height:1.8;">
+                                        We noticed that your onboarding process is still incomplete.
+                                        Complete the remaining steps to access all features available to your account.
+                                    </p>
+
+                                    <!-- Progress Card -->
+                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:24px;">
+
+                                        <table width="100%" style="border-collapse:collapse;">
+                                            <tr>
+                                                <td style="padding:8px 0;color:#64748B;font-size:14px;">
+                                                    <strong>Role</strong>
+                                                </td>
+                                                <td style="padding:8px 0;color:#1E293B;font-size:14px;text-align:right;">
+                                                    {role}
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:8px 0;color:#64748B;font-size:14px;">
+                                                    <strong>Steps Completed</strong>
+                                                </td>
+                                                <td style="padding:8px 0;color:#10b981;font-size:14px;font-weight:600;text-align:right;">
+                                                    {completed} / {total}
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:8px 0;color:#64748B;font-size:14px;">
+                                                    <strong>Steps Remaining</strong>
+                                                </td>
+                                                <td style="padding:8px 0;color:#ff6b00;font-size:14px;font-weight:600;text-align:right;">
+                                                    {remaining}
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                    </div>
+
+                                    <!-- Progress Indicator -->
+                                    <div style="background:#eef2ff;border-left:4px solid #0f0fbd;padding:16px 18px;border-radius:8px;margin-bottom:24px;">
+                                        <p style="margin:0;color:#1E293B;font-size:14px;line-height:1.8;">
+                                            Complete the remaining <strong>{remaining}</strong> step(s) to finish onboarding and unlock full access to StrideNex features, opportunities, and recommendations.
+                                        </p>
+                                    </div>
+
+                                    <!-- Reminder -->
+                                    <div style="background:#fff7ed;border-left:4px solid #ff6b00;padding:16px 18px;border-radius:8px;">
+                                        <p style="margin:0;color:#9a3412;font-size:14px;line-height:1.8;">
+                                            If you've completed your onboarding recently, you may safely ignore this reminder.
+                                        </p>
+                                    </div>
+
+                                </td>
+                            </tr>
+
+                            <!-- Footer -->
+                            <tr>
+                                <td style="background:#0F172A;padding:24px;text-align:center;">
+                                    <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;">
+                                        StrideNex Team
+                                    </p>
+
+                                    <p style="margin:10px 0 0;color:#94a3b8;font-size:13px;">
+                                        Empowering Skills • Building Careers • Creating Opportunities
+                                    </p>
+
+                                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #334155;">
+                                        <p style="margin:0;color:#94a3b8;font-size:12px;">
+                                            Complete your onboarding to get the best experience on StrideNex.
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+
+                        </table>
+
+                    </td>
+                </tr>
+            </table>
+        </div>
+        """
+
+    frappe.sendmail(
+        recipients=[user],
+        subject=subject,
+        message=message,
+        reference_doctype="User",
+        reference_name=user,
+    )

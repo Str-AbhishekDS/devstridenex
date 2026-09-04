@@ -2,19 +2,6 @@
 employability.py
 
 Core logic for calculating and storing the Student Employability Score.
-
-Location in your app (adjust `your_app` to your actual app name):
-    apps/your_app/your_app/your_app/employability.py
-
-This module is deliberately doctype-agnostic in its main entry point —
-`recalculate_employability_score(student_name)` always recomputes the
-score from scratch by reading live data from Student, Student Skill,
-Internship Application, and Student Project Enrollment. It never does
-incremental math (+10/-5), which avoids drift bugs over time.
-
-Wire-up: see hooks.py in the same folder. Each related doctype's
-on_update / after_insert / on_trash event calls a thin wrapper here,
-which in turn calls recalculate_employability_score().
 """
 
 import frappe
@@ -24,34 +11,10 @@ from frappe.utils import flt
 # CONFIG — tune these without touching the calculation logic below
 # ---------------------------------------------------------------------
 
-MAX_CGPA = 10.0  # change to 4.0 if you're on a 4-point scale
-
-LEVEL_POINTS = {
-    "Beginner": 25,
-    "Intermediate": 50,
-    "Advanced": 75,
-    "Expert": 100,
-}
-
-VERIFY_FACTOR = {
-    "Verified": 1.0,
-    "Unverified": 0.5,
-}
-
 WEIGHTS = {
     "cgpa": 0.30,
-    "skills": 0.30,
-    "internship": 0.20,
-    "project": 0.20,
+    "skills": 0.70,
 }
-
-INTERNSHIP_SELECTED_STATUS = "Selected"
-INTERNSHIP_SCORE_PER_SELECTION = 50   # capped at 100 total
-INTERNSHIP_SCORE_CAP = 100
-
-PROJECT_COMPLETED_SCORE = 60
-PROJECT_AWARDED_SCORE = 100
-
 
 # ---------------------------------------------------------------------
 # SUB-SCORE CALCULATORS
@@ -60,101 +23,115 @@ PROJECT_AWARDED_SCORE = 100
 def get_cgpa_score(student_doc) -> float:
     """Normalize CGPA to a 0-100 scale."""
     cgpa = flt(student_doc.cgpa)
-    if MAX_CGPA <= 0:
-        return 0.0
-    score = (cgpa / MAX_CGPA) * 100
+    score = (cgpa / 10.0) * 100
     return max(0.0, min(score, 100.0))
-
-
-def get_skills_score(student_name: str) -> float:
-    """
-    Average of (level_points x verification_factor) across all
-    Student Skill rows for this student. Averaging — not summing —
-    means breadth alone doesn't inflate the score; depth and
-    verification do.
-    """
-    skills = frappe.get_all(
-        "Student Skill",
-        filters={"student": student_name},
-        fields=["current_level", "status"],
-    )
-
-    if not skills:
-        return 0.0
-
-    total = 0.0
-    for s in skills:
-        level_pts = LEVEL_POINTS.get(s.level, 0)
-        verify_factor = VERIFY_FACTOR.get(s.status, 0.5)
-        total += level_pts * verify_factor
-
-    avg_score = total / len(skills)
-    return max(0.0, min(avg_score, 100.0))
-
-
-def get_internship_score(student_name: str) -> float:
-    """
-    Counts Internship Applications with status = 'Selected'.
-    Scaled per selection, capped at 100 so multiple applications
-    don't blow past a sane ceiling.
-    """
-    selected_count = frappe.db.count(
-        "Internship Application",
-        {"student": student_name, "status": INTERNSHIP_SELECTED_STATUS},
-    )
-    score = selected_count * INTERNSHIP_SCORE_PER_SELECTION
-    return min(score, INTERNSHIP_SCORE_CAP)
-
-
-def get_project_score(student_name: str) -> float:
-    """
-    Best-of, not additive: Awarded > Completed > none.
-    Prevents a student from gaming the score by enrolling in many
-    projects without finishing them well.
-    """
-    projects = frappe.get_all(
-        "Student Project Enrollment",
-        filters={"student": student_name},
-        fields=["status"],
-    )
-
-    if any(p.status == "Awarded" for p in projects):
-        return PROJECT_AWARDED_SCORE
-    if any(p.status == "Completed" for p in projects):
-        return PROJECT_COMPLETED_SCORE
-    return 0.0
 
 
 # ---------------------------------------------------------------------
 # MAIN ENTRY POINT
 # ---------------------------------------------------------------------
 
-def recalculate_employability_score(student_name: str) -> float:
+def recalculate_employability_score(student_name_or_doc) -> float:
     """
     Recomputes and persists the employability_score for a single
-    student. Safe to call frequently — uses frappe.db.set_value so it
-    does NOT re-trigger Student's own doc_events (avoids infinite
-    loops when this is itself called from a Student hook).
+    student based on the required skills for their active Student Path Enrollments,
+    or falls back to their Stream, Course, and Department (Educational Skill Requirements)
+    combined with their CGPA.
     """
-    if not student_name:
+    if not student_name_or_doc:
         return 0.0
 
-    student = frappe.get_doc("Student", student_name)
+    if isinstance(student_name_or_doc, str):
+        student = frappe.get_doc("Student", student_name_or_doc)
+        student_name = student_name_or_doc
+    else:
+        student = student_name_or_doc
+        student_name = student.name
 
+    # 1. CGPA Score (30% weight)
     cgpa_score = get_cgpa_score(student)
-    skills_score = get_skills_score(student_name)
-    internship_score = get_internship_score(student_name)
-    project_score = get_project_score(student_name)
 
-    final_score = (
-        WEIGHTS["cgpa"] * cgpa_score
-        + WEIGHTS["skills"] * skills_score
-        + WEIGHTS["internship"] * internship_score
-        + WEIGHTS["project"] * project_score
+    # 2. Skills Score (70% weight)
+    # Check if student is enrolled in any active Career Path
+    active_enrollments = frappe.get_all(
+        "Student Path Enrollment",
+        filters={"student": student_name, "status": "Active"},
+        fields=["name"]
     )
+
+    required_skills = []
+    if active_enrollments:
+        enrollment_names = [e.name for e in active_enrollments]
+        milestones = frappe.get_all(
+            "Student Milestone Progress",
+            filters={"parent": ["in", enrollment_names], "parentfield": "milestone_progress"},
+            fields=["skill"]
+        )
+        required_skills = sorted(list(set(m.skill for m in milestones if m.skill)))
+    else:
+        # Find the best matching Educational Skill Requirement
+        requirements = frappe.get_all(
+            "Educational Skill Requirement",
+            fields=["name", "stream", "course", "department"]
+        )
+        
+        best_match = None
+        best_score = -1
+        
+        for r in requirements:
+            if r.stream and r.stream != student.stream:
+                continue
+            if r.course and r.course != student.course:
+                continue
+            if r.department and r.department != student.department:
+                continue
+                
+            # Match score to prioritize more specific combinations
+            match_score = 0
+            if r.stream and r.stream == student.stream:
+                match_score += 4
+            if r.course and r.course == student.course:
+                match_score += 2
+            if r.department and r.department == student.department:
+                match_score += 1
+                
+            if match_score > best_score:
+                best_score = match_score
+                best_match = r.name
+
+        if best_match:
+            req_doc = frappe.get_doc("Educational Skill Requirement", best_match)
+            required_skills = [d.skill for d in req_doc.skills if d.skill]
+
+    if not required_skills:
+        skills_score = 0.0
+    else:
+        student_skills = frappe.get_all(
+            "Student Skill",
+            filters={"student": student_name, "status": ["!=", "Rejected"]},
+            fields=["skill", "status"]
+        )
+        student_skill_map = {s["skill"]: s for s in student_skills}
+        
+        total_points = 0.0
+        for req_skill in required_skills:
+            if req_skill in student_skill_map:
+                status = student_skill_map[req_skill]["status"]
+                if status == "Verified":
+                    total_points += 1.0
+                else:
+                    total_points += 0.5
+        
+        skills_score = (total_points / len(required_skills)) * 100.0
+
+    # Combine score
+    final_score = (WEIGHTS["cgpa"] * cgpa_score) + (WEIGHTS["skills"] * skills_score)
     final_score = round(final_score, 2)
 
-    frappe.db.set_value("Student", student_name, "employability_score", final_score)
+    if isinstance(student_name_or_doc, str):
+        frappe.db.set_value("Student", student_name, "employability_score", final_score)
+    else:
+        student.employability_score = final_score
 
     return final_score
 
@@ -166,10 +143,14 @@ def recalculate_employability_score(student_name: str) -> float:
 # ---------------------------------------------------------------------
 
 def update_score_from_student(doc, method=None):
-    """Triggered on Student on_update — only recompute if cgpa changed,
-    to avoid unnecessary writes on unrelated field edits."""
-    if doc.has_value_changed("cgpa"):
-        recalculate_employability_score(doc.name)
+    """Triggered on Student before_save — recompute if new, or if cgpa, stream, course, or department changed."""
+    if (doc.is_new() or
+        doc.has_value_changed("cgpa") or 
+        doc.has_value_changed("stream") or 
+        doc.has_value_changed("course") or 
+        doc.has_value_changed("department")):
+        score = recalculate_employability_score(doc)
+        doc.employability_score = score
 
 
 def update_score_from_skill(doc, method=None):
@@ -188,3 +169,10 @@ def update_score_from_project(doc, method=None):
     """Triggered on Student Project Enrollment: after_insert / on_update / on_trash."""
     if doc.student:
         recalculate_employability_score(doc.student)
+
+
+def update_score_from_enrollment(doc, method=None):
+    """Triggered on Student Path Enrollment: after_insert / on_update / on_trash."""
+    if doc.student:
+        recalculate_employability_score(doc.student)
+

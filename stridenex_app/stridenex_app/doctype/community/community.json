@@ -1,0 +1,149 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "creation": "2026-08-12 10:35:06.203876",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "section_break_dhwk",
+        "community_name",
+        "description",
+        "community_type",
+        "user_type",
+        "mentor",
+        "cover_image",
+        "status",
+        "created_on",
+        "amended_from",
+        "community_owner",
+        "industry",
+        "college"
+    ],
+    "fields": [
+        {
+            "fieldname": "section_break_dhwk",
+            "fieldtype": "Section Break"
+        },
+        {
+            "fieldname": "community_name",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Community Name",
+            "reqd": 1,
+            "search_index": 1
+        },
+        {
+            "fieldname": "description",
+            "fieldtype": "Text",
+            "label": "Description"
+        },
+        {
+            "default": "Public",
+            "fieldname": "community_type",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Community Type",
+            "options": "Public\nPrivate",
+            "reqd": 1
+        },
+        {
+            "fieldname": "community_owner",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Community Owner",
+            "options": "User",
+            "reqd": 1,
+            "search_index": 1
+        },
+        {
+            "fieldname": "cover_image",
+            "fieldtype": "Attach Image",
+            "label": "Cover Image"
+        },
+        {
+            "default": "Active",
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Status",
+            "options": "Active\nInactive",
+            "reqd": 1
+        },
+        {
+            "default": "Now",
+            "fieldname": "created_on",
+            "fieldtype": "Datetime",
+            "label": "Created On",
+            "read_only": 1
+        },
+        {
+            "fieldname": "amended_from",
+            "fieldtype": "Link",
+            "label": "Amended From",
+            "no_copy": 1,
+            "options": "Community",
+            "print_hide": 1,
+            "read_only": 1,
+            "search_index": 1
+        },
+        {
+            "fieldname": "user_type",
+            "fieldtype": "Select",
+            "label": "User Type",
+            "options": "Mentor\nCollege\nIndustry"
+        },
+        {
+            "depends_on": "eval:doc.user_type=='Mentor'",
+            "fieldname": "mentor",
+            "fieldtype": "Link",
+            "label": "Mentor",
+            "mandatory_depends_on": "eval:doc.user_type=='Mentor'",
+            "options": "Mentor"
+        },
+        {
+            "depends_on": "eval:doc.user_type=='Industry'",
+            "fieldname": "industry",
+            "fieldtype": "Link",
+            "label": "Industry",
+            "mandatory_depends_on": "eval:doc.user_type=='Industry'",
+            "options": "Industry list"
+        },
+        {
+            "depends_on": "eval:doc.user_type=='College'",
+            "fieldname": "college",
+            "fieldtype": "Link",
+            "label": "College",
+            "mandatory_depends_on": "eval:doc.user_type=='College'",
+            "options": "College"
+        }
+    ],
+    "grid_page_length": 50,
+    "index_web_pages_for_search": 1,
+    "is_submittable": 1,
+    "links": [],
+    "modified": "2026-08-18 13:33:01.770958",
+    "modified_by": "Administrator",
+    "module": "Stridenex App",
+    "name": "Community",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "submit": 1,
+            "write": 1
+        }
+    ],
+    "row_format": "Dynamic",
+    "rows_threshold_for_grid_search": 20,
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "states": []
+}

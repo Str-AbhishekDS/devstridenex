@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "creation": "2026-07-29 15:30:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "mentor_services_item",
+  "mentor_expense_account",
+  "mentor_commission_account",
+  "penalty_payable_account",
+  "tds_payable_account",
+  "razorpay_clearing_account",
+  "sales_account"
+ ],
+ "fields": [
+  {
+   "default": "Mentor Services",
+   "fieldname": "mentor_services_item",
+   "fieldtype": "Link",
+   "label": "Mentor Services Item",
+   "options": "Item",
+   "description": "Item used for all Purchase Invoice line entries. Typically 'Mentor Services'.",
+   "reqd": 1
+  },
+  {
+   "default": "Mentor Expense - QTPL",
+   "fieldname": "mentor_expense_account",
+   "fieldtype": "Link",
+   "label": "Mentor Expense Account",
+   "options": "Account",
+   "description": "Expense account for recording mentor gross payouts. Typically 'Mentor Expense'.",
+   "reqd": 1
+  },
+  {
+   "default": "Mentor Commission - QTPL",
+   "fieldname": "mentor_commission_account",
+   "fieldtype": "Link",
+   "label": "Mentor Commission Account",
+   "options": "Account",
+   "description": "Income account for recording platform commission deductions. Typically 'Mentor Commission'.",
+   "reqd": 1
+  },
+  {
+   "default": "Penalty Payable - QTPL",
+   "fieldname": "penalty_payable_account",
+   "fieldtype": "Link",
+   "label": "Penalty Payable Account",
+   "options": "Account",
+   "description": "Liability account for holding student refunds and absenteeism penalties. Typically 'Penalty Payable'.",
+   "reqd": 1
+  },
+  {
+   "default": "TDS Payable - QTPL",
+   "fieldname": "tds_payable_account",
+   "fieldtype": "Link",
+   "label": "TDS Payable Account",
+   "options": "Account",
+   "description": "Tax/Liability account for recording TDS deductions. Typically 'TDS Payable'.",
+   "reqd": 1
+  },
+  {
+   "default": "Razorpay Clearing - QTPL",
+   "fieldname": "razorpay_clearing_account",
+   "fieldtype": "Link",
+   "label": "Razorpay Clearing Account",
+   "options": "Account",
+   "description": "Clearing asset account for student gateway payments. Typically 'Razorpay Clearing'.",
+   "reqd": 1
+  },
+  {
+   "default": "Sales - QTPL",
+   "fieldname": "sales_account",
+   "fieldtype": "Link",
+   "label": "Sales Account",
+   "options": "Account",
+   "description": "Income account for booking session purchase revenues. Typically 'Sales'.",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "modified": "2026-07-29 15:30:00",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Payout Accounts Setting",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

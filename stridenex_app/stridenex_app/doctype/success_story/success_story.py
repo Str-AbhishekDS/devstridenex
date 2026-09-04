@@ -75,7 +75,7 @@ def get_success_stories(featured=None, category=None, status="Published", limit=
 # ---------------------------------------------------------
 # POST API — Create Success Story
 # ---------------------------------------------------------
-@frappe.whitelist(methods=["POST"])
+@frappe.whitelist(allow_guest=True)
 def create_success_story(**kwargs):
     """
     POST /api/method/stridenex_app.api.success_story.create_success_story
@@ -104,7 +104,7 @@ def create_success_story(**kwargs):
             "status": kwargs.get("status", "Draft"),
         })
 
-        doc.insert(ignore_permissions=False)
+        doc.insert(ignore_permissions=True)
         frappe.db.commit()
 
         frappe.local.response["http_status_code"] = 201

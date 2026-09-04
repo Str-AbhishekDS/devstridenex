@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 25mm 20mm;
+        }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            color: #222;
+            line-height: 1.6;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #1a3d7c;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .header .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a3d7c;
+            text-align: right;
+        }
+
+        .letter-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 25px;
+            color: #1a3d7c;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .content p {
+            margin: 0 0 12px 0;
+            text-align: justify;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .details-table td {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+        }
+
+        .details-table td.label {
+            font-weight: bold;
+            background: #f5f7fa;
+            width: 35%;
+        }
+
+        .description-block {
+            margin: 20px 0;
+            padding: 12px;
+            background: #f9fafb;
+            border-left: 3px solid #1a3d7c;
+        }
+
+        .description-block .label {
+            font-weight: bold;
+            color: #1a3d7c;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .signature-block {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .signature-block .sign-box {
+            width: 45%;
+        }
+
+        .sign-line {
+            margin-top: 40px;
+            border-top: 1px solid #444;
+            padding-top: 5px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            text-align: center;
+        }
+
+        .footer img {
+            max-height: 35px;
+            max-width: 140px;
+            object-fit: contain;
+            margin-bottom: 6px;
+        }
+
+        .footer p {
+            font-size: 10px;
+            color: #777;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="company-name">
+            {{ project.industry if project else "" }}
+        </div>
+    </div>
+
+    <div class="letter-title">Project Offer Letter</div>
+
+    <div class="meta-row">
+        <div>Date: {{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</div>
+        <div>Project Code: {{ project.project_code if project else "" }}</div>
+    </div>
+
+    <div class="content">
+        <p>Dear {{ doc.first_name }} {{ doc.last_name }},</p>
+
+        <p>
+            We are pleased to offer you a position on the project
+            <strong>{{ project.project_name if project else "" }}</strong>.
+            We were impressed with your background and skills, and we believe
+            you will make a valuable contribution to this project. Please find
+            the details below.
+        </p>
+
+        {% if project and project.description %}
+        <div class="description-block">
+            <span class="label">Project Description</span>
+            {{ project.description }}
+        </div>
+        {% endif %}
+
+        <table class="details-table">
+            <tr>
+                <td class="label">Project Name</td>
+                <td>{{ project.project_name if project else "" }}</td>
+            </tr>
+            <tr>
+                <td class="label">Project Code</td>
+                <td>{{ project.project_code if project else "" }}</td>
+            </tr>
+            <tr>
+                <td class="label">Duration</td>
+                <td>
+                    {% if project and project.duration %}
+                    {{ frappe.utils.format_duration(project.duration) }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td class="label">Start Date</td>
+                <td>{{ frappe.utils.formatdate(project.start_date) if project and project.start_date else "" }}</td>
+            </tr>
+            <tr>
+                <td class="label">End Date</td>
+                <td>{{ frappe.utils.formatdate(project.end_date) if project and project.end_date else "" }}</td>
+            </tr>
+            <tr>
+                <td class="label">Eligibility</td>
+                <td>{{ project.eligibility if project else "" }}</td>
+            </tr>
+            <tr>
+                <td class="label">Application Deadline</td>
+                <td>
+                    {{ frappe.utils.formatdate(project.application_deadline) if project and project.application_deadline
+                    else "" }}
+                </td>
+            </tr>
+        </table>
+
+        <p>
+            Kindly confirm your acceptance of this offer by signing and
+            returning a copy of this letter. We look forward to working
+            with you on this project.
+        </p>
+
+        <p>Congratulations, and welcome aboard!</p>
+    </div>
+
+    <div class="signature-block">
+        <div class="sign-box">
+            <div class="sign-line">Authorized Signatory</div>
+        </div>
+        <div class="sign-box">
+            <div class="sign-line">{{ doc.first_name }} {{ doc.last_name }} (Project Member)</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <img src="{{ static_logo_url }}" alt="Stridenex Logo">
+        <p>This is a system-generated offer letter and does not require a physical signature unless specified.</p>
+    </div>
+
+</body>
+
+</html>

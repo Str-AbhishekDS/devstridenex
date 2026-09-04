@@ -8,6 +8,7 @@
  "field_order": [
   "mentor",
   "date",
+  "whole_day",
   "from_time",
   "to_time",
   "reason"
@@ -29,18 +30,23 @@
    "reqd": 1
   },
   {
+   "default": "0",
+   "fieldname": "whole_day",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Whole Day"
+  },
+  {
    "fieldname": "from_time",
    "fieldtype": "Time",
    "in_list_view": 1,
-   "label": "From Time",
-   "reqd": 1
+   "label": "From Time"
   },
   {
    "fieldname": "to_time",
    "fieldtype": "Time",
    "in_list_view": 1,
-   "label": "To Time",
-   "reqd": 1
+   "label": "To Time"
   },
   {
    "fieldname": "reason",

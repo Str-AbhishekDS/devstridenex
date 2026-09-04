@@ -1,0 +1,80 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-25 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "booking",
+  "mentor",
+  "student",
+  "session_date",
+  "offering_type",
+  "amount_paid",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "booking",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Booking Reference",
+   "options": "Mentor Session Booking",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mentor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mentor",
+   "options": "Mentor"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "session_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Session Date"
+  },
+  {
+   "fieldname": "offering_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Offering Type",
+   "options": "1:1 Mentorship\nGroup Session\nAsync Review\nWorkshop"
+  },
+  {
+   "fieldname": "amount_paid",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount Paid"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Status"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "modified": "2026-07-25 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Mentor Payout Sheet Session Row",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "session_date",
+ "sort_order": "ASC",
+ "states": []
+}

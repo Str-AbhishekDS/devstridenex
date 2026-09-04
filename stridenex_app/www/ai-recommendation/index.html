@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Recommendation</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg: #f4f7fb;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --success: #059669;
+            --warning: #d97706;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #eef4ff 0%, var(--bg) 100%);
+            color: var(--text);
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .card {
+            width: min(900px, 100%);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+            padding: 32px;
+        }
+
+        .header h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .header p {
+            margin: 0 0 24px;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        form {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .btn {
+            border: none;
+            background: var(--primary);
+            color: white;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .status {
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .status.loading {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .hidden { display: none !important; }
+
+        .summary-card {
+            background: #f8fbff;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+            color: var(--muted);
+        }
+
+        .summary-card strong {
+            color: var(--text);
+        }
+
+        .results {
+            display: grid;
+            gap: 20px;
+        }
+
+        .result-card {
+            border: 1px solid var(--border);
+            border-left: 6px solid var(--success);
+            border-radius: 16px;
+            padding: 20px;
+            background: #f8fffb;
+        }
+
+        .result-card.alt {
+            border-left-color: var(--primary);
+            background: #f8fbff;
+        }
+
+        .badge {
+            display: inline-block;
+            background: var(--success);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 10px;
+        }
+
+        .result-card.alt .badge {
+            background: var(--primary);
+        }
+
+        .result-title {
+            margin: 0 0 8px;
+            font-size: 20px;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .score-pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        .reasoning {
+            margin: 0;
+            line-height: 1.6;
+            color: #334155;
+        }
+
+        @media (max-width: 640px) {
+            .card { padding: 20px; }
+            .header h1 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="card">
+            <div class="header">
+                <h1>AI Internship Recommendation</h1>
+                <p>Enter a student value to get personalized internship recommendations.</p>
+            </div>
+
+            <form id="recommendation-form">
+                <label class="field-label" for="student">Student</label>
+                <input id="student" name="student" type="text" placeholder="Enter student id or email" required>
+                <button type="submit" class="btn">Get Recommendations</button>
+            </form>
+
+            <div id="status" class="status">Enter a student and submit to get recommendations.</div>
+            <div id="student-summary" class="summary-card hidden"></div>
+            <div id="results" class="results hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById("recommendation-form");
+            const studentInput = document.getElementById("student");
+            const status = document.getElementById("status");
+            const studentSummary = document.getElementById("student-summary");
+            const results = document.getElementById("results");
+
+            const endpoint = "https://devstridenex.quantcloud.in/api/method/stridenex_app.ai_agent.generate_recommendation";
+
+            form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+
+                const student = studentInput.value.trim();
+                if (!student) {
+                    setStatus("Please enter a student.", "error");
+                    return;
+                }
+
+                setStatus("Loading recommendations...", "loading");
+                results.classList.add("hidden");
+                studentSummary.classList.add("hidden");
+
+                try {
+                    const payload = await fetchRecommendations(student);
+                    const data = payload && payload.message ? payload.message : payload;
+
+                    if (!data || (!data.top_pick && !data.alternatives)) {
+                        setStatus("No recommendations were returned.", "error");
+                        return;
+                    }
+
+                    renderStudentSummary(student, data);
+                    renderResults(data);
+                    setStatus("Recommendations loaded successfully.", "");
+                } catch (err) {
+                    const message = err && err.message ? err.message : "Unable to load recommendations.";
+                    setStatus(message, "error");
+                }
+            });
+
+            async function fetchRecommendations(student) {
+                const url = new URL(endpoint);
+                url.searchParams.set("student", student);
+
+                const firstResponse = await fetch(url.toString(), {
+                    method: "GET",
+                    headers: { Accept: "application/json" }
+                });
+
+                if (firstResponse.ok) {
+                    const data = await firstResponse.json();
+                    if (data && (data.message || data.top_pick || data.alternatives)) {
+                        return data;
+                    }
+                }
+
+                const secondResponse = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json"
+                    },
+                    body: JSON.stringify({ student: student })
+                });
+
+                if (!secondResponse.ok) {
+                    const text = await secondResponse.text();
+                    throw new Error(text || "Request failed.");
+                }
+
+                return secondResponse.json();
+            }
+
+            function renderStudentSummary(student, data) {
+                const topPick = data.top_pick || null;
+                const altCount = Array.isArray(data.alternatives) ? data.alternatives.length : 0;
+
+                studentSummary.innerHTML = `
+                    <strong>Student:</strong> ${escapeHtml(student)}<br>
+                    <strong>Top pick:</strong> ${escapeHtml(topPick && (topPick.title || topPick.name) ? (topPick.title || topPick.name) : "N/A")}<br>
+                    <strong>Alternatives:</strong> ${altCount}
+                `;
+                studentSummary.classList.remove("hidden");
+            }
+
+            function renderResults(data) {
+                const topPick = data.top_pick || null;
+                const alternatives = Array.isArray(data.alternatives) ? data.alternatives : [];
+
+                let html = "";
+
+                if (topPick) {
+                    html += `
+                        <section class="result-card">
+                            <div class="badge">Top Pick</div>
+                            <h2 class="result-title">${escapeHtml(topPick.title || topPick.name || "Recommendation")}</h2>
+                            <div class="meta">
+                                <span>${escapeHtml(topPick.type || "internship")}</span>
+                                <span class="score-pill">${formatScore(topPick.fit_score)}</span>
+                            </div>
+                            <p class="reasoning">${escapeHtml(topPick.reasoning || "No reasoning provided.")}</p>
+                            <div class="meta">
+                                <strong>Organisation:</strong> <span>${escapeHtml(topPick.name || "N/A")}</span>
+                            </div>
+                        </section>
+                    `;
+                }
+
+                if (alternatives.length) {
+                    html += `
+                        <section>
+                            <h3>Other Recommendations</h3>
+                    `;
+
+                    alternatives.forEach(function (item, index) {
+                        html += `
+                            <div class="result-card alt">
+                                <div class="badge">Option ${index + 1}</div>
+                                <h3 class="result-title">${escapeHtml(item.title || item.name || "Recommendation")}</h3>
+                                <div class="meta">
+                                    <span>${escapeHtml(item.type || "internship")}</span>
+                                    <span class="score-pill">${formatScore(item.fit_score)}</span>
+                                </div>
+                                <p class="reasoning">${escapeHtml(item.reasoning || "No reasoning provided.")}</p>
+                                <div class="meta">
+                                    <strong>Organisation:</strong> <span>${escapeHtml(item.name || "N/A")}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</section>`;
+                }
+
+                results.innerHTML = html;
+                results.classList.remove("hidden");
+            }
+
+            function setStatus(message, type) {
+                status.textContent = message;
+                status.className = "status";
+                if (type === "loading") status.classList.add("loading");
+                if (type === "error") status.classList.add("error");
+            }
+
+            function formatScore(score) {
+                if (typeof score !== "number") return "N/A";
+                if (score > 1) return `${score.toFixed(0)}%`;
+                return `${Math.round(score * 100)}%`;
+            }
+
+            function escapeHtml(value) {
+                return String(value || "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/\"/g, "&quot;")
+                    .replace(/'/g, "&#39;");
+            }
+        });
+    </script>
+</body>
+</html>

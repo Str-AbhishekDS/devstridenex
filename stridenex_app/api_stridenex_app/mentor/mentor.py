@@ -8,6 +8,8 @@ from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
     exception_handel,get_pagination_params,make_cache_key,make_pagination_meta
 )
+from frappe.exceptions import DuplicateEntryError
+
 CACHE_TTL   = 300 
 
 @frappe.whitelist(allow_guest=True)
@@ -94,7 +96,7 @@ def update_mentor(email_id):
         ignore_fields = [
             "name", "doctype", "owner", "creation", "modified",
             "email_id", "mobile_no", "approved_status",
-            "total_sessions", "total_hours", "total_earnings", "avg_rating",
+            "total_sessions", "total_hours", "total_earnings", "avg_rating"
         ]
 
         for key, value in data.items():
@@ -138,6 +140,7 @@ def update_mentor(email_id):
         frappe.db.commit()
 
         # ✅ Sync billing
+        create_mentor_supplier(mentor)
         sync_billing_account_master(
             email       = email_id,
             data        = data,
@@ -149,6 +152,64 @@ def update_mentor(email_id):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "UPDATE MENTOR ERROR")
         return exception_handel(e)
+
+
+def create_mentor_supplier(mentor):
+    try:
+        if not mentor.email_id:
+            return
+            
+        settings = frappe.get_single("Billing Settings")
+        if settings.sys_url:
+            from stridenex_app.api_stridenex_app.uat_client import call_uat_api
+            res = call_uat_api(
+                "quantbit_payments_platform.api.uat_create_supplier",
+                {
+                    "supplier_email": mentor.email_id,
+                    "supplier_name": mentor.mentor_name or mentor.email_id,
+                    "gstin": mentor.gstin
+                }
+            )
+            return res.get("supplier_name") if isinstance(res, dict) else res
+        else:
+            frappe.throw("Billing Settings sys_url is not configured for remote UAT operations.")
+
+        # Legacy local Supplier creation code (commented out)
+        # if frappe.db.exists("DocType", "Supplier"):
+        #     supplier_name = frappe.db.get_value(
+        #         "Supplier",
+        #         {"email_id": mentor.email_id},
+        #         "name"
+        #     )
+        #     if not supplier_name:
+        #         supplier_name = frappe.db.get_value(
+        #             "Supplier",
+        #             {"supplier_name": mentor.email_id},
+        #             "name"
+        #         )
+        # 
+        #     if supplier_name:
+        #         return supplier_name
+        # 
+        #     supplier = frappe.new_doc("Supplier")
+        #     supplier.supplier_name = mentor.email_id
+        #     supplier.supplier_group = "All Supplier Groups"
+        #     supplier.supplier_type = "Company"
+        #     supplier.email_id = mentor.email_id
+        #     supplier.gstin = mentor.gstin
+        #     supplier.tax_withholding_category = "Professional Fees - Individual"
+        #     supplier.insert(ignore_permissions=True)
+        #     frappe.db.commit()
+        # 
+        #     return supplier.name
+
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Create Mentor Supplier Error"
+        )
+        return None
+
 
 
 @frappe.whitelist()
@@ -427,3 +488,151 @@ def get_mentor_list(college=None, page=1, search=None, page_size=DEFAULT_PAGE_SI
 
     except Exception as e:
         return exception_handel(e)
+
+
+# ============================================================
+# DOMAIN REQUEST APIs
+# ============================================================
+
+@frappe.whitelist(allow_guest=True)
+def request_new_domain(domain_name, mentor_email=None):
+    """
+    Mentor-facing API to submit a new domain request.
+
+    Validations:
+      1. Empty / whitespace domain_name
+      2. Domain already exists in Domain master
+      3. Duplicate pending request for the same domain_name
+
+    Returns:
+      {"success": True/False, "message": "..."}
+    """
+    try:
+        # 1. Empty check
+        domain_name = (domain_name or "").strip()
+        if not domain_name:
+            return {"success": False, "message": "Domain name is required"}
+
+        # 2. Duplicate check in Domain master
+        if frappe.db.exists("Domain", {"domain": domain_name}):
+            return {"success": False, "message": "Domain already exists"}
+
+        # 3. Duplicate pending request check
+        existing_request = frappe.db.exists(
+            "Domain Request",
+            {"domain_name": domain_name, "status": "Pending"},
+        )
+        if existing_request:
+            return {
+                "success": False,
+                "message": "Domain request already submitted and awaiting approval",
+            }
+
+        # Resolve mentor from email if not explicitly passed
+        mentor_name = None
+        if mentor_email:
+            mentor_name = frappe.db.get_value("Mentor", {"email_id": mentor_email}, "name")
+        elif frappe.session.user != "Guest":
+            mentor_name = frappe.db.get_value(
+                "Mentor", {"email_id": frappe.session.user}, "name"
+            )
+
+        # 4. Create Domain Request
+        doc = frappe.get_doc(
+            {
+                "doctype": "Domain Request",
+                "domain_name": domain_name,
+                "mentor": mentor_name,
+                "mentor_email": mentor_email or (frappe.session.user if frappe.session.user != "Guest" else None),
+                "requested_by": frappe.session.user,
+                "status": "Pending",
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "success": True,
+            "message": "Domain request submitted successfully",
+            "data": {"domain_request": doc.name},
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "REQUEST NEW DOMAIN ERROR")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def approve_domain_request(name):
+    """
+    Admin API to approve a Domain Request.
+
+    On approval:
+      - Updates status to Approved
+      - Stamps approved_by and approved_on
+      - Auto-creates the Domain master record (handled by DomainRequest.on_update)
+
+    Returns:
+      {"success": True/False, "message": "..."}
+    """
+    try:
+        doc = frappe.get_doc("Domain Request", name)
+
+        if doc.status != "Pending":
+            return {
+                "success": False,
+                "message": f"Cannot approve a request that is already '{doc.status}'",
+            }
+
+        doc.status = "Approved"
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "success": True,
+            "message": f"Domain '{doc.domain_name}' has been approved and added to the Domain master",
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "APPROVE DOMAIN REQUEST ERROR")
+        return {"success": False, "message": str(e)}
+
+
+@frappe.whitelist()
+def reject_domain_request(name, reason=None):
+    """
+    Admin API to reject a Domain Request.
+
+    On rejection:
+      - Updates status to Rejected
+      - Stores rejection_reason
+
+    No Domain master record is created.
+
+    Returns:
+      {"success": True/False, "message": "..."}
+    """
+    try:
+        doc = frappe.get_doc("Domain Request", name)
+
+        if doc.status != "Pending":
+            return {
+                "success": False,
+                "message": f"Cannot reject a request that is already '{doc.status}'",
+            }
+
+        doc.status = "Rejected"
+        if reason:
+            doc.rejection_reason = reason.strip()
+
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "success": True,
+            "message": f"Domain request for '{doc.domain_name}' has been rejected",
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "REJECT DOMAIN REQUEST ERROR")
+        return {"success": False, "message": str(e)}

@@ -1,223 +1,290 @@
 {
-    "actions": [],
-    "allow_rename": 1,
-    "autoname": "field:email_id",
-    "creation": "2026-02-17 12:25:46.207357",
-    "doctype": "DocType",
-    "engine": "InnoDB",
-    "field_order": [
-        "section_break_yf1l",
-        "first_name",
-        "last_name",
-        "mobile_no",
-        "email_id",
-        "linkedin",
-        "github",
-        "column_break_cdla",
-        "stream",
-        "college",
-        "courses_type",
-        "course",
-        "department",
-        "cgpa",
-        "column_break_brzj",
-        "academic_year",
-        "semester",
-        "date_of_birth",
-        "gender",
-        "resume",
-        "section_break_ywsm",
-        "terms_and_conditions",
-        "amended_from",
-        "skill",
-        "career_interest"
-    ],
-    "fields": [
-        {
-            "fieldname": "amended_from",
-            "fieldtype": "Link",
-            "label": "Amended From",
-            "no_copy": 1,
-            "options": "Student",
-            "print_hide": 1,
-            "read_only": 1,
-            "search_index": 1
-        },
-        {
-            "fieldname": "section_break_yf1l",
-            "fieldtype": "Section Break"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "first_name",
-            "fieldtype": "Data",
-            "in_list_view": 1,
-            "label": "First Name",
-            "reqd": 1
-        },
-        {
-            "fieldname": "column_break_cdla",
-            "fieldtype": "Column Break"
-        },
-        {
-            "fieldname": "column_break_brzj",
-            "fieldtype": "Column Break"
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "last_name",
-            "fieldtype": "Data",
-            "in_list_view": 1,
-            "label": "Last Name",
-            "reqd": 1
-        },
-        {
-            "fieldname": "email_id",
-            "fieldtype": "Data",
-            "label": "Email ID",
-            "options": "Email",
-            "reqd": 1,
-            "unique": 1
-        },
-        {
-            "allow_on_submit": 1,
-            "fieldname": "mobile_no",
-            "fieldtype": "Phone",
-            "label": "Mobile No."
-        },
-        {
-            "fieldname": "college",
-            "fieldtype": "Link",
-            "label": "College",
-            "options": "College",
-            "reqd": 1
-        },
-        {
-            "fieldname": "department",
-            "fieldtype": "Link",
-            "label": "Department",
-            "options": "College Department"
-        },
-        {
-            "fieldname": "courses_type",
-            "fieldtype": "Table MultiSelect",
-            "label": "Courses Type",
-            "options": "Str Course Type"
-        },
-        {
-            "fieldname": "course",
-            "fieldtype": "Link",
-            "label": "Course",
-            "options": "Courses"
-        },
-        {
-            "fieldname": "semester",
-            "fieldtype": "Link",
-            "label": "Semester",
-            "options": "Semester"
-        },
-        {
-            "fieldname": "backlog",
-            "fieldtype": "Int",
-            "label": "Backlog",
-            "default": "0"
-        },
-        {
-            "fieldname": "academic_year",
-            "fieldtype": "Select",
-            "label": "Academic Year",
-            "options": "First Year\nSecond Year\nThird Year\nForth Year"
-        },
-        {
-            "fieldname": "date_of_birth",
-            "fieldtype": "Date",
-            "label": "Date of Birth"
-        },
-        {
-            "fieldname": "section_break_ywsm",
-            "fieldtype": "Section Break"
-        },
-        {
-            "fieldname": "terms_and_conditions",
-            "fieldtype": "Long Text",
-            "label": "Terms and Conditions"
-        },
-        {
-            "fieldname": "stream",
-            "fieldtype": "Link",
-            "label": "Stream",
-            "options": "Stream"
-        },
-        {
-            "fieldname": "resume",
-            "fieldtype": "Attach",
-            "label": "Resume"
-        },
-        {
-            "fieldname": "gender",
-            "fieldtype": "Select",
-            "label": "Gender",
-            "options": "Male\nFemale\nOther\nPrefer not to say"
-        },
-        {
-            "fieldname": "linkedin",
-            "fieldtype": "Data",
-            "in_list_view": 1,
-            "label": "LinkedIn",
-            "options": "URL"
-        },
-        {
-            "fieldname": "github",
-            "fieldtype": "Data",
-            "label": "GitHub"
-        },
-        {
-            "fieldname": "skill",
-            "fieldtype": "Table",
-            "label": "Skill",
-            "options": "Student Skill Table"
-        },
-        {
-            "fieldname": "career_interest",
-            "fieldtype": "Table",
-            "label": "Career Interest",
-            "options": "Career Interest Table"
-        },
-        {
-            "fieldname": "cgpa",
-            "fieldtype": "Int",
-            "label": "CGPA"
-        }
-    ],
-    "grid_page_length": 50,
-    "index_web_pages_for_search": 1,
-    "is_submittable": 1,
-    "links": [],
-    "modified": "2026-04-22 13:07:54.570961",
-    "modified_by": "Administrator",
-    "module": "Stridenex App",
-    "name": "Student",
-    "naming_rule": "By fieldname",
-    "owner": "Administrator",
-    "permissions": [
-        {
-            "cancel": 1,
-            "create": 1,
-            "delete": 1,
-            "email": 1,
-            "export": 1,
-            "print": 1,
-            "read": 1,
-            "report": 1,
-            "role": "System Manager",
-            "share": 1,
-            "submit": 1,
-            "write": 1
-        }
-    ],
-    "row_format": "Dynamic",
-    "rows_threshold_for_grid_search": 20,
-    "sort_field": "creation",
-    "sort_order": "DESC",
-    "states": []
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:email_id",
+ "creation": "2026-02-17 12:25:46.207357",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_yf1l",
+  "first_name",
+  "last_name",
+  "mobile_no",
+  "email_id",
+  "linkedin",
+  "github",
+  "backlog",
+  "marksheet",
+  "column_break_cdla",
+  "stream",
+  "college",
+  "courses_type",
+  "course",
+  "department",
+  "cgpa",
+  "current_year",
+  "other_college",
+  "column_break_brzj",
+  "academic_year",
+  "semester",
+  "date_of_birth",
+  "gender",
+  "resume",
+  "employability_score",
+  "last_activity_date",
+  "section_break_ywsm",
+  "terms_and_conditions",
+  "skill",
+  "career_interest",
+  "amended_from",
+  "resume_details_tab",
+  "table_apwt",
+  "certificates",
+  "internship",
+  "project"
+ ],
+ "fields": [
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Student",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_yf1l",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "First Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_cdla",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_brzj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Last Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "email_id",
+   "fieldtype": "Data",
+   "label": "Email ID",
+   "options": "Email",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "mobile_no",
+   "fieldtype": "Phone",
+   "label": "Mobile No."
+  },
+  {
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "College Department"
+  },
+  {
+   "fieldname": "courses_type",
+   "fieldtype": "Table MultiSelect",
+   "label": "Courses Type",
+   "options": "Str Course Type"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Courses"
+  },
+  {
+   "fieldname": "semester",
+   "fieldtype": "Link",
+   "label": "Semester",
+   "options": "Semester"
+  },
+  {
+   "default": "0",
+   "fieldname": "backlog",
+   "fieldtype": "Int",
+   "label": "Backlog"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Select",
+   "label": "Academic Year",
+   "options": "First Year\nSecond Year\nThird Year\nForth Year"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "section_break_ywsm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "terms_and_conditions",
+   "fieldtype": "Long Text",
+   "label": "Terms and Conditions"
+  },
+  {
+   "fieldname": "stream",
+   "fieldtype": "Link",
+   "label": "Stream",
+   "options": "Stream"
+  },
+  {
+   "fieldname": "resume",
+   "fieldtype": "Attach",
+   "label": "Resume"
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Select",
+   "label": "Gender",
+   "options": "Male\nFemale\nOther\nPrefer not to say"
+  },
+  {
+   "fieldname": "linkedin",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "LinkedIn",
+   "options": "URL"
+  },
+  {
+   "fieldname": "github",
+   "fieldtype": "Data",
+   "label": "GitHub"
+  },
+  {
+   "fieldname": "skill",
+   "fieldtype": "Table",
+   "label": "Skill",
+   "options": "Student Skill Table"
+  },
+  {
+   "fieldname": "career_interest",
+   "fieldtype": "Table",
+   "label": "Career Interest",
+   "options": "Career Interest Table"
+  },
+  {
+   "fieldname": "cgpa",
+   "fieldtype": "Int",
+   "label": "CGPA"
+  },
+  {
+   "fieldname": "current_year",
+   "fieldtype": "Select",
+   "label": "Current Year",
+   "options": "First Year\nSecond Year\nThird Year\nFinal Year"
+  },
+  {
+   "fieldname": "employability_score",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Employability Score",
+   "precision": "2"
+  },
+  {
+   "fieldname": "last_activity_date",
+   "fieldtype": "Date",
+   "label": "Last Activity Date"
+  },
+  {
+   "fieldname": "resume_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Resume Details"
+  },
+  {
+   "fieldname": "table_apwt",
+   "fieldtype": "Table",
+   "label": "Education",
+   "options": "Student Education Table"
+  },
+  {
+   "fieldname": "certificates",
+   "fieldtype": "Table",
+   "label": "Certificates",
+   "options": "Student Certification Table"
+  },
+  {
+   "fieldname": "internship",
+   "fieldtype": "Table",
+   "label": "Internship",
+   "options": "Student Internship Table"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Table",
+   "label": "Project",
+   "options": "Student Project Table"
+  },
+  {
+   "fieldname": "marksheet",
+   "fieldtype": "Attach",
+   "label": "Marksheet"
+  },
+  {
+   "fieldname": "other_college",
+   "fieldtype": "Data",
+   "label": "Other College "
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-09-02 16:26:15.221720",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Student",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
 }

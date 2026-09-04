@@ -8,10 +8,9 @@ from stridenex_app.api_stridenex_app.app_utils import (
 @frappe.whitelist(allow_guest=True)
 def create_college():
     try:
-        data = frappe.request.get_json()
+        data = frappe.request.get_json() or {}
         email = data.get("email")
-
-        
+        courses = data.pop("courses", [])
 
         college = frappe.get_doc({
             "doctype": "College",
@@ -20,7 +19,9 @@ def create_college():
 
         college.insert(ignore_permissions=True)
 
-        
+        if courses:
+            create_college_program_details(college.name, courses)
+
         if email and frappe.db.exists("User", email):
             if data.get("college_name"):
                 onboarding_status = 2
@@ -37,11 +38,156 @@ def create_college():
     except Exception as e:
         return exception_handel(e)
 
+def parse_departments(dept_input):
+    """
+    Parse a department field into a list of valid single College Department names.
+    dept_input can be:
+    - a list of department strings: ["Civil", "Robotics"]
+    - a single department string: "Civil Engineering"
+    - a comma-separated string containing multiple departments: "Electrical Engineering,Computer Engineering,..."
+    """
+    if not dept_input:
+        return []
+
+    if isinstance(dept_input, list):
+        depts = []
+        for d in dept_input:
+            depts.extend(parse_departments(d))
+        return list(dict.fromkeys(depts))
+
+    dept_str = str(dept_input).strip()
+    if not dept_str:
+        return []
+
+    # 1. Direct match
+    if frappe.db.exists("College Department", dept_str):
+        return [dept_str]
+
+    # 2. Extract valid department names from concatenated string
+    all_depts = frappe.get_all("College Department", pluck="name")
+    all_depts.sort(key=len, reverse=True)
+
+    found_depts = []
+    temp_str = dept_str
+    for d in all_depts:
+        if d in temp_str:
+            found_depts.append(d)
+            temp_str = temp_str.replace(d, "")
+
+    if found_depts:
+        return list(dict.fromkeys(found_depts))
+
+    # 3. Fallback: split by comma if no DB match found
+    split_depts = [s.strip() for s in dept_str.split(",") if s.strip()]
+    valid_depts = []
+    for d in split_depts:
+        if frappe.db.exists("College Department", d):
+            valid_depts.append(d)
+        else:
+            try:
+                new_d = frappe.get_doc({
+                    "doctype": "College Department",
+                    "department_name": d
+                })
+                new_d.insert(ignore_permissions=True)
+                valid_depts.append(new_d.name)
+            except Exception:
+                pass
+
+    return list(dict.fromkeys(valid_depts))
+
+
+def create_college_program_details(college_name, courses):
+    """
+    Create 'College Program Details' records for a given college.
+    - Deletes previously linked records (cancelling submitted ones first)
+    - Creates a new record per course and department combination
+    - Submits each record since the doctype is submittable (is_submittable=1)
+    """
+    if not courses:
+        return []
+
+    if isinstance(courses, str):
+        try:
+            courses = frappe.parse_json(courses)
+        except Exception:
+            courses = []
+
+    # 1. Clean up existing program detail records linked to this college
+    existing_records = frappe.get_all(
+        "College Program Details",
+        filters={"college": college_name},
+        fields=["name", "docstatus"]
+    )
+
+    for row in existing_records:
+        try:
+            doc = frappe.get_doc("College Program Details", row.name)
+            if doc.docstatus == 1:
+                doc.flags.ignore_permissions = True
+                doc.cancel()
+            frappe.delete_doc(
+                "College Program Details",
+                row.name,
+                ignore_permissions=True,
+                force=True
+            )
+        except Exception as e:
+            frappe.log_error(f"Error deleting College Program Detail {row.name}: {e}")
+
+    # 2. Create new records
+    created_records = []
+
+    for course_row in courses:
+        if not isinstance(course_row, dict):
+            continue
+
+        c_type = course_row.get("course_type")
+        c_stream = course_row.get("stream")
+        c_course = course_row.get("course")
+        dept_raw = course_row.get("department")
+
+        departments = parse_departments(dept_raw)
+        if not departments:
+            departments = [None]
+
+        for dept in departments:
+            try:
+                program_doc = frappe.new_doc("College Program Details")
+                program_doc.flags.ignore_permissions = True
+
+                program_doc.college = college_name
+                program_doc.course_type = c_type
+                program_doc.stream = c_stream
+                program_doc.course = c_course
+                program_doc.department = dept
+
+                program_doc.insert(ignore_permissions=True)
+                if program_doc.meta.is_submittable and program_doc.docstatus == 0:
+                    program_doc.submit()
+                else:
+                    program_doc.save(ignore_permissions=True)
+
+                created_records.append(program_doc.name)
+            except Exception as exc:
+                frappe.log_error(f"Error creating College Program Detail for {c_course} - {dept}: {exc}")
+
+    return created_records
+
+
 
 @frappe.whitelist(allow_guest=True)
 def update_college(email):
     try:
-        data = frappe.request.get_json()
+        data = None
+        if frappe.request and hasattr(frappe.request, "get_json"):
+            try:
+                data = frappe.request.get_json()
+            except Exception:
+                pass
+
+        if not data:
+            data = frappe.form_dict.copy() if frappe.form_dict else {}
 
         if not data:
             return gen_response(
@@ -63,6 +209,8 @@ def update_college(email):
             )
 
         contact_details = data.pop("contact_details", [])
+        courses = data.pop("courses", []) 
+       
 
         college = frappe.get_doc("College", college_name)
         college.flags.ignore_permissions = True
@@ -77,13 +225,27 @@ def update_college(email):
             college.set("contact_details", [])
 
             for row in contact_details:
-                # Remap 'title' to 'salutation' if your child table field is named 'salutation'
+                designation = row.get("designation")
+                if designation and not frappe.db.exists("Designation", designation):
+                    try:
+                        des_doc = frappe.get_doc({
+                            "doctype": "Designation",
+                            "designation_name": designation
+                        })
+                        des_doc.insert(ignore_permissions=True)
+                    except Exception:
+                        pass
+
+                contact_no = str(row.get("contact_no") or "").strip()
+                if contact_no and not contact_no.startswith("+"):
+                    contact_no = f"+91-{contact_no}"
+
                 mapped_row = {
-                    "salutation": row.get("title"),       # <-- key fix here
+                    "salutation": row.get("title"),
                     "first_name": row.get("first_name"),
                     "last_name": row.get("last_name"),
-                    "designation": row.get("designation"),
-                    "contact_no": row.get("contact_no"),
+                    "designation": designation if (designation and frappe.db.exists("Designation", designation)) else None,
+                    "contact_no": contact_no,
                     "email": row.get("email"),
                     "is_admin": row.get("is_admin", 0),
                 }
@@ -92,6 +254,9 @@ def update_college(email):
             create_college_users(contact_details)
 
         college.save(ignore_permissions=True)
+    
+        if courses:
+            create_college_program_details(college.name, courses)
 
         # Update onboarding status
         user_email = college.email
@@ -137,6 +302,8 @@ def create_college_users(contact_details):
 
         email = contact.get("email")
         if not email:
+            continue
+        if frappe.db.exists("User", email):
             continue
 
         is_admin = int(contact.get("is_admin", 0))
@@ -205,6 +372,14 @@ def get_college(email):
 
         data = college.as_dict()
         data["user_details"] = user_details or {}
+
+        # Include saved courses / program details
+        program_details = frappe.get_all(
+            "College Program Details",
+            filters={"college": college_name},
+            fields=["name", "course_type", "stream", "course", "department"]
+        )
+        data["courses"] = program_details or []
 
         return gen_response(
             status=200,
@@ -277,12 +452,19 @@ STUDENT_LIST_FIELDS = [
 ]
 
 
-# ---------------------------------------------------------------------
-# INTERNAL HELPERS
-# ---------------------------------------------------------------------
+def resolve_college_name(college):
+    if not college:
+        return college
+    if "@" in college:
+        resolved = frappe.db.get_value("College", {"email": college}, "name")
+        if resolved:
+            return resolved
+    return college
+
 
 def _get_students_in_range(category: str, college: str = None):
     """Returns student rows strictly within the category's score range."""
+    college = resolve_college_name(college)
     low, high = THRESHOLDS[category]
 
     conditions = [f"`{SCORE_FIELD}` >= %(low)s"]
@@ -381,7 +563,7 @@ def get_placement_ready_students(college: str = None):
 # PUBLIC API — COLLEGE-WISE SUMMARY (counts only, for dashboards)
 # ---------------------------------------------------------------------
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest= True)
 def get_college_employability_summary(college: str = None):
     """
     Returns counts (not full lists) per category.
@@ -411,6 +593,7 @@ def get_college_employability_summary(college: str = None):
         }
     }
     """
+    college = resolve_college_name(college)
     if college:
         return _summary_for_college(college)
 

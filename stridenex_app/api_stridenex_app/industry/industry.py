@@ -4,6 +4,7 @@ from stridenex_app.api_stridenex_app.app_utils import (
     exception_handel
 )
 from stridenex_app.api_stridenex_app.app_utils import sync_billing_account_master
+from frappe.exceptions import ValidationError
 
 # industry apis
 @frappe.whitelist(allow_guest=True)
@@ -279,8 +280,6 @@ def get_industry_by_name(email):
                 for row in doc.operating_hours
             ],
 
-            
-
             # ✅ Contact Details
             "contact_details": [
                 {
@@ -325,6 +324,7 @@ def get_industry_by_name(email):
 def add_required_role(industry_name, role, duration=None, semester=None, description=None, available_positions=None):
     try:
         doc = frappe.get_doc("Industry list", industry_name)
+        
 
         doc.append("table_tehd", {
             "role": role,
@@ -354,6 +354,9 @@ def add_required_role(industry_name, role, duration=None, semester=None, descrip
 def add_hiring_round(industry_name, round, based_on=None, duration=None):
     try:
         doc = frappe.get_doc("Industry list", industry_name)
+        for row in doc.hiring_process:
+            if row.round.strip().lower() == round.strip().lower():
+                frappe.throw(f"'{round}' already exists.")
 
         doc.append("hiring_process", {
             "round": round,
@@ -369,6 +372,10 @@ def add_hiring_round(industry_name, round, based_on=None, duration=None):
             "message": "Hiring round added successfully",
             "data": doc.hiring_process   # ✅ FIXED
         }
+    except ValidationError:
+        # Re-raise so Frappe returns its standard ValidationError response
+        raise
+
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Add Hiring Round Error")

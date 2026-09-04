@@ -9,10 +9,10 @@
   "title",
   "video",
   "thumbnail",
-  "cover_gradient",
-  "duration_seconds",
   "skill",
   "status",
+  "description",
+  "tags",
   "column_break_views",
   "view_count",
   "like_count",
@@ -39,18 +39,6 @@
    "fieldname": "thumbnail",
    "fieldtype": "Attach Image",
    "label": "Thumbnail"
-  },
-  {
-   "description": "fallback color when no thumbnail",
-   "fieldname": "cover_gradient",
-   "fieldtype": "Data",
-   "label": "Cover Gradient (CSS)"
-  },
-  {
-   "default": "30",
-   "fieldname": "duration_seconds",
-   "fieldtype": "Int",
-   "label": "Duration (sec)"
   },
   {
    "default": "Draft",
@@ -110,12 +98,22 @@
    "in_standard_filter": 1,
    "label": "Skill",
    "options": "Skill"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "tags",
+   "fieldtype": "Data",
+   "label": "Tags"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-13 12:10:46.366279",
+ "modified": "2026-07-20 14:32:55.246922",
  "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "Educational Short",

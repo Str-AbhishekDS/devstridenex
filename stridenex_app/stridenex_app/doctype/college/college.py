@@ -35,11 +35,24 @@ class College(Document):
                 """
             )
 
+# ── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
+
+def resolve_college_name(college):
+    if not college:
+        return college
+    if "@" in college:
+        resolved = frappe.db.get_value("College", {"email": college}, "name")
+        if resolved:
+            return resolved
+    return college
+
+
 # ── 1. Summary Stats (Active Students, Avg Employability, At-Risk, Industry Partners) ──
 
 @frappe.whitelist(allow_guest=True)
 def get_dashboard_summary(college=None):
     try:
+        college = resolve_college_name(college)
         conditions = []
         values = []
         if college:
@@ -68,30 +81,13 @@ def get_dashboard_summary(college=None):
 
         # Fetch all students for employability calculation
         students = frappe.db.sql(f"""
-            SELECT name, cgpa FROM `tabStudent` {where}
+            SELECT name, COALESCE(employability_score, 0) AS employability_score FROM `tabStudent` {where}
         """, values, as_dict=True)
-
-        skill_rows = frappe.db.sql("""
-            SELECT parent, level FROM `tabStudent Skill Table`
-            WHERE parenttype = 'Student'
-        """, as_dict=True)
-
-        level_scores = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}
-        skill_map = {}
-        for row in skill_rows:
-            score = level_scores.get(row.level, 50)
-            if row.parent not in skill_map:
-                skill_map[row.parent] = []
-            skill_map[row.parent].append(score)
 
         emp_scores = []
         at_risk = 0
         for s in students:
-            cgpa = float(s.cgpa or 0)
-            cgpa_norm = (cgpa / 10.0) * 100
-            skill_scores = skill_map.get(s.name, [])
-            avg_skill = (sum(skill_scores) / len(skill_scores)) if skill_scores else 0
-            emp_score = round((0.6 * cgpa_norm) + (0.4 * avg_skill), 2)
+            emp_score = float(s.employability_score)
             emp_scores.append(emp_score)
             if emp_score < 55:
                 at_risk += 1
@@ -117,6 +113,7 @@ def get_dashboard_summary(college=None):
 @frappe.whitelist(allow_guest=True)
 def get_employability_distribution(college=None):
     try:
+        college = resolve_college_name(college)
         conditions = []
         values = []
         if college:
@@ -125,31 +122,14 @@ def get_employability_distribution(college=None):
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
         students = frappe.db.sql(f"""
-            SELECT name, cgpa FROM `tabStudent` {where}
+            SELECT name, COALESCE(employability_score, 0) AS score FROM `tabStudent` {where}
         """, values, as_dict=True)
-
-        skill_rows = frappe.db.sql("""
-            SELECT parent, level FROM `tabStudent Skill Table`
-            WHERE parenttype = 'Student'
-        """, as_dict=True)
-
-        level_scores = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}
-        skill_map = {}
-        for row in skill_rows:
-            score = level_scores.get(row.level, 50)
-            if row.parent not in skill_map:
-                skill_map[row.parent] = []
-            skill_map[row.parent].append(score)
 
         distribution = {"excellent": 0, "good": 0, "average": 0, "at_risk": 0}
         total = len(students)
 
         for s in students:
-            cgpa = float(s.cgpa or 0)
-            cgpa_norm = (cgpa / 10.0) * 100
-            skill_scores = skill_map.get(s.name, [])
-            avg_skill = (sum(skill_scores) / len(skill_scores)) if skill_scores else 0
-            score = round((0.6 * cgpa_norm) + (0.4 * avg_skill), 2)
+            score = float(s.score)
 
             if score >= 85:
                 distribution["excellent"] += 1
@@ -183,6 +163,7 @@ def get_employability_distribution(college=None):
 @frappe.whitelist(allow_guest=True)
 def get_branch_wise_performance(college=None):
     try:
+        college = resolve_college_name(college)
         conditions = []
         values = []
         if college:
@@ -191,31 +172,14 @@ def get_branch_wise_performance(college=None):
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
         students = frappe.db.sql(f"""
-            SELECT name, cgpa, department FROM `tabStudent`
+            SELECT name, department, COALESCE(employability_score, 0) AS employability_score FROM `tabStudent`
             {where}
         """, values, as_dict=True)
-
-        skill_rows = frappe.db.sql("""
-            SELECT parent, level FROM `tabStudent Skill Table`
-            WHERE parenttype = 'Student'
-        """, as_dict=True)
-
-        level_scores = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}
-        skill_map = {}
-        for row in skill_rows:
-            score = level_scores.get(row.level, 50)
-            if row.parent not in skill_map:
-                skill_map[row.parent] = []
-            skill_map[row.parent].append(score)
 
         dept_map = {}
         for s in students:
             dept = s.department or "Unknown"
-            cgpa = float(s.cgpa or 0)
-            cgpa_norm = (cgpa / 10.0) * 100
-            skill_scores = skill_map.get(s.name, [])
-            avg_skill = (sum(skill_scores) / len(skill_scores)) if skill_scores else 0
-            emp_score = round((0.6 * cgpa_norm) + (0.4 * avg_skill), 2)
+            emp_score = float(s.employability_score)
 
             if dept not in dept_map:
                 dept_map[dept] = {"scores": [], "count": 0}
@@ -245,6 +209,7 @@ def get_branch_wise_performance(college=None):
 @frappe.whitelist(allow_guest=True)
 def get_onboarding_growth(college=None, months=12):
     try:
+        college = resolve_college_name(college)
         months = int(months)
         conditions = ["creation >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)"]
         values = [months]
@@ -286,6 +251,7 @@ def get_onboarding_growth(college=None, months=12):
 @frappe.whitelist(allow_guest=True)
 def get_top_skill_gaps(college=None, top_n=10):
     try:
+        college = resolve_college_name(college)
         top_n = int(top_n)
 
         total_students = frappe.db.sql("""
@@ -335,3 +301,146 @@ def get_top_skill_gaps(college=None, top_n=10):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_top_skill_gaps Error")
         return {"status": 500, "message": str(e)}
+
+
+import frappe
+from frappe.utils import getdate
+
+
+@frappe.whitelist(allow_guest=True)
+def get_student_onboarding_graph(year=None, college=None):
+    try:
+        college = resolve_college_name(college)
+        # Default year = current year
+        if not year:
+            year = getdate().year
+
+        year = int(year)
+
+        # Base filters
+        filters = {
+            "creation": [
+                "between",
+                [
+                    f"{year}-01-01 00:00:00",
+                    f"{year}-12-31 23:59:59"
+                ]
+            ]
+        }
+
+        # College filter
+        if college:
+            filters["college"] = college
+
+        # Get students month-wise
+        students = frappe.get_all(
+            "Student",
+            filters=filters,
+            fields=["name", "creation", "college"]
+        )
+
+        # Initialize all months
+        monthly_data = {
+            1: {"month": "January", "count": 0},
+            2: {"month": "February", "count": 0},
+            3: {"month": "March", "count": 0},
+            4: {"month": "April", "count": 0},
+            5: {"month": "May", "count": 0},
+            6: {"month": "June", "count": 0},
+            7: {"month": "July", "count": 0},
+            8: {"month": "August", "count": 0},
+            9: {"month": "September", "count": 0},
+            10: {"month": "October", "count": 0},
+            11: {"month": "November", "count": 0},
+            12: {"month": "December", "count": 0}
+        }
+
+        # Count students month-wise
+        for student in students:
+            month = getdate(student.creation).month
+            monthly_data[month]["count"] += 1
+
+        return {
+            "status": "success",
+            "year": year,
+            "college": college,
+            "data": list(monthly_data.values())
+        }
+
+    except Exception as e:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Student Onboarding Graph Error"
+        )
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+
+
+import frappe
+
+# Levels counted as "not yet proficient" -> contributes to the gap
+LOW_LEVELS = ["Beginner"]
+
+# Minimum number of students that must have logged the skill before it's
+# considered statistically meaningful (avoids 1/1 = 100% gap noise)
+MIN_SAMPLE_SIZE = 3
+
+
+def execute(filters=None):
+    filters = filters or {}
+    college = filters.get("college")
+
+    columns = get_columns()
+    data = get_data(college)
+    return columns, data
+
+@frappe.whitelist(allow_guest=True)
+def get_columns():
+    return [
+        {"label": "Skill", "fieldname": "skill", "fieldtype": "Data", "width": 200},
+        {"label": "Total Students", "fieldname": "total", "fieldtype": "Int", "width": 130},
+        {"label": "At Low Level", "fieldname": "low_count", "fieldtype": "Int", "width": 130},
+        {"label": "Gap %", "fieldname": "gap_pct", "fieldtype": "Percent", "width": 100},
+        {"label": "Avg Evidence Count", "fieldname": "avg_evidence", "fieldtype": "Float", "width": 150},
+    ]
+
+@frappe.whitelist(allow_guest=True)
+ # requires login; drop allow_guest=True unless you truly want it public
+def get_data(college=None):
+    college = resolve_college_name(college)
+    conditions = ""
+    values = {"low_levels": tuple(LOW_LEVELS) if len(LOW_LEVELS) > 1 else (LOW_LEVELS[0], LOW_LEVELS[0])}
+
+    if college:
+        conditions = "AND st.college = %(college)s"
+        values["college"] = college
+
+    query = f"""
+        SELECT
+            ss.skill AS skill,
+            COUNT(DISTINCT ss.student) AS total,
+            SUM(CASE WHEN ss.current_level IN %(low_levels)s THEN 1 ELSE 0 END) AS low_count,
+            AVG(ss.evidence_count) AS avg_evidence
+        FROM `tabStudent Skill` ss
+        INNER JOIN `tabStudent` st ON st.name = ss.student
+        WHERE ss.status != 'Rejected'
+        {conditions}
+        GROUP BY ss.skill
+        HAVING total >= {MIN_SAMPLE_SIZE}
+        ORDER BY (SUM(CASE WHEN ss.current_level IN %(low_levels)s THEN 1 ELSE 0 END)
+                  / COUNT(DISTINCT ss.student)) DESC
+        LIMIT 10
+    """
+
+    rows = frappe.db.sql(query, values, as_dict=True)
+
+    for r in rows:
+        r["gap_pct"] = round((r["low_count"] / r["total"]) * 100, 1) if r["total"] else 0
+        r["avg_evidence"] = round(r["avg_evidence"] or 0, 2)
+
+    return rows
