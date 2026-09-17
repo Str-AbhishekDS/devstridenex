@@ -99,3 +99,89 @@ def update_community_member_status(name=None, status=None):
             "error": str(e)
         }
 
+
+
+
+@frappe.whitelist(allow_guest=True)
+def remove_community_member(name=None):
+    """
+    Remove a member from a Community.
+
+    Required:
+        name - Community Member document name
+    """
+
+    try:
+        # -----------------------------------
+        # VALIDATION
+        # -----------------------------------
+        if not name:
+            return {
+                "status": 400,
+                "message": "Community Member name is required"
+            }
+
+        # -----------------------------------
+        # CHECK DOCUMENT
+        # -----------------------------------
+        if not frappe.db.exists("Community Member", name):
+            return {
+                "status": 404,
+                "message": "Community Member not found"
+            }
+
+        # -----------------------------------
+        # GET MEMBER DETAILS BEFORE DELETE
+        # -----------------------------------
+        member = frappe.db.get_value(
+            "Community Member",
+            name,
+            [
+                "name",
+                "community",
+                "member",
+                "student",
+                "role",
+                "status"
+            ],
+            as_dict=True
+        )
+
+        # -----------------------------------
+        # DELETE MEMBER
+        # -----------------------------------
+        frappe.delete_doc(
+            "Community Member",
+            name,
+            ignore_permissions=True
+        )
+
+        frappe.db.commit()
+
+        # -----------------------------------
+        # RESPONSE
+        # -----------------------------------
+        return {
+            "status": 200,
+            "message": "Community Member removed successfully",
+            "data": {
+                "name": member.name,
+                "community": member.community,
+                "member": member.member,
+                "student": member.student,
+                "role": member.role,
+                "status": member.status
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Remove Community Member API Error"
+        )
+
+        return {
+            "status": 500,
+            "message": "Failed to remove Community Member",
+            "error": str(e)
+        }

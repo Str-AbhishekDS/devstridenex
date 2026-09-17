@@ -393,12 +393,28 @@ def update_student(name=None, email_id=None):
             "career_interest": ["career_interest"],
         }
 
+        # Fallback if frontend sends 'course_type' instead of 'courses_type'
+        if "course_type" in data and "courses_type" not in data:
+            data["courses_type"] = data.get("course_type")
+
         for table_fieldname, row_fields in child_tables.items():
             if table_fieldname in data:
                 doc.set(table_fieldname, [])
-                for row in data.get(table_fieldname) or []:
-                    row_data = {f: row.get(f) for f in row_fields if f in row}
-                    doc.append(table_fieldname, row_data)
+                table_data = data.get(table_fieldname)
+                
+                if table_fieldname == "courses_type" and isinstance(table_data, str):
+                    if table_data.strip():
+                        for ct in table_data.split(","):
+                            if ct.strip():
+                                doc.append(table_fieldname, {"course_type": ct.strip()})
+                    continue
+
+                for row in table_data or []:
+                    if isinstance(row, dict):
+                        row_data = {f: row.get(f) for f in row_fields if f in row}
+                        doc.append(table_fieldname, row_data)
+                    elif isinstance(row, str) and table_fieldname == "courses_type":
+                        doc.append(table_fieldname, {"course_type": row.strip()})
 
         doc.save(ignore_permissions=True)
         frappe.db.commit()

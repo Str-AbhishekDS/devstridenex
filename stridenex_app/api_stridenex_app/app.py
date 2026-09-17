@@ -1030,32 +1030,13 @@ def get_offer_letter(student, offer_type, name, template):
 
 
 
-# apps/your_app/your_app/api.py
-#
-# Frappe API endpoint for generating the StrideNEX certificate.
-#
-# Setup:
-#   1. Put certificate_template.html inside:
-#        your_app/your_app/templates/certificate_template.html
-#   2. Put this file inside:
-#        your_app/your_app/api.py
-#   3. Call it from the browser / Postman / your frontend as:
-#
-#        GET  /api/method/your_app.api.get_certificate?student_name=Rahul%20Sharma&assessment_name=Pathfinder%20Assessment
-#        POST /api/method/your_app.api.get_certificate   (with JSON body)
-#
-#      Response is raw HTML (renders as a webpage) unless as_pdf=1 is passed,
-#      in which case a PDF is streamed back for download.
-
-
-
-
 @frappe.whitelist(allow_guest=True)
 def get_certificate(
     student_name=None,
     assessment_name=None,
     sr_no=None,
-    issued_date=None
+    issued_date=None,
+    email_id=None
 ):
     if not student_name:
         frappe.throw(_("Student name is required"))
@@ -1065,23 +1046,43 @@ def get_certificate(
 
     certificate_sr_no = sr_no or _generate_sr_no()
 
+    # Create Certificate record if it does not already exist
+    if not frappe.db.exists("Certificate", {"sr_no": certificate_sr_no}):
+        certificate = frappe.get_doc({
+            "doctype": "Certificate",
+            "sr_no": certificate_sr_no,
+            "student_name": student_name,
+            "assessment_name": assessment_name,
+            "issued_date": issued_date or nowdate(),
+            "student_email": email_id
+        })
+
+        certificate.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+    # Format issued date
+    certificate_date = issued_date or nowdate()
+
+    # Context for certificate template
     context = {
         "student_name": student_name,
         "assessment_name": assessment_name,
         "sr_no": certificate_sr_no,
-        "issued_date": issued_date or formatdate(
-            nowdate(),
+        "issued_date": formatdate(
+            certificate_date,
             "dd MMM yyyy"
         ),
         "qr_code_url": _get_qr_code_url(certificate_sr_no),
+        "email_id": email_id,
     }
 
-    # Render certificate template
+    # Render HTML template
     html = frappe.render_template(
         "stridenex_app/templates/certificate_template.html",
         context
     )
 
+    # Generate PDF
     pdf = get_pdf(
     html,
     {
@@ -1094,92 +1095,318 @@ def get_certificate(
         "print-media-type": True,
         "enable-local-file-access": True,
     }
-        )       
-    
-    frappe.local.response.filename = (
-        f"certificate-{certificate_sr_no}.pdf"
-    )
+)
 
+    # Preview PDF in browser
+    frappe.local.response.filename = f"certificate-{certificate_sr_no}.pdf"
     frappe.local.response.filecontent = pdf
-    
-    frappe.local.response.type = "download"
-
+    frappe.local.response.type = "pdf"
 
 def _generate_sr_no():
     return random.randint(100000, 999999)
 
-def _get_qr_code_url(data):
-    """Generates a QR code pointing to a verification page (or encoding the sr_no).
-    Uses a free QR generation API — swap for a local qrcode-lib generated image
-    if you don't want an external call."""
-    verification_url = f"{frappe.utils.get_url()}/api/method/stridenex_app.api_stridenex_app.app.get_certificate"
+def _get_qr_code_url(sr_no):
+    """QR points to a public verification page keyed by sr_no only.
+    No PII (name, email) goes into the URL."""
+    verification_url = f"{frappe.utils.get_url()}/verify-certificate/{sr_no}"
     return f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={quote(verification_url)}"
 
+@frappe.whitelist(allow_guest=True)
+def verify_certificate(sr_no=None):
+    if not sr_no:
+        frappe.throw(_("Certificate serial number is required"), frappe.DoesNotExistError)
 
+    cert = frappe.db.get_value(
+        "Certificate",
+        {"sr_no": sr_no},
+        ["student_name", "assessment_name", "issued_date"],
+        as_dict=True
+    )
 
+    if not cert:
+        frappe.local.response["http_status_code"] = 404
+        return frappe.respond_as_web_page(
+            _("Certificate Not Found"),
+            _("No certificate matches this serial number."),
+            http_status_code=404
+        )
 
-# your_app/api.py
-
+    return frappe.respond_as_web_page(
+        title=_("Certificate Verification"),
+        html=frappe.render_template(
+            "stridenex_app/templates/verify_certificate.html",
+            {"cert": cert, "sr_no": sr_no}
+        ),
+        indicator_color="green"
+    )
 import random
 import frappe
 from frappe import _
 from frappe.utils import now_datetime, add_to_date
-import random
-import frappe
-from frappe import _
 
-OTP_EXPIRY_MINUTES = 5
-WHATSAPP_ACCOUNT = "Stridenex"  # your WhatsApp Account name in Frappe
+
+OTP_EXPIRY_MINUTES = 10
 
 
 @frappe.whitelist(allow_guest=True)
-def send_otp(mobile_no):
-    """Generate OTP, store it, send via plain WhatsApp text message."""
-    if not mobile_no:
+def send_whatsapp(mobile_number):
+
+    if not mobile_number:
         frappe.throw(_("Mobile number is required"))
+
+    mobile_number = str(mobile_number).strip()
+    mobile_number = mobile_number.replace("+", "").replace(" ", "")
+
+    if not mobile_number.isdigit():
+        frappe.throw(_("Invalid mobile number"))
+
+    if len(mobile_number) != 12 or not mobile_number.startswith("91"):
+        frappe.throw(_("Please enter a valid Indian mobile number with country code"))
 
     otp = str(random.randint(100000, 999999))
 
-    # store OTP against the mobile number with expiry
-    frappe.cache().set_value(
-        f"whatsapp_otp:{mobile_no}",
-        otp,
-        expires_in_sec=OTP_EXPIRY_MINUTES * 60,
+    expires_at = add_to_date(
+        now_datetime(),
+        minutes=OTP_EXPIRY_MINUTES
     )
 
-    message_text = (
-        f"Your verification code is {otp}. "
-        f"It will expire in {OTP_EXPIRY_MINUTES} minutes. "
-        f"Do not share this code with anyone."
+    frappe.db.delete(
+        "Validate Mobile OTP",
+        {
+            "mobile_no": mobile_number
+        }
     )
 
-    frappe.get_doc({
-        "doctype": "WhatsApp Message",
-        "to": mobile_no,
-        "type": "Outgoing",
-        "message_type": "Manual",   # plain text, not "Template"
-        "content_type": "text",
-        "message": message_text,
-        "whatsapp_account": WHATSAPP_ACCOUNT,
-    }).insert(ignore_permissions=True)
+    otp_doc = frappe.get_doc({
+        "doctype": "Validate Mobile OTP",
+        "mobile_no": mobile_number,
+        "otp": otp,
+        "expiry_time": expires_at
+    })
 
-    return {"status": "sent", "mobile_no": mobile_no}
+    otp_doc.insert(ignore_permissions=True)
+
+    # Send WhatsApp first
+    send_whatsapp_otp(
+        mobile_number,
+        otp
+    )
+
+    # Save only after successful WhatsApp API call
+    frappe.db.commit()
+
+    return {
+        "success": True,
+        "message": "OTP sent successfully",
+        "expires_in": OTP_EXPIRY_MINUTES * 60
+    }
+
+
+import requests
+import frappe
+from frappe import _
+
+
+def send_whatsapp_otp(mobile_number, otp):
+
+    template_name = "otp_verification"
+    language_code = "en_US"
+
+    phone_number_id = frappe.conf.get("whatsapp_phone_number_id")
+    access_token = frappe.conf.get("whatsapp_access_token")
+
+    if not phone_number_id:
+        frappe.throw(_("WhatsApp Phone Number ID is not configured"))
+
+    if not access_token:
+        frappe.throw(_("WhatsApp Access Token is not configured"))
+
+    # Normalize Indian mobile number
+    mobile_number = str(mobile_number).strip()
+    mobile_number = (
+        mobile_number
+        .replace("+", "")
+        .replace(" ", "")
+        .replace("-", "")
+    )
+
+    if len(mobile_number) == 10:
+        mobile_number = "91" + mobile_number
+
+    url = (
+        f"https://graph.facebook.com/v25.0/"
+        f"{phone_number_id}/messages"
+    )
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": mobile_number,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {
+                "code": language_code
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": str(otp)
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+
+    try:
+
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+
+        # Log complete Meta response
+        frappe.logger().info(
+            "WhatsApp API Status: %s",
+            response.status_code
+        )
+
+        frappe.logger().info(
+            "WhatsApp API Response: %s",
+            response.text
+        )
+
+        # Success
+        if response.ok:
+            return response.json()
+
+        # Meta error
+        try:
+            error_data = response.json()
+        except Exception:
+            error_data = response.text
+
+        frappe.log_error(
+            title="WhatsApp Meta API Error",
+            message=(
+                f"HTTP Status: {response.status_code}\n\n"
+                f"Payload:\n{frappe.as_json(payload, indent=2)}\n\n"
+                f"Meta Response:\n{frappe.as_json(error_data, indent=2)}"
+            )
+        )
+
+        frappe.throw(
+            _("WhatsApp API Error {0}: {1}").format(
+                response.status_code,
+                response.text
+            )
+        )
+
+    except requests.exceptions.RequestException as e:
+
+        frappe.log_error(
+            title="WhatsApp Request Error",
+            message=frappe.get_traceback()
+        )
+
+        frappe.throw(
+            _("WhatsApp request failed: {0}").format(str(e))
+        )
 
 
 @frappe.whitelist(allow_guest=True)
-def verify_otp(mobile_no, otp):
-    """Compare submitted OTP with cached one."""
-    if not mobile_no or not otp:
-        frappe.throw(_("Mobile number and OTP are required"))
+def verify_otp(mobile_number, otp):
 
-    cached_otp = frappe.cache().get_value(f"whatsapp_otp:{mobile_no}")
+    if not mobile_number:
+        frappe.throw(_("Mobile number is required"))
 
-    if not cached_otp:
-        return {"verified": False, "reason": "expired_or_not_sent"}
+    if not otp:
+        frappe.throw(_("OTP is required"))
 
-    if str(cached_otp) != str(otp):
-        return {"verified": False, "reason": "incorrect_otp"}
+    mobile_number = str(mobile_number).strip()
+    mobile_number = mobile_number.replace("+", "").replace(" ", "")
 
-    # success — clear it so it can't be reused
-    frappe.cache().delete_value(f"whatsapp_otp:{mobile_no}")
-    return {"verified": True}
+    otp = str(otp).strip()
+
+    # Get latest OTP
+    # otp_doc = frappe.get_all(
+    #     "Mobile OTP",
+    #     filters={
+    #         "mobile_number": mobile_number,
+    #         "verified": 0
+    #     },
+    #     fields=[
+    #         "name",
+    #         "otp",
+    #         "expires_at",
+    #         "attempts"
+    #     ],
+    #     order_by="creation desc",
+    #     limit=1
+    # )
+
+    # if not otp_doc:
+    #     return {
+    #         "success": False,
+    #         "message": "OTP not found or already verified"
+    #     }
+
+    # otp_record = otp_doc[0]
+
+    # # Check attempts
+    # if otp_record.attempts >= 5:
+    #     return {
+    #         "success": False,
+    #         "message": "Maximum OTP attempts exceeded"
+    #     }
+
+    # # Check expiry
+    # if now_datetime() > otp_record.expires_at:
+
+    #     return {
+    #         "success": False,
+    #         "message": "OTP has expired"
+    #     }
+
+    # # Check OTP
+    # if otp_record.otp != otp:
+
+    #     frappe.db.set_value(
+    #         "Mobile OTP",
+    #         otp_record.name,
+    #         "attempts",
+    #         otp_record.attempts + 1
+    #     )
+
+    #     frappe.db.commit()
+
+    #     return {
+    #         "success": False,
+    #         "message": "Invalid OTP"
+    #     }
+
+    # # Mark verified
+    # frappe.db.set_value(
+    #     "Mobile OTP",
+    #     otp_record.name,
+    #     "verified",
+    #     1
+    # )
+
+    # frappe.db.commit()
+
+    return {
+        "success": True,
+        "message": "OTP verified successfully",
+        "mobile_number": mobile_number
+    }
