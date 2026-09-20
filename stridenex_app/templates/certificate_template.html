@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>StrideNEX Certificate</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Dancing+Script:wght@600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page-wrap {
+        padding: 0;
+      }
+
+      .certificate {
+        box-shadow: none;
+      }
+    }
+
+    :root {
+      --navy-dark: #0b1830;
+      --navy-text: #122459;
+      --blue-text: #2456a6;
+      --gold: #f2a93a;
+      --gold-light: #ffc65c;
+      --gold-deep: #e0982a;
+      --orange: #fa8619;
+      --red: #e2231a;
+      --teal: #1c8b8b;
+      --cream: #f6e7cf;
+      --paleblue: #c7dcee;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      background: #ddd;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .page-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .certificate {
+      position: relative;
+      width: 297mm;
+      height: 210mm;
+      background: #ffffff;
+      overflow: hidden;
+      box-shadow: 0 1.98mm 7.92mm rgba(0, 0, 0, .25);
+    }
+
+    /* ===== LEFT NAVY SIDEBAR ===== */
+    .sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 45.54mm;
+      height: 100%;
+      background: var(--navy-dark);
+      z-index: 3;
+    }
+
+    .sidebar-goldline {
+      position: absolute;
+      top: 0;
+      left: 45.54mm;
+      width: 1.19mm;
+      height: 100%;
+      background: var(--gold);
+      z-index: 4;
+    }
+
+    .cert-vertical {
+      position: absolute;
+      left: 21.52mm;
+      top: 120.51mm;
+      transform-origin: left bottom;
+      transform: rotate(-90deg);
+      white-space: nowrap;
+      font-weight: 800;
+      font-size: 16.07mm;
+      letter-spacing: 0.99mm;
+      color: var(--gold-light);
+      line-height: 1;
+    }
+
+    .of-achievement-vertical {
+      position: absolute;
+      left: 29.18mm;
+      top: 120.51mm;
+      transform-origin: left bottom;
+      transform: rotate(-90deg);
+      white-space: nowrap;
+      font-weight: 600;
+      font-size: 6.96mm;
+      letter-spacing: 1.39mm;
+      color: #ffffff;
+      line-height: 1;
+    }
+
+    .sidebar-bottom {
+      position: absolute;
+      left: 7.52mm;
+      bottom: 11.09mm;
+      width: 30.49mm;
+    }
+
+    .sidebar-rule {
+      width: 11.09mm;
+      height: 0.59mm;
+      background: var(--gold);
+      margin-bottom: 5.96mm;
+    }
+
+    .sidebar-tagline {
+      font-size: 3.20mm;
+      font-weight: 600;
+      letter-spacing: 0.2mm;
+      color: #ffffff;
+      line-height: 1.55;
+    }
+
+    .sidebar-tagline .accent {
+      color: var(--gold);
+    }
+
+    /* ===== TRIANGLE MOSAIC (right side) ===== */
+    .mosaic {
+      position: absolute;
+      top: 49.5mm;
+      right: 0mm;
+      width: 55.44mm;
+      height: 95.04mm;
+      z-index: 1;
+    }
+
+    /* ===== TOP LEFT: LEARN ASSESS DISCOVER GROW ===== */
+    .brand-values {
+      position: absolute;
+      top: 8.71mm;
+      left: 55.04mm;
+      border-left: 0.79mm solid var(--gold);
+      padding-left: 3.17mm;
+      z-index: 2;
+    }
+
+    .brand-values div {
+      font-weight: 800;
+      font-size: 3.96mm;
+      letter-spacing: 0.2mm;
+      line-height: 1.32;
+    }
+
+    .bv-learn {
+      color: var(--navy-text);
+    }
+
+    .bv-assess {
+      color: #2f66c9;
+    }
+
+    .bv-discover {
+      color: var(--red);
+    }
+
+    .bv-grow {
+      color: var(--gold-deep);
+    }
+
+    /* ===== TOP RIGHT: LOGO ===== */
+    .logo {
+      position: absolute;
+      top: 10.3mm;
+      right: 15.45mm;
+      text-align: right;
+      z-index: 2;
+    }
+
+    .logo-word {
+      font-size: 7.52mm;
+      font-weight: 800;
+      letter-spacing: .1mm;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1mm;
+    }
+
+    .logo-word .stride {
+      color: var(--navy-text);
+    }
+
+    .logo-word .nex {
+      color: var(--red);
+    }
+
+    .logo-diamonds {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .logo-tagline {
+      font-size: 2.77mm;
+      font-weight: 600;
+      letter-spacing: .1mm;
+      color: #2f66c9;
+      margin-top: 0.4mm;
+    }
+
+    /* ===== MAIN BODY TEXT ===== */
+    .presented-to {
+      position: absolute;
+      top: 47.13mm;
+      left: 55.04mm;
+      font-size: 4.36mm;
+      font-weight: 700;
+      letter-spacing: 0.69mm;
+      color: var(--navy-text);
+      z-index: 2;
+    }
+
+    .student-name {
+      position: absolute;
+      top: 50.49mm;
+      left: 55.04mm;
+      font-family: 'Dancing Script', cursive;
+      font-weight: 700;
+      font-size: 23.37mm;
+      color: var(--navy-text);
+      z-index: 2;
+      line-height: 1;
+    }
+
+    .name-underline {
+      position: absolute;
+      top: 84.74mm;
+      left: 55.04mm;
+      width: 136.22mm;
+      height: 0.4mm;
+      background: var(--gold);
+      z-index: 2;
+    }
+
+    .completion-text {
+      position: absolute;
+      top: 89.5mm;
+      left: 55.04mm;
+      width: 118.8mm;
+      font-size: 3.96mm;
+      line-height: 1.55;
+      color: var(--navy-text);
+      z-index: 2;
+    }
+
+    .completion-text b {
+      color: var(--navy-text);
+      font-weight: 700;
+    }
+
+    .commend-text {
+      position: absolute;
+      top: 110.5mm;
+      left: 55.04mm;
+      width: 122.76mm;
+      font-size: 3.66mm;
+      line-height: 1.6;
+      color: var(--blue-text);
+      z-index: 2;
+    }
+
+    /* ===== ISSUED DATE / QR BLOCK ===== */
+    .issued-block {
+      position: absolute;
+      top: 141.08mm;
+      left: 55.04mm;
+      display: flex;
+      align-items: center;
+      gap: 2.38mm;
+      z-index: 2;
+    }
+
+    .cal-icon {
+      display: block;
+    }
+
+    .issued-text .label {
+      font-size: 3.17mm;
+      color: var(--navy-text);
+      font-weight: 500;
+    }
+
+    .issued-text .value {
+      font-size: 3.56mm;
+      font-weight: 700;
+      color: var(--navy-text);
+      border-bottom: 0.3mm solid var(--navy-text);
+      padding-bottom: 0.4mm;
+      margin-top: 0.4mm;
+      min-width: 43.6mm;
+      display: inline-block;
+    }
+
+    .qr-block {
+      position: absolute;
+      top: 157mm;
+      left: 55.04mm;
+      display: flex;
+      align-items: flex-start;
+      gap: 3.17mm;
+      z-index: 2;
+    }
+
+    .qr-img {
+      width: 17.43mm;
+      height: 17.43mm;
+      display: block;
+    }
+
+    .qr-meta .sr-label {
+      font-size: 3.17mm;
+      color: var(--navy-text);
+      font-weight: 500;
+    }
+
+    .qr-meta .sr-value {
+      font-size: 3.96mm;
+      color: var(--navy-text);
+      font-weight: 700;
+      margin-top: 0.4mm;
+    }
+
+    .original-tag {
+      color: var(--red);
+      font-weight: 800;
+      font-size: 3.17mm;
+      letter-spacing: .1mm;
+      margin-top: 1.58mm;
+    }
+
+    /* ===== SIGNATURE BLOCK ===== */
+    .signature-block {
+      position: absolute;
+      top: 139.7mm;
+      left: 178.2mm;
+      width: 59.4mm;
+      text-align: center;
+      z-index: 2;
+    }
+
+    .sig-svg {
+      display: block;
+      margin: 0 auto;
+      height: 16.5mm;
+    }
+
+    .sig-line {
+      border-top: 0.3mm solid var(--navy-text);
+      margin-top: 1.6mm;
+      padding-top: 1.98mm;
+    }
+
+    .sig-name {
+      font-size: 3.76mm;
+      font-weight: 700;
+      color: var(--navy-text);
+    }
+
+    .sig-sub {
+      font-size: 2.57mm;
+      font-weight: 600;
+      letter-spacing: 0.24mm;
+      color: #2f66c9;
+      margin-top: 0.79mm;
+    }
+
+    /* ===== FOOTER STRIP ===== */
+    .footer {
+      position: absolute;
+      left: 55.04mm;
+      right: 9.9mm;
+      bottom: 7.92mm;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 2;
+    }
+
+    .footer-item {
+      display: flex;
+      align-items: center;
+      gap: 1.79mm;
+      font-size: 2.67mm;
+      font-weight: 700;
+      letter-spacing: .06mm;
+      color: var(--navy-text);
+      white-space: nowrap;
+    }
+
+    .footer-icon {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .footer-sep {
+      width: 0.2mm;
+      height: 4mm;
+      background: #c9c9c9;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-wrap">
+    <div class="certificate">
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="cert-vertical">CERTIFICATE</div>
+        <div class="of-achievement-vertical">OF ACHIEVEMENT</div>
+        <div class="sidebar-bottom">
+          <div class="sidebar-rule"></div>
+          <div class="sidebar-tagline">
+            PEOPLE<br>
+            POTENTIAL<br>
+            PATHWAYS<br>
+            <span class="accent">A BRIGHTER</span><br>
+            <span class="accent">TOMORROW</span>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-goldline"></div>
+
+      <!-- Triangle mosaic -->
+      <div class="mosaic">
+        <svg width="100%" height="100%" viewBox="0 0 280 480" preserveAspectRatio="xMidYMid meet">
+          <polygon points="30,0 70,0 50,32" fill="#c7dcee" />
+          <polygon points="230,10 270,10 250,42" fill="#e2231a" />
+          <polygon points="150,55 200,55 175,95" fill="#f6e7cf" />
+          <polygon points="200,55 250,55 225,95" fill="#f2a93a" />
+          <polygon points="150,95 200,95 175,135" fill="#122459" />
+          <polygon points="80,110 120,110 100,145" fill="#f6e7cf" />
+          <polygon points="200,95 250,95 225,135" fill="#f6e7cf" />
+          <polygon points="120,110 160,110 140,145" fill="#f2a93a" />
+          <polygon points="240,135 280,135 260,170" fill="#122459" />
+          <polygon points="150,150 195,150 172,185" fill="#f2a93a" />
+          <polygon points="195,150 240,150 217,185" fill="#1c8b8b" />
+          <polygon points="60,185 100,185 80,220" fill="#f2a93a" />
+          <polygon points="150,195 195,195 172,230" fill="#122459" />
+          <polygon points="195,195 240,195 217,230" fill="#f6e7cf" />
+          <polygon points="10,230 55,230 32,270" fill="#e2231a" />
+          <polygon points="100,240 145,240 122,278" fill="#122459" />
+          <polygon points="145,240 190,240 167,278" fill="#f2a93a" />
+          <polygon points="60,285 100,285 80,320" fill="#1c8b8b" />
+          <polygon points="150,285 195,285 172,320" fill="#f6e7cf" />
+          <polygon points="195,285 240,285 217,320" fill="#122459" />
+          <polygon points="10,330 50,330 30,365" fill="#f2a93a" />
+          <polygon points="100,340 145,340 122,378" fill="#e2231a" />
+          <polygon points="150,330 190,330 170,365" fill="#c7dcee" />
+        </svg>
+      </div>
+
+      <!-- Brand values -->
+      <div class="brand-values">
+        <div class="bv-learn">LEARN</div>
+        <div class="bv-assess">ASSESS</div>
+        <div class="bv-discover">DISCOVER</div>
+        <div class="bv-grow">GROW</div>
+      </div>
+
+      <!-- Logo -->
+      <img src="{{ frappe.get_url() }}/assets/stridenex_app/images/logo.png" alt="StrideNEX" class="footer-logo">
+
+      <!-- Presented to -->
+      <div class="presented-to">THIS CERTIFICATE IS PRESENTED TO</div>
+      <div class="student-name">{{student_name}}</div>
+      <div class="name-underline"></div>
+
+      <div class="completion-text">
+        for successfully completing the<br>
+        <b>{{assessment_name}}</b> on the StrideNEX Platform.
+      </div>
+
+      <div class="commend-text">
+        We commend your initiative, curiosity and commitment towards discovering
+        your strengths and shaping a brighter future. Keep exploring. Keep growing.
+      </div>
+
+      <!-- Issued date -->
+      <div class="issued-block">
+        <svg class="cal-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="5" width="18" height="16" rx="2" stroke="#122459" stroke-width="2" />
+          <line x1="3" y1="10" x2="21" y2="10" stroke="#122459" stroke-width="2" />
+          <line x1="7" y1="2" x2="7" y2="6" stroke="#122459" stroke-width="2" stroke-linecap="round" />
+          <line x1="17" y1="2" x2="17" y2="6" stroke="#122459" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <div class="issued-text">
+          <div class="label">Issued on</div>
+          <div class="value">{{issued_date}}</div>
+        </div>
+      </div>
+
+      <!-- QR + Sr No -->
+      <div class="qr-block">
+        <div>
+          <img class="qr-img"
+            src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAV4AAAFeAQAAAADlUEq3AAACqUlEQVR4nO2bTWreQAyGH3UGvLRv0KPYN8iVPUfpAQL2smCjLubX6SZtSFBAWvn7/CxeEJrRn0V5t90/3s+Cw18Do/vjSfdZVff5gvUIyqpXfT9fRjQ7PFqE+QC4I8yvUdbjjso5KZyFyWGaXqxodvhhOd6YL1SPv//b56sFp8egdTj9vPIpynpQT9Hjy2U4/K+naLP1QIUZSC+vKNzxmecY0ezwaBEICtzQXCbFs6E4cNXPluHwR+BTREQipAVIyy35HkzLLaQFRERENkuaHe6m3XaCwqwt8i5Yh/eeyViEqbUfxVs5DQVUaz2Yn7weNAufkRx5aQHZzkl1B0SWwsjGLbpb0uxwN9UjaCn7ciERVLVHXraMGNHs8MNyHb+2e3DV6sa9VfnVq0Y0O/yw0hedh/YnJZ2pIQnZte5BizA9Da1P7WRlTGfcg0ZhhuSzNdTqFRhaauqnqGk4qOoRVLZTBAgqW290nxHgls+X4fB/wWX6kJPPcliWnzvkQrEhRjQ7/AY+IySZVEQiuhNUttydufK8As5JRRZDmh3u1su+0lUD6miwtWhmz2TMwvm6687LfstXYH1qvjSi2eGHqWrLQIedGC0t0VxmlLdGNDv8sLpHMbZjcvjt9TKsgegetAiPkVcGFHVUUW+/3rYxotnhN/AZWxMmqO7nVCJvSGzILRo7mh3u1rfRoB6lw2gwv8htUo9Bi/BjRt8jr059SxrqnW27cCRt5bEuOYGmLW86XcJ8R2U+0E+V4fBH4DkvwUBpYP8W2aC2Ywial6E2S5od7jbubKu27gw8P5nwauI7wEki44T3jLXe/zWpbCY1Oxwfv27RtEUEBE1LuKS/8K/PbMK1EdqmS9C3n8YdUj9FjcKP7wfrdkzdb2KYFHpf1Cgs/g3vN4f/APDYS6ph0cY3AAAAAElFTkSuQmCC"
+            alt="QR">
+          <div class="original-tag">Original</div>
+        </div>
+        <div class="qr-meta">
+          <div class="sr-label">Sr. No.</div>
+          <div class="sr-value">218222</div>
+        </div>
+      </div>
+
+      <!-- Signature -->
+      <div class="signature-block">
+        <svg class="sig-svg" viewBox="0 0 300 90" preserveAspectRatio="xMidYMid meet">
+          <path d="M18,55 C22,30 30,20 35,28 C40,38 34,62 40,63 C48,65 50,32 60,26
+                 C68,21 66,48 74,50 C82,52 86,24 96,20 C104,17 100,44 108,48
+                 C118,53 126,26 136,20 C146,14 150,42 160,46
+                 C168,49 172,22 182,17 C192,12 194,40 204,43
+                 C214,46 216,20 226,16 C234,13 236,38 244,40
+                 C250,42 254,26 262,24 C268,22 272,32 278,28" fill="none" stroke="#122459" stroke-width="2.4"
+            stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M22,62 C90,76 200,76 276,58" fill="none" stroke="#122459" stroke-width="1.4" stroke-linecap="round"
+            opacity="0.5" />
+        </svg>
+        <div class="sig-line">
+          <div class="sig-name">Team StrideNEX</div>
+          <div class="sig-sub">LEARN &bull; GROW &bull; SUCCEED</div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="footer-item">
+          <svg class="footer-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.6 1 1.3 1 2.1V16h6v-.4c0-.8.3-1.5 1-2.1A6 6 0 0 0 12 3Z"
+              stroke="#122459" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          KNOW YOURSELF
+        </div>
+        <div class="footer-sep"></div>
+        <div class="footer-item">
+          <svg class="footer-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="#122459" stroke-width="1.6" />
+            <path d="M15 9l-2 6-6 2 2-6z" stroke="#122459" stroke-width="1.6" stroke-linejoin="round" />
+          </svg>
+          EXPLORE POSSIBILITIES
+        </div>
+        <div class="footer-sep"></div>
+        <div class="footer-item">
+          <svg class="footer-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M3 21h18M6 21v-6M11 21V9M16 21v-11" stroke="#122459" stroke-width="1.6" stroke-linecap="round" />
+            <path d="M4 12l5-5 4 3 6-7" stroke="#122459" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+          PLAN YOUR PATH
+        </div>
+        <div class="footer-sep"></div>
+        <div class="footer-item">
+          <svg class="footer-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <circle cx="9" cy="8" r="3" stroke="#122459" stroke-width="1.6" />
+            <path d="M3 20c0-3 2.7-5 6-5s6 2 6 5" stroke="#122459" stroke-width="1.6" stroke-linecap="round" />
+            <circle cx="17" cy="9" r="2.4" stroke="#122459" stroke-width="1.6" />
+            <path d="M15.5 20c0-2.5 1.5-4.2 3.5-4.6" stroke="#122459" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+          BUILD A BRIGHTER TOMORROW
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+
+</html>

@@ -166,6 +166,77 @@
             padding: 3px 10px;
             border-radius: 11px;
         }
+
+        /* =========================
+           FOOTER
+           ========================= */
+        .resume-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 28px;
+
+            border-top: 1px solid #ddd;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 0 25px;
+
+            font-family: Arial, sans-serif;
+            font-size: 8px;
+            color: #777;
+
+            background: #fff;
+        }
+
+        .footer-page {
+            text-align: left;
+        }
+
+        .footer-logo-wrapper {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+        }
+
+        .footer-logo {
+            width: 65px;
+            height: auto;
+            display: block;
+        }
+
+        .page-number::after {
+            content: counter(page);
+        }
+
+        /* =========================
+           PAGE NUMBER
+           ========================= */
+        .page-number::after {
+            content: counter(page);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 500px;
+            height: 500px;
+
+            background-image: url("{{ frappe.get_url() }}/assets/stridenex_app/images/logo.png");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+
+            opacity: 0.10;
+            transform: translate(-50%, -50%) rotate(0deg);
+
+            z-index: -1;
+        }
     </style>
 </head>
 
@@ -255,6 +326,20 @@
         </div>
         {% endif %}
     </div>
+    <!-- =========================
+             FOOTER
+             ========================= -->
+    <footer class="resume-footer">
+
+        <div class="footer-page">
+            Page <span class="page-number"></span>
+        </div>
+
+        <div class="footer-logo-wrapper">
+            <img src="{{ frappe.get_url() }}/assets/stridenex_app/images/logo.png" alt="StrideNEX" class="footer-logo">
+        </div>
+
+    </footer>
 
 </body>
 

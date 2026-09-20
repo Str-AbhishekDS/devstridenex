@@ -140,11 +140,15 @@ def get_job_profile_list():
     course = frappe.form_dict.get("course")
     department = frappe.form_dict.get("department")
     skill = frappe.form_dict.get("skill")
+    employment_type = frappe.form_dict.get("employment_type")
 
     filters = {
         "status": "Open",
         "is_active": 1
     }
+
+    if employment_type:
+        filters["employment_type"] = employment_type
 
     jobs = frappe.get_all(
         "Industry Job Profile",
@@ -160,7 +164,8 @@ def get_job_profile_list():
             "salary_to",
             "openings",
             "last_date",
-            "published_on"
+            "published_on",
+            "job_description"
         ],
         order_by="creation desc"
     )
@@ -222,6 +227,7 @@ def get_job_profile_list():
         job["skills"] = skills
         job["applied"] = applied
         job["status"] = application_status
+        job["description"] = job.get("job_description")
 
 
         result.append(job)

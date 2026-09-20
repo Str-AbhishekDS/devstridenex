@@ -199,26 +199,28 @@ class MentorPayoutSheet(Document):
 		# Create dynamic supplier creation/linking and generate Purchase Invoices for released mentors
 		company = frappe.defaults.get_global_default("company") or "Stridenex"
 		
-		credit_to = frappe.db.get_value("Account", {"account_type": "Payable", "company": company}, "name")
-		if not credit_to:
-			credit_to = frappe.db.get_value("Account", {"company": company, "is_group": 0, "root_type": "Liability"}, "name")
-
-		# Load accounts setting doc
-		accounts_setting = None
-		try:
-			accounts_setting = frappe.get_single("Mentor Payout Accounts Setting")
-		except Exception:
-			pass
-
-		# Get or create the Mentor Services item
-		configured_item = (accounts_setting.mentor_services_item if accounts_setting and accounts_setting.mentor_services_item else None) or "Mentor Services"
-		mentor_services_item = get_or_create_item(configured_item)
-
-		# Get or create specific accounts
-		mentor_expense_account = (accounts_setting.mentor_expense_account if accounts_setting and accounts_setting.mentor_expense_account else None) or get_account_by_name_or_create("Mentor Expense", "Expense Account", ["Direct Expenses", "Expenses"], company)
-		commission_account = (accounts_setting.mentor_commission_account if accounts_setting and accounts_setting.mentor_commission_account else None) or get_account_by_name_or_create("Mentor Commission", "Income Account", ["Indirect Income", "Direct Income", "Income"], company)
-		penalty_account = (accounts_setting.penalty_payable_account if accounts_setting and accounts_setting.penalty_payable_account else None) or get_account_by_name_or_create("Penalty Payable", "Liability", ["Current Liabilities"], company)
-		tds_account = (accounts_setting.tds_payable_account if accounts_setting and accounts_setting.tds_payable_account else None) or get_account_by_name_or_create("TDS Payable", "Tax", ["Duties and Taxes", "Current Liabilities"], company)
+		# --- Legacy local PI preparation (commented out as ERPNext might not be installed) ---
+		# credit_to = frappe.db.get_value("Account", {"account_type": "Payable", "company": company}, "name")
+		# if not credit_to:
+		# 	credit_to = frappe.db.get_value("Account", {"company": company, "is_group": 0, "root_type": "Liability"}, "name")
+		#
+		# # Load accounts setting doc
+		# accounts_setting = None
+		# try:
+		# 	accounts_setting = frappe.get_single("Mentor Payout Accounts Setting")
+		# except Exception:
+		# 	pass
+		#
+		# # Get or create the Mentor Services item
+		# configured_item = (accounts_setting.mentor_services_item if accounts_setting and accounts_setting.mentor_services_item else None) or "Mentor Services"
+		# mentor_services_item = get_or_create_item(configured_item)
+		#
+		# # Get or create specific accounts
+		# mentor_expense_account = (accounts_setting.mentor_expense_account if accounts_setting and accounts_setting.mentor_expense_account else None) or get_account_by_name_or_create("Mentor Expense", "Expense Account", ["Direct Expenses", "Expenses"], company)
+		# commission_account = (accounts_setting.mentor_commission_account if accounts_setting and accounts_setting.mentor_commission_account else None) or get_account_by_name_or_create("Mentor Commission", "Income Account", ["Indirect Income", "Direct Income", "Income"], company)
+		# penalty_account = (accounts_setting.penalty_payable_account if accounts_setting and accounts_setting.penalty_payable_account else None) or get_account_by_name_or_create("Penalty Payable", "Liability", ["Current Liabilities"], company)
+		# tds_account = (accounts_setting.tds_payable_account if accounts_setting and accounts_setting.tds_payable_account else None) or get_account_by_name_or_create("TDS Payable", "Tax", ["Duties and Taxes", "Current Liabilities"], company)
+		# -----------------------------------------------------------------------------------
 
 		released_mentors = set()
 		for row in self.mentors:
@@ -487,7 +489,7 @@ def create_paid_sales_invoice_for_booking(booking_doc, payment_ref):
 			if invoice_name:
 				if booking_doc.meta.has_field("sales_invoice"):
 					booking_doc.db_set("sales_invoice", invoice_name)
-				
+				dd
 				sh_name = frappe.db.get_value("Subscription History", {"razorpay_payment_id": payment_ref}, "name")
 				if sh_name:
 					frappe.db.set_value("Subscription History", sh_name, {

@@ -131,7 +131,19 @@ from frappe.utils import now_datetime
 
 
 @frappe.whitelist(allow_guest=True)
-def get_notifications(owner_email, limit=20):
+def get_notifications(owner_email, limit=20, unread_only=0):
+    """
+    Fetch notifications for a user.
+
+    Params:
+        owner_email  (required) - User's email
+        limit        (optional) - Max records to return (default: 20)
+        unread_only  (optional) - If 1, return only unread/new notifications
+                                  (default: 0 = return all)
+
+    Use unread_only=1 for the bell icon to show only new notifications.
+    Use unread_only=0 for the "All Notifications" page/tab.
+    """
 
     # Resolve actual user
     user = frappe.db.get_value(
@@ -146,11 +158,14 @@ def get_notifications(owner_email, limit=20):
             "message": "User not found"
         }
 
+    # Build filters — only add read=0 when unread_only is requested
+    filters = {"for_user": user}
+    if int(unread_only):
+        filters["read"] = 0
+
     notifications = frappe.get_all(
         "Notification Log",
-        filters={
-            "for_user": user
-        },
+        filters=filters,
         fields=[
             "name",
             "subject",

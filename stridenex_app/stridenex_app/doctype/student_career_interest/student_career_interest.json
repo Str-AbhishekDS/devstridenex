@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:career_interest",
  "creation": "2026-03-04 16:40:43.260316",
@@ -22,8 +23,8 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-07 12:05:05.011214",
- "modified_by": "Administrator",
+ "modified": "2026-09-07 10:52:42.478694",
+ "modified_by": "abhisheksadale96@gmail.com",
  "module": "Stridenex App",
  "name": "Student Career Interest",
  "naming_rule": "By fieldname",

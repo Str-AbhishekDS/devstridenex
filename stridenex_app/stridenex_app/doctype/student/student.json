@@ -11,6 +11,7 @@
   "last_name",
   "mobile_no",
   "email_id",
+  "is_first_login",
   "linkedin",
   "github",
   "backlog",
@@ -44,6 +45,12 @@
   "project"
  ],
  "fields": [
+  {
+   "default": "1",
+   "fieldname": "is_first_login",
+   "fieldtype": "Check",
+   "label": "Is First Login"
+  },
   {
    "fieldname": "amended_from",
    "fieldtype": "Link",

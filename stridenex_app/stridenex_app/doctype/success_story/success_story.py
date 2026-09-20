@@ -39,6 +39,8 @@ def get_success_stories(featured=None, category=None, status="Published", limit=
             fields=[
                 "name as id",
                 "student",
+                "student.first_name as first_name",
+                "student.last_name as last_name",
                 "college",
                 "outcome_category",
                 "outcome_title",
@@ -55,6 +57,14 @@ def get_success_stories(featured=None, category=None, status="Published", limit=
             start=start,
             page_length=limit
         )
+
+        for story in stories:
+            first = story.pop("first_name", None) or ""
+            last = story.pop("last_name", None) or ""
+            full_name = f"{first} {last}".strip()
+            if full_name:
+                story["student"] = full_name
+
 
         return {
             "success": True,

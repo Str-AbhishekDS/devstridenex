@@ -137,3 +137,137 @@ def get_user_by_mail(email=None):
         gen_response(404, "User not found", {"success": False})
 
 
+
+@frappe.whitelist(allow_guest=True)
+def get_student_certificate_info(sr_no=None):
+
+    if frappe.request.method != "GET":
+        frappe.throw("Method not allowed")
+
+    if not sr_no:
+        gen_response(
+            400,
+            "Serial No is required",
+            {"success": False}
+        )
+        return
+
+    # ---------------------------------------------------------
+    # 1. Get Certificate using Serial No
+    # ---------------------------------------------------------
+    certificate = frappe.db.get_value(
+        "Certificate",
+        {"sr_no": sr_no},
+        [
+            "name",
+            "sr_no",
+            "student_name",
+            "assessment_name",
+            "issued_date",
+            "student_email"
+        ],
+        as_dict=True
+    )
+
+    if not certificate:
+        gen_response(
+            404,
+            "Certificate not found",
+            {
+                "success": False,
+                "sr_no": sr_no
+            }
+        )
+        return
+
+    student_email = certificate.get("student_email")
+
+    if not student_email:
+        gen_response(
+            404,
+            "Student email is not available in certificate",
+            {
+                "success": False,
+                "sr_no": sr_no
+            }
+        )
+        return
+
+    # ---------------------------------------------------------
+    # 2. Get Student/User information
+    # ---------------------------------------------------------
+    student = frappe.db.get_value(
+        "User",
+        {"email": student_email},
+        [
+            "name",
+            "full_name",
+   
+        ],
+        as_dict=True
+    )
+
+    if not student:
+        gen_response(
+            404,
+            "Student not found",
+            {
+                "success": False,
+                "email": student_email
+            }
+        )
+        return
+
+    # ---------------------------------------------------------
+    # 3. Get Student Skill Ledger records
+    # ---------------------------------------------------------
+    skills = frappe.get_all(
+        "Student Skill Ledger",
+        filters={
+            "student": student_email
+        },
+        fields=[
+            "name",
+            "student",
+            
+            "skill",
+            "skill_level",
+            "event_type",
+            
+        ],
+        order_by="event_time desc"
+    )
+
+    # ---------------------------------------------------------
+    # 4. Prepare response
+    # ---------------------------------------------------------
+    response_data = {
+        "certificate": {
+            "name": certificate.get("name"),
+            "sr_no": certificate.get("sr_no"),
+            "student_name": certificate.get("student_name"),
+            "assessment_name": certificate.get("assessment_name"),
+            "issued_date": certificate.get("issued_date")
+        },
+
+        "student": {
+            "name": student.get("name"),
+            "full_name": student.get("full_name"),
+            "email": student.get("email"),
+            "mobile_no": student.get("mobile_no"),
+            "enabled": student.get("enabled")
+        },
+
+        "skills": skills,
+
+        "skill_count": len(skills)
+    }
+
+    gen_response(
+        200,
+        "Certificate, student and skill information fetched successfully",
+        {
+            "success": True,
+            "data": response_data
+        }
+    )

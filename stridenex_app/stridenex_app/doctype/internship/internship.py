@@ -206,7 +206,13 @@ def get_internship_list(
                 return gen_response(
                     status=200,
                     message="No internships found",
-                    data=[]
+                    data={
+                        "internships": [],
+                        "statistics": {
+                            "total_internships": 0,
+                            "status_counts": {"Not Applied": 0}
+                        }
+                    }
                 )
 
         internships = frappe.get_all(

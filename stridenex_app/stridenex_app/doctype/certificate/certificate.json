@@ -1,0 +1,83 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:sr_no",
+ "creation": "2026-09-12 08:58:46.402942",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sr_no",
+  "student_name",
+  "assessment_name",
+  "issued_date",
+  "student_email"
+ ],
+ "fields": [
+  {
+   "fieldname": "sr_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Serial No",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Student Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "assessment_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Assessment Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "issued_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Issued Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student_email",
+   "fieldtype": "Data",
+   "label": "Student Email",
+   "options": "Email",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-15 16:10:21.031375",
+ "modified_by": "Administrator",
+ "module": "Stridenex App",
+ "name": "Certificate",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name"
+}
