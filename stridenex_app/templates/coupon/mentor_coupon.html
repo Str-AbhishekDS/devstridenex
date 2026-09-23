@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ coupon.title or "Coupon" }}</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #f4f6f8;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .coupon-wrapper {
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        .coupon-card {
+            position: relative;
+            overflow: hidden;
+            min-height: 430px;
+            border-radius: 24px;
+
+            background: var(--coupon-color);
+            color: var(--coupon-text-color);
+        }
+
+        /* Decorative circles */
+        .circle-one {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.10);
+            top: -80px;
+            right: -60px;
+        }
+
+        .circle-two {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            bottom: -50px;
+            left: -40px;
+        }
+
+        .coupon-content {
+            position: relative;
+            z-index: 2;
+            padding: 28px;
+        }
+
+        /* Partner */
+        .partner-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .partner-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px;
+        }
+
+        .partner-logo-placeholder {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .partner-name {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .partner-label {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Discount */
+        .discount-section {
+            margin-top: 15px;
+            margin-bottom: 18px;
+        }
+
+        .discount-value {
+            font-size: 52px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -2px;
+        }
+
+        .discount-type {
+            font-size: 18px;
+            font-weight: 700;
+            margin-left: 5px;
+        }
+
+        /* Title */
+        .coupon-title {
+            font-size: 24px;
+            line-height: 1.25;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .coupon-description {
+            font-size: 14px;
+            line-height: 1.5;
+            opacity: 0.85;
+            margin-bottom: 24px;
+        }
+
+        /* Dashed separator */
+        .separator {
+            position: relative;
+            margin: 20px -28px;
+            border-top: 2px dashed rgba(255, 255, 255, 0.4);
+        }
+
+        .separator::before,
+        .separator::after {
+            content: "";
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f4f6f8;
+            top: -13px;
+        }
+
+        .separator::before {
+            left: -12px;
+        }
+
+        .separator::after {
+            right: -12px;
+        }
+
+        /* Coupon code */
+        .code-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .code-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .coupon-code {
+            flex: 1;
+            padding: 13px 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px dashed rgba(255, 255, 255, 0.5);
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .copy-button {
+            border: none;
+            padding: 13px 16px;
+            border-radius: 10px;
+
+            background: var(--coupon-color);
+            color: var(--coupon-text-color);
+
+            ;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .copy-button:hover {
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        .coupon-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 22px;
+            gap: 15px;
+        }
+
+        .validity {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .validity strong {
+            display: block;
+            font-size: 13px;
+            opacity: 1;
+            margin-top: 3px;
+        }
+
+        .apply-button {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 18px;
+            background: rgba(255, 255, 255, 0.18);
+
+
+            color: var(--coupon-text-color);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        /* Terms */
+        .terms {
+            margin-top: 18px;
+            font-size: 10px;
+            line-height: 1.4;
+            opacity: 0.6;
+        }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+
+            .coupon-content {
+                padding: 22px;
+            }
+
+            .discount-value {
+                font-size: 44px;
+            }
+
+            .coupon-title {
+                font-size: 21px;
+            }
+
+            .separator {
+                margin-left: -22px;
+                margin-right: -22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="coupon-wrapper">
+
+        <div class="coupon-card" id="coupon-card" data-coupon-code="{{ coupon.coupon_code }}">
+
+            <div class="circle-one"></div>
+            <div class="circle-two"></div>
+
+            <div class="coupon-content">
+
+                <!-- Partner -->
+                <div class="partner-section">
+
+                    {% if coupon.logo %}
+                    <img src="{{ coupon.logo }}" alt="{{ coupon.partner_name or coupon.partner }}" class="partner-logo">
+                    {% else %}
+                    <div class="partner-logo-placeholder">
+                        {{ (coupon.partner_name or coupon.partner or "P")[0] | upper }}
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <div class="partner-label">
+                            Exclusive Offer
+                        </div>
+
+                        <div class="partner-name">
+                            {{ coupon.partner_name or coupon.partner or "Partner" }}
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <!-- Discount -->
+                <div class="discount-section">
+
+                    {% if coupon.coupon_type == "Percentage" %}
+
+                    <span class="discount-value">
+                        {{ coupon.discount_value | int }}%
+                    </span>
+
+                    <span class="discount-type">
+                        OFF
+                    </span>
+
+                    {% else %}
+
+                    <span class="discount-value">
+                        ₹{{ coupon.discount_value | int }}
+                    </span>
+
+                    <span class="discount-type">
+                        OFF
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+
+                <!-- Title -->
+                <div class="coupon-title">
+                    {{ coupon.title or "Special Offer" }}
+                </div>
+
+
+                <!-- Description -->
+                {% if coupon.description %}
+                <div class="coupon-description">
+                    {{ coupon.description }}
+                </div>
+                {% endif %}
+
+
+                <!-- Separator -->
+                <div class="separator"></div>
+
+
+                <!-- Coupon Code -->
+                <div class="code-label">
+                    Coupon Code
+                </div>
+
+                <div class="code-row">
+
+                    <div class="coupon-code">
+                        {{ coupon.coupon_code }}
+                    </div>
+
+                    <button class="copy-button" onclick="copyCouponCode()">
+                        COPY
+                    </button>
+
+                </div>
+
+
+                <!-- Footer -->
+                <div class="coupon-footer">
+
+                    <div class="validity">
+
+                        Valid Until
+
+                        <strong>
+                            {% if coupon.valid_until %}
+                            {{ frappe.utils.formatdate(coupon.valid_until) }}
+                            {% else %}
+                            No Expiry
+                            {% endif %}
+                        </strong>
+
+                    </div>
+
+                    <button class="apply-button" onclick="applyCoupon('{{ coupon.coupon_code }}')">
+                        APPLY COUPON
+                    </button>
+
+                </div>
+
+
+                <!-- Terms -->
+                {% if coupon.terms_conditions %}
+
+                <div class="terms">
+                    {{ coupon.terms_conditions }}
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        function copyCouponCode() {
+
+            const code =
+                document
+                    .getElementById("coupon-card")
+                    .dataset
+                    .couponCode;
+
+            navigator.clipboard.writeText(code).then(function () {
+
+                const button =
+                    document.querySelector(".copy-button");
+
+                button.innerText = "COPIED";
+
+                setTimeout(function () {
+                    button.innerText = "COPY";
+                }, 2000);
+
+            });
+
+        }
+
+
+        function applyCoupon(code) {
+
+            /*
+             * Replace this with your frontend
+             * coupon application logic.
+             */
+
+            console.log("Apply coupon:", code);
+
+        }
+
+    </script>
+
+</body>
+
+</html>

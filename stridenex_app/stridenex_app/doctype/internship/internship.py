@@ -1,6 +1,6 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import today,getdate
+from frappe.utils import today, getdate, strip_html
 from stridenex_app.api_stridenex_app.app_utils import (
     gen_response,
     exception_handel,
@@ -140,7 +140,8 @@ def get_internship_list(
     status="Active",
     department=None,
     current_year=None,
-    search=None
+    search=None,
+    work_mode=None
 ):
     try:
         # ----------------------------------------------------------
@@ -165,6 +166,8 @@ def get_internship_list(
             filters["industry"] = industry
         if status:
             filters["status"] = status
+        if work_mode:
+            filters["work_mode"] = work_mode
 
         internship_names = None
 
@@ -220,9 +223,9 @@ def get_internship_list(
             filters=filters,
             or_filters=or_filters,
             fields=["name", "creation", "owner", "title", "duration", "openings",
-                    "required_skills", "internship_type", "location", "required_skills",
+                    "required_skills", "location", "required_skills",
                     "start_date", "end_date", "industry", "type", "work_mode", "stipend",
-                    "deadline", "status", "posted_by", "description", "eligibility",
+                    "application_deadline", "status", "posted_by", "description",
                     "payment_mode"],
             order_by="creation desc"
         )
@@ -293,6 +296,10 @@ def get_internship_list(
         for internship in internships:
             internship["skills"] = skill_map.get(internship["name"], [])
 
+            # Strip HTML tags from description (stored as Quill rich text)
+            if internship.get("description"):
+                internship["description"] = strip_html(internship["description"]).strip()
+
             doc = frappe.get_doc("Internship", internship["name"])
 
             internship["course"] = [r.course for r in doc.course]
@@ -329,6 +336,8 @@ def get_internship_list(
                 current_status = "Not Applied"
                 internship["applied_status"] = current_status
                 internship["application_details"] = None
+
+            internship["internship_deadline"] = internship.get("application_deadline")
 
             # Tally status counts across all internships in the result set
             status_counts[current_status] = status_counts.get(current_status, 0) + 1

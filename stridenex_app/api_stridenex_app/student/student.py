@@ -263,6 +263,12 @@ def get_student_by_email(email_id):
                 "message": "Email is required",
                 "data": {}
             }
+        user = frappe.db.get_value(
+            "User",
+            email_id,
+            ["referal_code"],
+            as_dict=True
+        )
 
         name = frappe.db.get_value("Student", {"email_id": email_id}, "name")
 
@@ -275,6 +281,7 @@ def get_student_by_email(email_id):
 
         doc = frappe.get_doc("Student", name)
         data = doc.as_dict()
+        data["referal_code"] = user.get("referal_code") if user else None
 
         if (not data.get("college") or str(data.get("college")).strip().lower() == "other") and data.get("other_college"):
             data["college"] = data.get("other_college")
@@ -311,6 +318,7 @@ def get_student_by_email(email_id):
             "resume_details": [],  
             "internship": [],
             "project": [],
+            
         }
 
         for child_fieldname, attach_fields in child_image_fields.items():

@@ -428,6 +428,14 @@
       background: #c9c9c9;
       flex-shrink: 0;
     }
+
+    .logo {
+      position: absolute;
+      top: 10.3mm;
+      right: 15.45mm;
+      text-align: right;
+      z-index: 2;
+    }
   </style>
 </head>
 
@@ -490,7 +498,7 @@
       </div>
 
       <!-- Logo -->
-      <img src="{{ frappe.get_url() }}/assets/stridenex_app/images/logo.png" alt="StrideNEX" class="footer-logo">
+      <img src="{{ frappe.get_url() }}/assets/stridenex_app/images/logo.png" alt="StrideNEX" class="logo">
 
       <!-- Presented to -->
       <div class="presented-to">THIS CERTIFICATE IS PRESENTED TO</div>

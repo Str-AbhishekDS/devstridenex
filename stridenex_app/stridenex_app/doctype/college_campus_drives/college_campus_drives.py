@@ -411,16 +411,16 @@ def get_campus_drive_list(
         # ----------------------------------------------------------
         # PERMISSION CHECK
         # ----------------------------------------------------------
-        # session_user = frappe.session.user
-        # if not frappe.has_permission(
-        #     "College Campus Drives",
-        #     ptype="read",
-        #     user=session_user
-        # ):
-        #     frappe.throw(
-        #         "You do not have permission to access College Campus Drives.",
-        #         frappe.PermissionError
-        #     )
+        session_user = frappe.session.user
+        if not frappe.has_permission(
+            "College Campus Drives",
+            ptype="read",
+            user=session_user
+        ):
+            frappe.throw(
+                "You do not have permission to access College Campus Drives.",
+                frappe.PermissionError
+            )
 
         filters = {}
 
@@ -458,7 +458,7 @@ def get_campus_drive_list(
             fields=[
                 "name", "creation", "owner", "job_title", "college",
                 "industry_name", "industry", "registeration_deadline",
-                "drive_date", "package_offered", "backlog", "criteria"
+                "drive_date", "package_offered", "backlog", "criteria","description"
             ],
             order_by="creation desc"
         )

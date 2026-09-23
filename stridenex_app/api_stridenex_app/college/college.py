@@ -366,7 +366,7 @@ def get_college(email):
         user_details = frappe.db.get_value(
             "User",
             email,
-            ["first_name", "last_name", "mobile_no"],
+            ["first_name", "last_name", "mobile_no","referal_code"],
             as_dict=True
         )
 

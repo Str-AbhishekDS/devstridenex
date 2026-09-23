@@ -134,7 +134,7 @@ def apply_for_job():
 import frappe
 from frappe import _
 
-@frappe.whitelist(allow_guest=False)
+@frappe.whitelist(allow_guest=True)
 def get_job_profile_list():
     student = frappe.form_dict.get("student")
     course = frappe.form_dict.get("course")
@@ -228,6 +228,7 @@ def get_job_profile_list():
         job["applied"] = applied
         job["status"] = application_status
         job["description"] = job.get("job_description")
+        job["application_deadline"] = job.get("last_date")
 
 
         result.append(job)
