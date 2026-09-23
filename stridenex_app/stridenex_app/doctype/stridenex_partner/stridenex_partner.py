@@ -587,6 +587,17 @@ REFERENCE_TEMPLATES = {
     }
 }
 
+logo_svg = f"""
+<image
+    href="{frappe.get_url()}/assets/stridenex_app/images/logo.png"
+    x="235"
+    y="15"
+    width="120"
+    height="45"
+    preserveAspectRatio="xMidYMid meet"
+/>
+"""
+
 
 @frappe.whitelist(allow_guest=True)
 def get_reference_card(reference_code=None, module=None):
@@ -667,6 +678,16 @@ xmlns="http://www.w3.org/2000/svg">
         fill="{template['accent']}"
     />
 
+    <!-- STRIDENEX LOGO - TOP RIGHT -->
+    <image
+        href="{frappe.get_url()}/assets/stridenex_app/images/logo.png"
+        x="455"
+        y="20"
+        width="115"
+        height="45"
+        preserveAspectRatio="xMidYMid meet"
+    />
+
     <!-- ICON CIRCLE -->
     <circle
         cx="95"
@@ -738,7 +759,6 @@ xmlns="http://www.w3.org/2000/svg">
     </text>
 
 </svg>"""
-
         # Save actual SVG file
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(svg)
