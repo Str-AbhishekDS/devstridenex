@@ -23,7 +23,6 @@ from frappe.utils.pdf import get_pdf
 
 
 
-
 @frappe.whitelist(allow_guest=True)
 def signup():
 
@@ -38,40 +37,81 @@ def signup():
         email = data.get("email")
         password = data.get("password")
         roles = data.get("role")
+        partner_referal = data.get("partner_referal")
 
         if not roles:
-            return gen_response(400, "Role selection required", {"success": False})
+            return gen_response(
+                400,
+                "Role selection required",
+                {"success": False}
+            )
 
         if not all([first_name, last_name, email, password]):
-            return gen_response(400, "All fields are required", {"success": False})
+            return gen_response(
+                400,
+                "All fields are required",
+                {"success": False}
+            )
 
         if frappe.db.exists("User", email):
-            return gen_response(400, "User already exists", {"success": False})
+            return gen_response(
+                400,
+                "User already exists",
+                {"success": False}
+            )
 
+        # -----------------------------------
         # Detect selected role
+        # -----------------------------------
+
         selected_role = None
 
         for role_item in roles:
             for key, value in role_item.items():
-                if value == 1:
+                if value in [1, "1", True, "true", "True"]:
                     selected_role = key
                     break
 
-        if not selected_role:
-            return gen_response(400, "Role not selected", {"success": False})
+            if selected_role:
+                break
 
+        if not selected_role:
+            return gen_response(
+                400,
+                "Role not selected",
+                {"success": False}
+            )
+
+        # -----------------------------------
         # Map UI role to system role
+        # -----------------------------------
+
         role_map = {
             "student": "Student base",
             "college": "College base",
-            "mentor": "Mentor",
+            "mentor": "Mentor base",
             "industry": "Industry base"
         }
 
         frappe_role = role_map.get(selected_role)
+
+        if not frappe_role:
+            return gen_response(
+                400,
+                "Invalid role selected",
+                {"success": False}
+            )
+
+        # -----------------------------------
+        # Generate referral code for new user
+        # -----------------------------------
+
         referral_code = generate_referral_code()
 
-        # Create user
+        # -----------------------------------
+        # Create User
+        # -----------------------------------
+
         user = frappe.get_doc({
             "doctype": "User",
             "email": email,
@@ -80,36 +120,78 @@ def signup():
             "enabled": 1,
             "new_password": password,
             "user_type": "Website User",
+
+            # IMPORTANT:
+            # Use the actual User fieldname.
             "referal_code": referral_code
         })
 
         user.flags.no_welcome_mail = True
         user.is_onboarded = False
+
         user.insert(ignore_permissions=True)
 
         update_password(user.name, password)
 
+        # -----------------------------------
         # Assign role
+        # -----------------------------------
+
         user.add_roles(frappe_role)
 
-        # Add to Email Group if promotional news is accepted
-        allow_promotional_news = data.get("allow_promotional_news") or data.get("allow_promotion_new") or data.get("Allow promotioan new")
+        # -----------------------------------
+        # Save referral details
+        # AFTER user is created
+        # -----------------------------------
+
+        referral_name = None
+
+        if partner_referal:
+            referral_name = save_referal_details(
+                partner_referal=partner_referal,
+                referred_user=user.name,
+                selected_role=selected_role
+            )
+
+        # -----------------------------------
+        # Promotional Email
+        # -----------------------------------
+
+        allow_promotional_news = (
+            data.get("allow_promotional_news")
+            or data.get("allow_promotion_new")
+            or data.get("Allow promotioan new")
+        )
+
         if allow_promotional_news in [1, "1", True, "true", "True"]:
+
             group_title = selected_role.capitalize()
-            
+
             if not frappe.db.exists("Email Group", group_title):
+
                 frappe.get_doc({
                     "doctype": "Email Group",
                     "title": group_title
                 }).insert(ignore_permissions=True)
-                
-            if not frappe.db.exists("Email Group Member", {"email_group": group_title, "email": email}):
+
+            if not frappe.db.exists(
+                "Email Group Member",
+                {
+                    "email_group": group_title,
+                    "email": email
+                }
+            ):
+
                 frappe.get_doc({
                     "doctype": "Email Group Member",
                     "email_group": group_title,
                     "email": email,
                     "unsubscribed": 0
                 }).insert(ignore_permissions=True)
+
+        # -----------------------------------
+        # Commit
+        # -----------------------------------
 
         frappe.db.commit()
 
@@ -118,39 +200,141 @@ def signup():
             "User created successfully",
             {
                 "success": True,
-                "role": frappe_role
+                "role": frappe_role,
+                "referral": {
+                    "used": bool(partner_referal),
+                    "referral_code": partner_referal,
+                    "referral_details": referral_name
+                }
             }
         )
 
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "Signup Error")
-        return gen_response(500, "Something went wrong", frappe.get_traceback())
+        frappe.db.rollback()
+
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Signup Error"
+        )
+
+        return gen_response(
+            500,
+            "Something went wrong",
+            frappe.get_traceback()
+        )
 
 def generate_referral_code(length=8):
     """Generate a unique 8-character alphanumeric referral code."""
+
     chars = string.ascii_uppercase + string.digits
 
     while True:
-        code = "".join(random.choices(chars, k=length))
+        code = "".join(
+            random.choices(chars, k=length)
+        )
 
-        if not frappe.db.exists("User", {"referral_code": code}):
+        if not frappe.db.exists(
+            "User",
+            {"referal_code": code}
+        ):
             return code
+        
+def save_referal_details(
+    partner_referal,
+    referred_user,
+    selected_role=None
+):
+    """
+    Save referral usage in Referal Details.
 
+    partner_referal = referral code entered during signup
+    referred_user   = newly created User name
+    selected_role   = student / college / mentor / industry
+    """
 
-def generate_key(user):
-    user_details = frappe.get_doc("User", user)
-    api_secret = api_key = ""
-    if not user_details.api_key and not user_details.api_secret:
-        api_secret = frappe.generate_hash(length=15)
-        api_key = frappe.generate_hash(length=15)
-        user_details.api_key = api_key
-        user_details.api_secret = api_secret
-        user_details.save(ignore_permissions=True)
-    else:
-        api_secret = user_details.get_password("api_secret")
-        api_key = user_details.get("api_key")
-    return {"api_secret": api_secret, "api_key": api_key}
+    if not partner_referal:
+        return None
 
+    # -----------------------------------
+    # Find referrer
+    # -----------------------------------
+
+    referrer = frappe.db.get_value(
+        "User",
+        {"referal_code": partner_referal},
+        "name"
+    )
+
+    if not referrer:
+        frappe.throw(
+            f"Invalid referral code: {partner_referal}"
+        )
+
+    # -----------------------------------
+    # Prevent self-referral
+    # -----------------------------------
+
+    if referrer == referred_user:
+        frappe.throw(
+            "You cannot use your own referral code."
+        )
+
+    # -----------------------------------
+    # Prevent duplicate referral
+    # -----------------------------------
+
+    existing = frappe.db.exists(
+        "Referal Details",
+        {
+            "referred_user": referred_user
+        }
+    )
+
+    if existing:
+        return existing
+
+    # -----------------------------------
+    # Determine module
+    # -----------------------------------
+
+    referral_module = None
+
+    module_map = {
+        "student": "Student",
+        "college": "College",
+        "mentor": "Mentor",
+        "industry": "Industry"
+    }
+
+    referral_module = module_map.get(selected_role)
+
+    # -----------------------------------
+    # Create Referal Details
+    # -----------------------------------
+
+    referral = frappe.new_doc("Referal Details")
+
+    referral.referral_code = partner_referal
+    referral.referrer = referrer
+    referral.referred_user = referred_user
+
+    referral.referral_status = "Registered"
+
+    referral.signup_date = frappe.utils.now_datetime()
+
+    referral.reward_amount = 0
+    referral.reward_status = "Pending"
+
+    referral.source = "Referral Code"
+
+    referral.module = referral_module
+
+    referral.insert(
+        ignore_permissions=True
+    )
+    frappe.db.commit()
+
+    return referral.name
 
 @frappe.whitelist(allow_guest=True)
 def login(usr, pwd):
@@ -1046,8 +1230,9 @@ def get_certificate(
 
     certificate_sr_no = sr_no or _generate_sr_no()
 
-    # Create Certificate record if it does not already exist
-    if not frappe.db.exists("Certificate", {"sr_no": certificate_sr_no}):
+
+    if not frappe.db.exists("Certificate", {"student_email": email_id}):
+
         certificate = frappe.get_doc({
             "doctype": "Certificate",
             "sr_no": certificate_sr_no,
@@ -1056,6 +1241,8 @@ def get_certificate(
             "issued_date": issued_date or nowdate(),
             "student_email": email_id
         })
+
+        certificate.insert(ignore_permissions=True)
 
         certificate.insert(ignore_permissions=True)
         frappe.db.commit()
@@ -1139,274 +1326,3 @@ def verify_certificate(sr_no=None):
         ),
         indicator_color="green"
     )
-import random
-import frappe
-from frappe import _
-from frappe.utils import now_datetime, add_to_date
-
-
-OTP_EXPIRY_MINUTES = 10
-
-
-@frappe.whitelist(allow_guest=True)
-def send_whatsapp(mobile_number):
-
-    if not mobile_number:
-        frappe.throw(_("Mobile number is required"))
-
-    mobile_number = str(mobile_number).strip()
-    mobile_number = mobile_number.replace("+", "").replace(" ", "")
-
-    if not mobile_number.isdigit():
-        frappe.throw(_("Invalid mobile number"))
-
-    if len(mobile_number) != 12 or not mobile_number.startswith("91"):
-        frappe.throw(_("Please enter a valid Indian mobile number with country code"))
-
-    otp = str(random.randint(100000, 999999))
-
-    expires_at = add_to_date(
-        now_datetime(),
-        minutes=OTP_EXPIRY_MINUTES
-    )
-
-    frappe.db.delete(
-        "Validate Mobile OTP",
-        {
-            "mobile_no": mobile_number
-        }
-    )
-
-    otp_doc = frappe.get_doc({
-        "doctype": "Validate Mobile OTP",
-        "mobile_no": mobile_number,
-        "otp": otp,
-        "expiry_time": expires_at
-    })
-
-    otp_doc.insert(ignore_permissions=True)
-
-    # Send WhatsApp first
-    send_whatsapp_otp(
-        mobile_number,
-        otp
-    )
-
-    # Save only after successful WhatsApp API call
-    frappe.db.commit()
-
-    return {
-        "success": True,
-        "message": "OTP sent successfully",
-        "expires_in": OTP_EXPIRY_MINUTES * 60
-    }
-
-
-import requests
-import frappe
-from frappe import _
-
-
-def send_whatsapp_otp(mobile_number, otp):
-
-    template_name = "otp_verification"
-    language_code = "en_US"
-
-    phone_number_id = frappe.conf.get("whatsapp_phone_number_id")
-    access_token = frappe.conf.get("whatsapp_access_token")
-
-    if not phone_number_id:
-        frappe.throw(_("WhatsApp Phone Number ID is not configured"))
-
-    if not access_token:
-        frappe.throw(_("WhatsApp Access Token is not configured"))
-
-    # Normalize Indian mobile number
-    mobile_number = str(mobile_number).strip()
-    mobile_number = (
-        mobile_number
-        .replace("+", "")
-        .replace(" ", "")
-        .replace("-", "")
-    )
-
-    if len(mobile_number) == 10:
-        mobile_number = "91" + mobile_number
-
-    url = (
-        f"https://graph.facebook.com/v25.0/"
-        f"{phone_number_id}/messages"
-    )
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": mobile_number,
-        "type": "template",
-        "template": {
-            "name": template_name,
-            "language": {
-                "code": language_code
-            },
-            "components": [
-                {
-                    "type": "body",
-                    "parameters": [
-                        {
-                            "type": "text",
-                            "text": str(otp)
-                        }
-                    ]
-                }
-            ]
-        }
-    }
-
-    try:
-
-        response = requests.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
-
-        # Log complete Meta response
-        frappe.logger().info(
-            "WhatsApp API Status: %s",
-            response.status_code
-        )
-
-        frappe.logger().info(
-            "WhatsApp API Response: %s",
-            response.text
-        )
-
-        # Success
-        if response.ok:
-            return response.json()
-
-        # Meta error
-        try:
-            error_data = response.json()
-        except Exception:
-            error_data = response.text
-
-        frappe.log_error(
-            title="WhatsApp Meta API Error",
-            message=(
-                f"HTTP Status: {response.status_code}\n\n"
-                f"Payload:\n{frappe.as_json(payload, indent=2)}\n\n"
-                f"Meta Response:\n{frappe.as_json(error_data, indent=2)}"
-            )
-        )
-
-        frappe.throw(
-            _("WhatsApp API Error {0}: {1}").format(
-                response.status_code,
-                response.text
-            )
-        )
-
-    except requests.exceptions.RequestException as e:
-
-        frappe.log_error(
-            title="WhatsApp Request Error",
-            message=frappe.get_traceback()
-        )
-
-        frappe.throw(
-            _("WhatsApp request failed: {0}").format(str(e))
-        )
-
-
-@frappe.whitelist(allow_guest=True)
-def verify_otp(mobile_number, otp):
-
-    if not mobile_number:
-        frappe.throw(_("Mobile number is required"))
-
-    if not otp:
-        frappe.throw(_("OTP is required"))
-
-    mobile_number = str(mobile_number).strip()
-    mobile_number = mobile_number.replace("+", "").replace(" ", "")
-
-    otp = str(otp).strip()
-
-    # Get latest OTP
-    # otp_doc = frappe.get_all(
-    #     "Mobile OTP",
-    #     filters={
-    #         "mobile_number": mobile_number,
-    #         "verified": 0
-    #     },
-    #     fields=[
-    #         "name",
-    #         "otp",
-    #         "expires_at",
-    #         "attempts"
-    #     ],
-    #     order_by="creation desc",
-    #     limit=1
-    # )
-
-    # if not otp_doc:
-    #     return {
-    #         "success": False,
-    #         "message": "OTP not found or already verified"
-    #     }
-
-    # otp_record = otp_doc[0]
-
-    # # Check attempts
-    # if otp_record.attempts >= 5:
-    #     return {
-    #         "success": False,
-    #         "message": "Maximum OTP attempts exceeded"
-    #     }
-
-    # # Check expiry
-    # if now_datetime() > otp_record.expires_at:
-
-    #     return {
-    #         "success": False,
-    #         "message": "OTP has expired"
-    #     }
-
-    # # Check OTP
-    # if otp_record.otp != otp:
-
-    #     frappe.db.set_value(
-    #         "Mobile OTP",
-    #         otp_record.name,
-    #         "attempts",
-    #         otp_record.attempts + 1
-    #     )
-
-    #     frappe.db.commit()
-
-    #     return {
-    #         "success": False,
-    #         "message": "Invalid OTP"
-    #     }
-
-    # # Mark verified
-    # frappe.db.set_value(
-    #     "Mobile OTP",
-    #     otp_record.name,
-    #     "verified",
-    #     1
-    # )
-
-    # frappe.db.commit()
-
-    return {
-        "success": True,
-        "message": "OTP verified successfully",
-        "mobile_number": mobile_number
-    }

@@ -11,6 +11,7 @@
   "notice",
   "date",
   "notice_type",
+  "description",
   "amended_from"
  ],
  "fields": [
@@ -50,6 +51,11 @@
    "fieldtype": "Select",
    "label": "Notice Type",
    "options": "Placement\nAcademic\nEvent\nComplaince"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
   }
  ],
  "grid_page_length": 50,

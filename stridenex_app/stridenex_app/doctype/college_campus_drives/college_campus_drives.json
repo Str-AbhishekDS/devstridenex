@@ -18,6 +18,7 @@
   "criteria",
   "branches",
   "required_skill",
+  "description",
   "section_break_ipjv",
   "designation",
   "amended_from"
@@ -111,14 +112,19 @@
    "fieldtype": "Table MultiSelect",
    "label": "Required Skills",
    "options": "Student Skill Table"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text",
+   "label": "Description"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-25 17:40:33.637984",
- "modified_by": "abhisheksadale96@gmail.com",
+ "modified": "2026-09-18 17:26:37.302857",
+ "modified_by": "Administrator",
  "module": "Stridenex App",
  "name": "College Campus Drives",
  "naming_rule": "Expression (old style)",

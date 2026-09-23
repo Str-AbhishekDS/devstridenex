@@ -201,6 +201,7 @@ def create_college_notice():
             "notice": data.get("notice"),
             "date": data.get("date"),
             "notice_type": data.get("notice_type"),
+            "description": data.get("description"),
             "company": data.get("company"),
         })
 
@@ -240,7 +241,7 @@ def update_college_notice(name):
 
         doc = frappe.get_doc("College Notice", name)
 
-        fields = ["college", "notice", "date", "notice_type", "company"]
+        fields = ["college", "notice", "date", "notice_type", "description", "company"]
         for field in fields:
             if field in data:
                 doc.set(field, data.get(field))
